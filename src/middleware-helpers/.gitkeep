@@ -1,0 +1,2 @@
+# HostelMatch Middleware Helpers
+# JWT verification, role-based authorization guards (Student, Warden, Admin) will be placed here.
