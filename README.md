@@ -202,6 +202,38 @@ hostel-match/
 - `dealBreakers`: Array of Enums `["food", "lateNightNoise", "visitors", "cleanliness", "acType"]`
 - `completedAt`: Date or null (stamped when all mandatory lifestyle questions are answered)
 - `version`: Number (default 1)
+### 6. MatchingSettings Model (`src/models/MatchingSettings.js`)
+- `weights`: Object containing configurable weights across 7 lifestyle dimensions (summing to 100):
+  - `sleepSchedule` (20%), `studyTime` (20%), `cleanliness` (15%), `noiseTolerance` (15%), `foodType` (10%), `socialLevel` (10%), `languageAndCalls` (10%)
+- `yearBonus`: `{ sameYear: 5, oneYearApart: 2, otherwise: 0 }` (bonus points, final score capped at 100)
+- `updatedBy`: ObjectId ref `User`
+
+---
+
+## 🧮 Roommate Matching Engine & Formula (Phase 3)
+
+### 1. Fairness & Privacy Rules
+- **Pure Lifestyle Criteria**: Matching is strictly computed from voluntary lifestyle habits (sleep, study, tidiness, sound, food, guests, spoken languages).
+- **Non-Discrimination Policy**: Nationality, home country, home state, race, or ethnicity are **NEVER** factored into scoring or candidate filtering.
+- **Strict Privacy**: Students cannot inspect peers' raw questionnaire answers; they only receive high-level affinity percentages, top friendly reasons, and common languages.
+- **Strict Gender Isolation**: Candidates are only evaluated within their exact gender pool (`male` with `male`, `female` with `female`, `other` with `other`).
+- **Mutual Deal-Breakers**: If either student's deal-breaker is violated, the pair is immediately excluded (`excluded: true`, score: 0).
+
+### 2. Category Similarity Matrices
+- **Sleep Schedule (20%)**: `same = 1.0`, `early/normal = 0.5`, `normal/late = 0.5`, `early/late = 0.0`
+- **Study Time (20%)**: `same = 1.0`, `flexible with any = 0.75`, `morning/daytime = 0.5`, `daytime/night = 0.5`, `morning/night = 0.0`
+- **Cleanliness (15%)**: `1 - (|ratingA - ratingB| / 4)`
+- **Noise Tolerance (15%)**: `1 - (|ratingA - ratingB| / 4)`
+- **Food Type (10%)**: `same = 1.0`, specific pairs (`veg/jain = 0.7`, `veg/eggetarian = 0.7`, `non-veg/eggetarian = 0.7`, `non-veg/halal = 0.8`), other pairs use `okWithDifferentFood` rule (both ok = 0.6, one ok = 0.3, neither = 0.0)
+- **Social / Guest Level (10%)**: `1 - (|ratingA - ratingB| / 4)`
+- **Languages & Night Calls (10%)**: `60% * (sharedLanguages >= 1 ? 1 : 0) + 40% * nightCallsSimilarity`
+
+### 3. Deal-Breaker Exclusions
+- `food`: Roommate must have identical `foodType`.
+- `lateNightNoise`: Roommate's `nightCalls` must not be `"often"`.
+- `visitors`: Roommate's `socialLevel` must be `< 4` (1, 2, or 3).
+- `cleanliness`: Roommate's `cleanliness` must be `>= 3`.
+- `acType`: If AC preference is not `"no-preference"`, roommate's AC preference must match or be `"no-preference"`.
 
 ---
 
@@ -211,6 +243,13 @@ All routes require authentication via `hm_token` cookie. Requests are validated 
 
 | Method | Endpoint | Access | Description |
 | :--- | :--- | :--- | :--- |
+| **GET** | `/api/matches/me` | Student | Evaluates and returns paginated top roommate matches for the authenticated student |
+| **GET** | `/api/matches/with/[userId]` | Student | Detailed mutual compatibility breakdown with a specific candidate peer |
+| **GET** | `/api/admin/matching/settings` | Admin | Retrieves current matching algorithm weights and year bonus points |
+| **PUT** | `/api/admin/matching/settings` | Admin | Updates algorithm weights (strictly enforces weights total = 100%) |
+| **POST** | `/api/admin/matching/settings/reset` | Admin | Resets matching weights and bonuses to system defaults |
+| **GET** | `/api/admin/matching/pair` | Admin | Evaluates pair compatibility with full deal-breaker diagnostics (`?studentA=...&studentB=...`) |
+| **GET** | `/api/admin/matching/students/[id]/top`| Admin | Retrieves top 10 matches for any specific student |
 | **GET** | `/api/config/questionnaire` | Any Auth | Returns single-source-of-truth questionnaire definition, questions, and allowed choices |
 | **GET** | `/api/students/me/profile` | Student | Retrieves the authenticated student's profile & academic data |
 | **PUT** | `/api/students/me/profile` | Student | Upserts profile details and marks completion status |
@@ -262,7 +301,23 @@ npm run seed:students -- --reset
 ```
 *(Creates demo students with `isDemo: true`, registration numbers `DEMO-0001` onwards, ~60/40 gender ratio, diverse Indian states and ~8% international students, realistic preference correlations, and 85% completed / 15% pending questionnaires. Password for all demo accounts: `DemoStudentPass123!` or via `DEMO_STUDENT_PASSWORD`).*
 
-### 3. Start Development Server
+### 4. Run Roommate Matching Pure Engine Tests (New in Phase 3)
+```bash
+npm run test:matching
+```
+*(Runs Node.js built-in test runner across 12 unit tests verifying symmetry, deal-breaker directions, dietary logic, scale differences, and year bonus).*
+
+### 5. Run Roommate Compatibility Console Demo (New in Phase 3)
+```bash
+# Evaluate demo student DEMO-0001
+npm run match:demo -- --reg=DEMO-0001
+
+# Evaluate any specific demo student
+npm run match:demo -- --reg=DEMO-0042
+```
+*(Loads candidate pool, calculates mutual compatibility, prints deal-breaker exclusions, and outputs top 5 matches with scores and reasons).*
+
+### 6. Start Development Server
 ```bash
 npm run dev
 ```

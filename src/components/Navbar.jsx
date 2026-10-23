@@ -81,6 +81,12 @@ export default function Navbar() {
                   >
                     Students
                   </Link>
+                  <Link
+                    href="/admin/matching"
+                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+                  >
+                    Matching
+                  </Link>
                 </>
               ) : (
                 <>
@@ -101,6 +107,12 @@ export default function Navbar() {
                     className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
                   >
                     Preferences
+                  </Link>
+                  <Link
+                    href="/dashboard/matches"
+                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+                  >
+                    Matches
                   </Link>
                 </>
               )}
@@ -227,6 +239,13 @@ export default function Navbar() {
                     >
                       Students
                     </Link>
+                    <Link
+                      href="/admin/matching"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                    >
+                      Matching
+                    </Link>
                   </>
                 ) : (
                   <>
@@ -250,6 +269,13 @@ export default function Navbar() {
                       className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
                     >
                       Preferences
+                    </Link>
+                    <Link
+                      href="/dashboard/matches"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                    >
+                      Matches
                     </Link>
                   </>
                 )}

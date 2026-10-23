@@ -282,29 +282,40 @@ export default function StudentDashboard() {
             </div>
           </Link>
 
-          {/* Card: Roommate Matches (Coming soon) */}
-          <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm opacity-80">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-600 text-lg">
-                  🤝
+          {/* Card: Roommate Matches - LIVE */}
+          <Link
+            href="/dashboard/matches"
+            className="group relative overflow-hidden rounded-2xl border border-indigo-200 bg-white p-6 shadow-sm hover:shadow-md hover:border-indigo-500 transition-all flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 text-lg group-hover:scale-105 transition-transform">
+                    🤝
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                      Roommate Matches
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Explore compatible roommate peers calculated from your lifestyle & study routines.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">Roommate Matches</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Explore high-compatibility roommate suggestions calculated by our matching algorithms.
-                  </p>
-                </div>
+                <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                  Active
+                </span>
               </div>
-              <span className="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-800">
-                Coming soon
+            </div>
+            <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-indigo-600">
+              <span>
+                {status.preferencesCompleted
+                  ? "Browse compatible matches"
+                  : "Complete preferences to unlock"}
               </span>
+              <span>Explore &rarr;</span>
             </div>
-            <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-              <span>Matching Engine & Requests</span>
-              <span>Phase 3</span>
-            </div>
-          </div>
+          </Link>
 
           {/* Card: My Room (Coming soon) */}
           <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm opacity-80">
