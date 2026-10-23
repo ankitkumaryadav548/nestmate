@@ -75,14 +75,34 @@ export default function Navbar() {
                   >
                     Rooms
                   </Link>
+                  <Link
+                    href="/admin/students"
+                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+                  >
+                    Students
+                  </Link>
                 </>
               ) : (
-                <Link
-                  href="/dashboard/hostels"
-                  className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
-                >
-                  Hostels
-                </Link>
+                <>
+                  <Link
+                    href="/dashboard/hostels"
+                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+                  >
+                    Hostels
+                  </Link>
+                  <Link
+                    href="/dashboard/profile"
+                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+                  >
+                    Profile
+                  </Link>
+                  <Link
+                    href="/dashboard/preferences"
+                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+                  >
+                    Preferences
+                  </Link>
+                </>
               )}
             </>
           )}
@@ -200,15 +220,38 @@ export default function Navbar() {
                     >
                       Rooms
                     </Link>
+                    <Link
+                      href="/admin/students"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                    >
+                      Students
+                    </Link>
                   </>
                 ) : (
-                  <Link
-                    href="/dashboard/hostels"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                  >
-                    Hostels
-                  </Link>
+                  <>
+                    <Link
+                      href="/dashboard/hostels"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                    >
+                      Hostels
+                    </Link>
+                    <Link
+                      href="/dashboard/profile"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                    >
+                      Profile
+                    </Link>
+                    <Link
+                      href="/dashboard/preferences"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                    >
+                      Preferences
+                    </Link>
+                  </>
                 )}
               </>
             )}

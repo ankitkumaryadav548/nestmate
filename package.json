@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "seed:admin": "node scripts/seed-admin.js",
-    "seed:hostels": "node scripts/seed-hostels.js"
+    "seed:hostels": "node scripts/seed-hostels.js",
+    "seed:students": "node scripts/seed-students.js"
   },
   "dependencies": {
     "axios": "^1.20.0",

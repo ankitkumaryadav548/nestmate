@@ -17,7 +17,7 @@
   - **httpOnly Cookies**: Stored in secure `hm_token` cookies (never exposed to `localStorage`).
   - **Role Guards**: Strict separation between `student` and `admin` portals (`requireAuth`, `requireRole`).
   - **Route Protection (`src/proxy.js`)**: Modern Next.js 16+ proxy intercepting unauthorized page accesses.
-- **Hostel & Room Management (Phase 3)**:
+- **Hostel & Room Management (Phase 2 - Part 1)**:
   - **Hostel Model**: Code uniqueness, gender designations (`boys`, `girls`, `mixed`), floor bounds, academic year eligibility, facilities, and rules.
   - **Room Model**: Compound index `(hostel, roomNumber)`, floor validation, capacity (1-6), types (`AC`, `Non-AC`), occupancy tracking, auto-status pre-save hook.
   - **High-Performance MongoDB Aggregations**: Pre-computed bed totals, occupancy metrics, and per-hostel breakdowns without N+1 query overhead.
@@ -25,6 +25,18 @@
   - **Occupancy Protections**: Rejects hostel gender changes or deletions if rooms are occupied; rejects lowering room capacity below current occupancy.
   - **Bulk Room Creation**: Admin generator creating up to 200 rooms per batch with duplicate skipping and live preview.
   - **Sample Demo Seeding**: Idempotent generator (`npm run seed:hostels`) creating 17 hostels (BH1-BH10, GH1-GH7) and 680 rooms.
+- **Student Profile & Lifestyle Questionnaire (Phase 2 - Part 2)**:
+  - **Central Questionnaire Config (`src/config/questionnaire.js`)**: Single source of truth for questions, allowed options, deal-breakers, language list, and step definitions.
+  - **Substance-Free Policy**: Smoking and alcohol questions are strictly omitted across the entire system.
+  - **Strict Privacy Guarantee**: A student's profile and questionnaire answers are completely private. No student can inspect another student's answers; only the student and verified administrators have access.
+  - **Inclusivity & Non-Discrimination**: Regional origin and cultural comfort are self-declared, optional, and never used to rank, penalize, or segregate students.
+  - **StudentProfile Model**: Manages academic details, home state, home country (default "India"), international status, IANA time zone, and expected arrival date.
+  - **Preference Model**: Stores answers for sleep schedule, study time, late-night calls, cleanliness (1-5), noise tolerance (1-5), social level (1-5), AC choice, diet, sharing tolerance, languages, and strict deal-breakers.
+  - **Student Portal**: Interactive profile form (`/dashboard/profile`) with inline validation and dynamic international fields; 4-step questionnaire wizard (`/dashboard/preferences`) with progress bar, option cards, scale buttons, language tags, and review summary.
+  - **Admin Directory (`/admin/students`)**: Aggregated table with instant search, multi-filter dropdowns, pagination, status badges, and active/inactive toggle with confirmation modal.
+  - **Student Detail View (`/admin/students/[id]`)**: Full read-only view with human-readable labels instead of raw enum keys and highlighted deal-breakers.
+  - **Demo Student Seeder (`scripts/seed-students.js`)**: Idempotent generation of 300 realistic students (`npm run seed:students`) with demographic variety and `--reset` cleanup flag.
+
 
 ---
 
@@ -149,6 +161,48 @@ hostel-match/
 - Compound Index: `(hostel, roomNumber)` (unique)
 - Pre-Save Hook: Automatically computes `status = "full"` when `currentOccupancy >= capacity`, or `status = "available"`, unless manually set to `"maintenance"`.
 
+### 3. User Model (`src/models/User.js`)
+- `name`: String (required, max 100)
+- `email`: String (required, unique, lowercase)
+- `password`: String (required, hashed via bcrypt, hidden by default)
+- `role`: Enum `["student", "admin"]` (default `student`)
+- `gender`: Enum `["male", "female", "other"]` (required for students)
+- `registrationNumber`: String (sparse, unique)
+- `phone`: String (contact mobile number)
+- `course`: String (degree program)
+- `department`: String (academic department)
+- `year`: Number (1 to 6)
+- `isActive`: Boolean (default `true`)
+- `isDemo`: Boolean (default `false`, indexed; separates test students from genuine enrollments)
+
+### 4. StudentProfile Model (`src/models/StudentProfile.js`)
+- `user`: ObjectId ref `User` (required, unique, index)
+- `homeCountry`: String (default `"India"`)
+- `homeState`: String (state or province)
+- `isInternational`: Boolean (default `false`, index)
+- `homeTimeZone`: String (IANA format, e.g. `"Africa/Kampala"`, `"Asia/Kolkata"`)
+- `arrivalDate`: Date (expected campus arrival date)
+- `emergencyContactName`: String (optional)
+- `emergencyContactPhone`: String (optional)
+- `profileCompletedAt`: Date or null (set when all required academic & origin fields are filled)
+
+### 5. Preference Model (`src/models/Preference.js`)
+- `student`: ObjectId ref `User` (required, unique, index)
+- `sleepSchedule`: Enum `["early", "normal", "late"]`
+- `studyTime`: Enum `["morning", "daytime", "night", "flexible"]`
+- `nightCalls`: Enum `["never", "sometimes", "often"]`
+- `cleanliness`: Number (1 to 5)
+- `noiseTolerance`: Number (1 to 5)
+- `socialLevel`: Number (1 to 5)
+- `acPreference`: Enum `["ac", "non-ac", "no-preference"]`
+- `foodType`: Enum `["veg", "non-veg", "eggetarian", "halal", "jain"]`
+- `okWithDifferentFood`: Boolean (dietary sharing tolerance)
+- `languages`: Array of Strings (multi-select with custom addition support)
+- `culturalComfort`: Enum `["open-to-all", "prefer-similar-background", "no-preference"]` (optional, self-declared)
+- `dealBreakers`: Array of Enums `["food", "lateNightNoise", "visitors", "cleanliness", "acType"]`
+- `completedAt`: Date or null (stamped when all mandatory lifestyle questions are answered)
+- `version`: Number (default 1)
+
 ---
 
 ## 🌐 API Reference
@@ -157,7 +211,16 @@ All routes require authentication via `hm_token` cookie. Requests are validated 
 
 | Method | Endpoint | Access | Description |
 | :--- | :--- | :--- | :--- |
-| **GET** | `/api/admin/stats` | Admin | Returns system totals and per-hostel breakdown |
+| **GET** | `/api/config/questionnaire` | Any Auth | Returns single-source-of-truth questionnaire definition, questions, and allowed choices |
+| **GET** | `/api/students/me/profile` | Student | Retrieves the authenticated student's profile & academic data |
+| **PUT** | `/api/students/me/profile` | Student | Upserts profile details and marks completion status |
+| **GET** | `/api/students/me/preferences`| Student | Retrieves student lifestyle questionnaire answers & deal-breakers |
+| **PUT** | `/api/students/me/preferences`| Student | Saves answers; sets `completedAt` when all mandatory questions are answered |
+| **GET** | `/api/students/me/status` | Student | Computes `{ profileCompleted, preferencesCompleted, percentage }` |
+| **GET** | `/api/admin/students` | Admin | Aggregated student directory with filters (search, gender, year, origin, status) |
+| **GET** | `/api/admin/students/[id]` | Admin | Retrieves student record with profile and preferences |
+| **PATCH**| `/api/admin/students/[id]` | Admin | Toggles student account `isActive` (never role or password) |
+| **GET** | `/api/admin/stats` | Admin | System totals (hostels, rooms, beds, completed preferences, international students) |
 | **GET** | `/api/hostels` | All Auth | Filtered hostels with pre-computed room & bed stats (students only see eligible hostels) |
 | **POST** | `/api/hostels` | Admin | Creates a new hostel block |
 | **GET** | `/api/hostels/[id]` | All Auth | Retrieves hostel details with stats |
@@ -185,6 +248,19 @@ npm run seed:admin
 npm run seed:hostels
 ```
 *(Idempotent demo data generator: creates 10 boys hostels `BH1-BH10` and 7 girls hostels `GH1-GH7` with 4 floors and 10 rooms per floor = 680 rooms. Skips existing codes).*
+
+### 3. Seed Demo Students (New in Phase 2)
+```bash
+# Seed 300 demo students (default)
+npm run seed:students
+
+# Seed custom number of demo students
+npm run seed:students -- --count=100
+
+# Reset: delete ONLY demo students, their profiles, and preferences (preserves real users & admins)
+npm run seed:students -- --reset
+```
+*(Creates demo students with `isDemo: true`, registration numbers `DEMO-0001` onwards, ~60/40 gender ratio, diverse Indian states and ~8% international students, realistic preference correlations, and 85% completed / 15% pending questionnaires. Password for all demo accounts: `DemoStudentPass123!` or via `DEMO_STUDENT_PASSWORD`).*
 
 ### 3. Start Development Server
 ```bash

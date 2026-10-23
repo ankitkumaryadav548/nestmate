@@ -1,6 +1,8 @@
 import Hostel from "@/models/Hostel";
 import Room from "@/models/Room";
 import User from "@/models/User";
+import StudentProfile from "@/models/StudentProfile";
+import Preference from "@/models/Preference";
 
 /**
  * Computes administrative overview statistics using MongoDB aggregation pipelines.
@@ -36,6 +38,9 @@ export async function getAdminStats() {
 
   const totalHostels = await Hostel.countDocuments();
   const studentsRegistered = await User.countDocuments({ role: "student" });
+  const studentsWithCompletedPreferences = await Preference.countDocuments({ completedAt: { $ne: null } });
+  const studentsWithPendingPreferences = Math.max(0, studentsRegistered - studentsWithCompletedPreferences);
+  const internationalStudents = await StudentProfile.countDocuments({ isInternational: true });
 
   const availableBeds = Math.max(0, roomTotals.totalBeds - roomTotals.occupiedBeds);
 
@@ -83,7 +88,11 @@ export async function getAdminStats() {
       availableBeds,
       roomsInMaintenance: roomTotals.roomsInMaintenance,
       studentsRegistered,
+      studentsWithCompletedPreferences,
+      studentsWithPendingPreferences,
+      internationalStudents,
     },
     hostels: hostelBreakdown,
   };
 }
+
