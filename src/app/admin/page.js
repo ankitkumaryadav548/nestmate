@@ -272,6 +272,53 @@ export default function AdminPage() {
           </div>
         </Link>
 
+        {/* Roommate Groups - LIVE */}
+        <Link
+          href="/admin/groups"
+          className="group flex flex-col justify-between rounded-2xl border border-indigo-200 bg-white p-6 shadow-sm hover:shadow-md hover:border-indigo-500 transition-all"
+        >
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-xl border border-indigo-100 group-hover:scale-105 transition-transform">
+                👥
+              </div>
+              <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                Active Module
+              </span>
+            </div>
+            <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+              Roommate Groups
+            </h3>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              Monitor student-formed roommate groups, track forming vs. complete groups, inspect compatibility, and manage members.
+            </p>
+            {stats?.groups && (
+              <div className="mt-3 grid grid-cols-3 gap-1.5 text-center text-[11px] bg-slate-50 p-2 rounded-xl border border-slate-100">
+                <div>
+                  <span className="block font-bold text-indigo-600">{stats.groups.forming}</span>
+                  <span className="text-slate-400">Forming</span>
+                </div>
+                <div>
+                  <span className="block font-bold text-emerald-600">{stats.groups.complete}</span>
+                  <span className="text-slate-400">Complete</span>
+                </div>
+                <div>
+                  <span className="block font-bold text-purple-600">{stats.groups.locked}</span>
+                  <span className="text-slate-400">Locked</span>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="mt-4 pt-3 border-t border-slate-100 text-xs font-semibold text-indigo-600 flex items-center justify-between">
+            <span>
+              {stats?.groups
+                ? `${stats.groups.studentsInGroups} in groups · ${stats.groups.studentsInAutoPool} auto-pool`
+                : "Manage Groups"}
+            </span>
+            <span>&rarr;</span>
+          </div>
+        </Link>
+
         {/* Allocations - Coming Soon */}
         <div className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-slate-50/50 p-6 opacity-75">
           <div>

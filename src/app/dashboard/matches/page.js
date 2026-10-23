@@ -16,6 +16,11 @@ export default function StudentMatchesPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [preferencesIncomplete, setPreferencesIncomplete] = useState(false);
+  const [groupStatusBanner, setGroupStatusBanner] = useState(null);
+  const [leaderGroup, setLeaderGroup] = useState(null);
+  const [invitedUserIds, setInvitedUserIds] = useState(new Set());
+  const [invitingId, setInvitingId] = useState(null);
+  const [toastMessage, setToastMessage] = useState(null);
 
   // Filters
   const [minScore, setMinScore] = useState(0);
@@ -42,6 +47,8 @@ export default function StudentMatchesPage() {
 
         if (res.data?.success) {
           const data = res.data.data;
+          setGroupStatusBanner(data.groupStatusBanner || null);
+          setLeaderGroup(data.leaderGroup || null);
           setMatches(data.matches || []);
           setTotal(data.total || 0);
           setPage(data.page || 1);
@@ -60,6 +67,25 @@ export default function StudentMatchesPage() {
     },
     [page, minScore, sameYearOnly, sharedLanguageOnly]
   );
+
+  const handleInviteToGroup = async (userId) => {
+    setInvitingId(userId);
+    setToastMessage(null);
+    try {
+      const res = await api.post("/groups/me/invitations", { userId });
+      if (res.data?.success) {
+        setInvitedUserIds((prev) => new Set([...prev, userId]));
+        setToastMessage({ type: "success", text: "Invitation sent to candidate!" });
+      }
+    } catch (err) {
+      setToastMessage({
+        type: "error",
+        text: err.response?.data?.message || "Failed to send invitation",
+      });
+    } finally {
+      setInvitingId(null);
+    }
+  };
 
   useEffect(() => {
     fetchMatches(1);
@@ -157,8 +183,56 @@ export default function StudentMatchesPage() {
     );
   }
 
+  // State: In Complete or Locked Group Banner, or Non-Leader Member
+  if (groupStatusBanner) {
+    return (
+      <div className="mx-auto max-w-4xl py-8 px-4 sm:px-6 lg:px-8">
+        <div className="rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 via-white to-blue-50/60 p-8 sm:p-12 text-center shadow-sm">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-600 text-white text-2xl mb-4">
+            🏠
+          </div>
+          <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900">
+            {groupStatusBanner.status === "complete"
+              ? "Your Roommate Group is Complete"
+              : groupStatusBanner.status === "locked"
+              ? "Your Room Allocation is Finalized"
+              : "Roommate Group Membership Active"}
+          </h1>
+          <p className="mx-auto mt-3 max-w-lg text-xs sm:text-sm text-slate-600 leading-relaxed">
+            {groupStatusBanner.status === "complete"
+              ? `All ${groupStatusBanner.targetSize} seats in your group have been filled. The residential warden will allocate a room soon.`
+              : groupStatusBanner.status === "locked"
+              ? "Your room assignment has been locked. Check your room assignment under My Room."
+              : "You belong to a roommate group as a member. Prospective roommate invitations and group roster changes are managed by your group leader."}
+          </p>
+          <div className="mt-6 flex items-center justify-center gap-3">
+            <Link
+              href="/dashboard/group"
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-xs font-bold text-white shadow hover:bg-indigo-700 transition-all"
+            >
+              Go to My Group &rarr;
+            </Link>
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-7xl py-8 px-4 sm:px-6 lg:px-8 space-y-8">
+      {toastMessage && (
+        <Alert
+          type={toastMessage.type}
+          message={toastMessage.text}
+          onClose={() => setToastMessage(null)}
+        />
+      )}
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -397,15 +471,24 @@ export default function StudentMatchesPage() {
                   </button>
 
                   <div className="flex items-center">
-                    <button
-                      type="button"
-                      disabled
-                      aria-disabled="true"
-                      title="Roommate requests will be enabled in Phase 4"
-                      className="cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-400 opacity-80"
-                    >
-                      Send request (Coming soon)
-                    </button>
+                    {leaderGroup && leaderGroup.freeSeats > 0 ? (
+                      <Button
+                        variant={invitedUserIds.has(item.id) ? "outline" : "primary"}
+                        size="sm"
+                        disabled={invitedUserIds.has(item.id) || invitingId === item.id}
+                        loading={invitingId === item.id}
+                        onClick={() => handleInviteToGroup(item.id)}
+                      >
+                        {invitedUserIds.has(item.id) ? "Invited ✓" : "Invite to group"}
+                      </Button>
+                    ) : (
+                      <Link
+                        href="/dashboard/group"
+                        className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors"
+                      >
+                        Create a group first &rarr;
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>

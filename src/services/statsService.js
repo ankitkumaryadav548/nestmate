@@ -3,6 +3,7 @@ import Room from "@/models/Room";
 import User from "@/models/User";
 import StudentProfile from "@/models/StudentProfile";
 import Preference from "@/models/Preference";
+import { getGroupStats } from "@/services/groupService";
 
 /**
  * Computes administrative overview statistics using MongoDB aggregation pipelines.
@@ -79,6 +80,8 @@ export async function getAdminStats() {
     },
   ]);
 
+  const groupStats = await getGroupStats();
+
   return {
     totals: {
       hostels: totalHostels,
@@ -91,6 +94,7 @@ export async function getAdminStats() {
       studentsWithCompletedPreferences,
       studentsWithPendingPreferences,
       internationalStudents,
+      groups: groupStats,
     },
     hostels: hostelBreakdown,
   };

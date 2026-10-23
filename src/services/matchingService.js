@@ -2,6 +2,7 @@ import connectDB from "@/lib/db";
 import User from "@/models/User";
 import Preference from "@/models/Preference";
 import MatchingSettings from "@/models/MatchingSettings";
+import RoommateGroup from "@/models/RoommateGroup";
 import {
   DEFAULT_WEIGHTS,
   YEAR_BONUS,
@@ -149,14 +150,29 @@ export async function resetSettings(adminId) {
 /**
  * Hook function for unavailable student IDs.
  * 
- * RESERVED FOR PHASES 4 & 5:
- * The Roommate Request & Allocation modules will register accepted roommate pairs
- * and already-allocated students here to exclude them from the public matching discovery pool.
+ * Excludes all students who already belong to an active roommate group
+ * (status: "forming", "complete", or "locked") from the general match discovery pool.
  * 
  * @returns {Promise<string[]>}
  */
 export async function getUnavailableStudentIds() {
-  return [];
+  await connectDB();
+  const activeGroups = await RoommateGroup.find({
+    status: { $in: ["forming", "complete", "locked"] },
+  })
+    .select("members.user")
+    .lean();
+
+  const userIds = new Set();
+  for (const group of activeGroups) {
+    for (const m of group.members || []) {
+      if (m.user) {
+        userIds.add(m.user.toString());
+      }
+    }
+  }
+
+  return Array.from(userIds);
 }
 
 /**
@@ -288,6 +304,45 @@ export async function getTopMatches(studentId, filters = {}) {
   const parsedLimit = Math.min(50, Math.max(1, parseInt(limit, 10) || 20));
   const parsedMinScore = Math.max(0, Math.min(100, parseInt(minScore, 10) || 0));
 
+  // Check if student is already in an active group
+  await connectDB();
+  const activeGroup = await RoommateGroup.findOne({
+    "members.user": studentId,
+    status: { $in: ["forming", "complete", "locked"] },
+  }).lean();
+
+  let leaderGroup = null;
+  if (activeGroup) {
+    const isLeader = activeGroup.leader.toString() === studentId.toString();
+    // Non-leader members, or members of complete/locked groups see a status banner instead of candidate list
+    if (activeGroup.status === "complete" || activeGroup.status === "locked" || !isLeader) {
+      return {
+        matches: [],
+        total: 0,
+        page: parsedPage,
+        limit: parsedLimit,
+        totalPages: 1,
+        studentGender: null,
+        groupStatusBanner: {
+          inGroup: true,
+          status: activeGroup.status,
+          isLeader,
+          targetSize: activeGroup.targetSize,
+          membersCount: activeGroup.members.length,
+          groupId: activeGroup._id.toString(),
+        },
+      };
+    }
+
+    // Leader of forming group
+    leaderGroup = {
+      id: activeGroup._id.toString(),
+      targetSize: activeGroup.targetSize,
+      membersCount: activeGroup.members.length,
+      freeSeats: activeGroup.targetSize - activeGroup.members.length,
+    };
+  }
+
   const settings = await getSettings();
   const { student, candidates } = await getEligibleCandidates(studentId);
 
@@ -348,6 +403,7 @@ export async function getTopMatches(studentId, filters = {}) {
     limit: parsedLimit,
     totalPages,
     studentGender: student.gender,
+    leaderGroup,
     settingsUsed: {
       engineVersion: ENGINE_VERSION,
       weights: settings.weights,

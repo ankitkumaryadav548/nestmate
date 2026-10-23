@@ -11,7 +11,9 @@
     "seed:hostels": "node scripts/seed-hostels.js",
     "seed:students": "node scripts/seed-students.js",
     "test:matching": "node --test src/services/matching/scoreEngine.test.js",
-    "match:demo": "node scripts/match-demo.js"
+    "test:groups": "node --test src/services/matching/groupScore.test.js",
+    "match:demo": "node scripts/match-demo.js",
+    "seed:groups": "node scripts/seed-groups.js"
   },
   "dependencies": {
     "axios": "^1.20.0",

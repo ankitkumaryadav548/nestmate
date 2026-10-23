@@ -13,23 +13,29 @@ export default function StudentDashboard() {
     preferencesCompleted: false,
     percentage: 0,
   });
+  const [groupInfo, setGroupInfo] = useState(null);
+  const [pendingInvitesCount, setPendingInvitesCount] = useState(0);
   const [loadingStatus, setLoadingStatus] = useState(true);
 
   useEffect(() => {
-    async function loadStatus() {
+    async function loadData() {
       try {
         setLoadingStatus(true);
-        const res = await axios.get("/api/students/me/status");
-        if (res.data?.success) {
-          setStatus(res.data.data);
-        }
+        const [statusRes, groupRes, invRes] = await Promise.all([
+          axios.get("/api/students/me/status").catch(() => ({ data: { data: null } })),
+          axios.get("/api/groups/me").catch(() => ({ data: { data: null } })),
+          axios.get("/api/invitations/me").catch(() => ({ data: { data: null } })),
+        ]);
+        if (statusRes.data?.data) setStatus(statusRes.data.data);
+        if (groupRes.data?.data) setGroupInfo(groupRes.data.data);
+        if (invRes.data?.data?.pending) setPendingInvitesCount(invRes.data.data.pending.length);
       } catch (err) {
         console.error("Failed to load student status:", err);
       } finally {
         setLoadingStatus(false);
       }
     }
-    loadStatus();
+    loadData();
   }, []);
 
   const hasIncompleteSteps = !status.profileCompleted || !status.preferencesCompleted;
@@ -316,6 +322,76 @@ export default function StudentDashboard() {
               <span>Explore &rarr;</span>
             </div>
           </Link>
+
+          {/* Card: My Group - LIVE */}
+          <div className="rounded-2xl border border-indigo-200 bg-white p-6 shadow-sm hover:border-indigo-500 transition-all">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 text-lg">
+                  👥
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-slate-900">
+                      Roommate Group
+                    </h3>
+                    {groupInfo && (
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                        groupInfo.status === "complete"
+                          ? "bg-emerald-100 text-emerald-800"
+                          : groupInfo.status === "locked"
+                          ? "bg-purple-100 text-purple-800"
+                          : "bg-indigo-100 text-indigo-800"
+                      }`}>
+                        {groupInfo.status.toUpperCase()} ({groupInfo.seatsFilled}/{groupInfo.targetSize})
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {groupInfo
+                      ? groupInfo.isLeader
+                        ? `You are the group leader (${groupInfo.seatsFilled}/${groupInfo.targetSize} beds filled).`
+                        : `You are a member of this ${groupInfo.targetSize}-bed group.`
+                      : "Form a custom group with matched peers or register for auto-allocation."}
+                  </p>
+                </div>
+              </div>
+
+              {pendingInvitesCount > 0 && (
+                <Link
+                  href="/dashboard/invitations"
+                  className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-1 text-xs font-bold animate-pulse hover:bg-amber-200"
+                >
+                  ✉️ {pendingInvitesCount} Invite{pendingInvitesCount > 1 ? "s" : ""}
+                </Link>
+              )}
+            </div>
+
+            {groupInfo ? (
+              <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-semibold">
+                <span className="text-slate-600">
+                  {groupInfo.averageScore ? `Average Compatibility: ${groupInfo.averageScore}%` : "Group Active"}
+                </span>
+                <Link href="/dashboard/group" className="text-indigo-600 hover:text-indigo-800">
+                  Manage Group &rarr;
+                </Link>
+              </div>
+            ) : (
+              <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-semibold">
+                <span className="text-slate-500">No active group</span>
+                <div className="flex items-center gap-3">
+                  {pendingInvitesCount > 0 && (
+                    <Link href="/dashboard/invitations" className="text-amber-700 hover:underline">
+                      View Invitations ({pendingInvitesCount})
+                    </Link>
+                  )}
+                  <Link href="/dashboard/group" className="text-indigo-600 hover:text-indigo-800">
+                    Create or Join &rarr;
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Card: My Room (Coming soon) */}
           <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 shadow-sm opacity-80">

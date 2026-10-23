@@ -358,3 +358,95 @@ Open **`http://localhost:3000`** in your browser.
    - Open a hostel to verify available room type breakdowns (e.g. 2-bed Non-AC, 3-bed AC).
    - Log out and register a **male student** (e.g. `rahul@university.edu`, gender: `male`).
    - Confirm Rahul only sees **Boys Hostels (`BH1` to `BH10`)** and any `mixed` hostels.
+
+---
+
+## 👥 Roommate Groups & Invitations (Phase 4)
+
+### 1. Concept & Architecture
+Campus rooms feature 2, 3, or 4 beds (`GROUP_SIZE_OPTIONS = [2, 3, 4]`). A student creates a group specifying their target bed count and becomes the **group leader**. The leader invites compatible peers; invitees accept or decline. When all seats are filled, the group transitions to `complete` and awaits automated hostel room allocation by the warden (Phase 5). Students who prefer not to form a group select **auto-assign** (`AllocationIntent mode = "auto"`), and will be paired algorithmically during general room allocation.
+
+### 2. Fairness & Privacy Rules
+- **Non-Discrimination**: Nationality, home country, home state, and ethnicity are **NEVER** used in any group logic, scoring, filtering, or recommendations.
+- **Gender Isolation**: Strict, non-negotiable rule. All members of a group must share the identical gender.
+- **Privacy Safeguards**: Group members and invited candidates only see safe public fields: `name`, `course`, `department`, `year`, `shared languages`, and mutual compatibility scores. Email, phone, registration number, and raw questionnaire answers are **NEVER** exposed to other students.
+- **Generic Privacy Rejection**: When an invited candidate fails deal-breakers with an existing member, the system returns a generic *"Candidate is not compatible with current group criteria"* without disclosing private deal-breaker triggers.
+
+### 3. Group State Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> forming: Student creates group (Leader)
+    forming --> complete: All target seats filled (atomic accept)
+    forming --> forming: Target size increased / Member leaves
+    complete --> forming: Member leaves / Target size increased
+    complete --> locked: Room allocated by admin (Phase 5)
+    forming --> disbanded: Leader disbands / Last member leaves
+    complete --> disbanded: Leader disbands (Admin override)
+    locked --> [*]: Read-only (Cannot leave or remove)
+    disbanded --> [*]: Inactive (Pending invites cancelled)
+```
+
+### 4. Concurrency Safety & Race Condition Protection
+1. **Zero Overfilling Under Simultaneous Accepts**:
+   When multiple students accept invitations simultaneously for the final free bed, MongoDB executes an atomic conditional update:
+   ```javascript
+   await RoommateGroup.findOneAndUpdate(
+     {
+       _id: groupId,
+       status: "forming",
+       "members.user": { $ne: userId },
+       $expr: { $lt: [{ $size: "$members" }, "$targetSize"] }
+     },
+     { $push: { members: { user: userId, joinedAt: new Date() } } },
+     { new: true }
+   );
+   ```
+   If the group filled just milliseconds prior, the `$expr` condition fails atomically and returns `null`, rejecting the second accept with a clean 409 conflict and preventing overfilling.
+
+2. **Single Active Group Guarantee**:
+   A partial unique index on `members.user` in MongoDB:
+   ```javascript
+   RoommateGroupSchema.index(
+     { "members.user": 1 },
+     {
+       unique: true,
+       partialFilterExpression: { status: { $in: ["forming", "complete", "locked"] } }
+     }
+   );
+   ```
+   Guarantees at the database engine level that no student can belong to multiple active groups simultaneously.
+
+### 5. API Endpoints
+
+| Method | Route | Role | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/groups/me` | Student | Active group details, safe member roster, seats, per-pair scores, pending invites |
+| `POST` | `/api/groups` | Student | Create a new forming group (body: `{ targetSize }`) |
+| `PATCH` | `/api/groups/me` | Student | Leader modifies target size (2, 3, 4) |
+| `DELETE` | `/api/groups/me` | Student | Leader disbands the group (cancels pending invites) |
+| `GET` | `/api/groups/me/candidates` | Student | Paginated compatible candidates matching all existing members |
+| `POST` | `/api/groups/me/invitations` | Student | Leader invites a student (body: `{ userId }`, rate-limited) |
+| `DELETE` | `/api/groups/me/invitations/[id]` | Student | Leader cancels a pending invitation |
+| `POST` | `/api/groups/me/leave` | Student | Member leaves group; auto-transfers leadership if leader leaves |
+| `POST` | `/api/groups/me/members/[userId]/remove` | Student | Leader removes a member from the group |
+| `GET` | `/api/invitations/me` | Student | Incoming pending and historical invitations |
+| `POST` | `/api/invitations/[id]/accept` | Student | Atomically accept invitation & join group |
+| `POST` | `/api/invitations/[id]/decline` | Student | Decline an incoming group invitation |
+| `GET` / `PUT` | `/api/students/me/intent` | Student | Retrieve or update auto-allocation mode (`auto` vs `group`) |
+| `GET` | `/api/admin/groups` | Admin | Filterable, paginated directory of all campus roommate groups |
+| `GET` | `/api/admin/groups/[id]` | Admin | Group diagnostics, members roster, full pairwise score matrix |
+| `POST` | `/api/admin/groups/[id]/remove-member` | Admin | Administrative override to remove member from group |
+| `POST` | `/api/admin/groups/[id]/disband` | Admin | Administrative override to disband group |
+
+### 6. Verification Scripts
+```bash
+# Run pure group score math unit tests (5 automated tests)
+npm run test:groups
+
+# Seed 40 realistic demo groups & auto-assign pool
+npm run seed:groups -- --count=40
+
+# Reset all demo groups, invitations, and intents
+npm run seed:groups -- --reset
+```

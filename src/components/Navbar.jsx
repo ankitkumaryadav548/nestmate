@@ -1,13 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import axios from "@/lib/axios";
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [pendingInvitesCount, setPendingInvitesCount] = useState(0);
   const { user, loading, logout } = useAuth();
   const appName = process.env.NEXT_PUBLIC_APP_NAME || "HostelMatch";
+
+  useEffect(() => {
+    if (!user || user.role !== "student") return;
+
+    let isMounted = true;
+    const fetchInvitesCount = async () => {
+      try {
+        const res = await axios.get("/api/invitations/me");
+        if (isMounted && res.data?.data?.pending) {
+          setPendingInvitesCount(res.data.data.pending.length);
+        }
+      } catch {
+        // silently ignore
+      }
+    };
+
+    fetchInvitesCount();
+    const interval = setInterval(fetchInvitesCount, 60000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [user]);
 
   const handleLogout = async () => {
     setMobileMenuOpen(false);
@@ -46,7 +71,7 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-6">
+        <nav className="hidden md:flex items-center gap-5">
           <Link
             href="/"
             className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
@@ -87,6 +112,12 @@ export default function Navbar() {
                   >
                     Matching
                   </Link>
+                  <Link
+                    href="/admin/groups"
+                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+                  >
+                    Groups
+                  </Link>
                 </>
               ) : (
                 <>
@@ -113,6 +144,23 @@ export default function Navbar() {
                     className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
                   >
                     Matches
+                  </Link>
+                  <Link
+                    href="/dashboard/group"
+                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+                  >
+                    Group
+                  </Link>
+                  <Link
+                    href="/dashboard/invitations"
+                    className="relative text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors inline-flex items-center gap-1.5"
+                  >
+                    <span>Invitations</span>
+                    {pendingInvitesCount > 0 && (
+                      <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-white bg-amber-500 rounded-full animate-pulse">
+                        {pendingInvitesCount}
+                      </span>
+                    )}
                   </Link>
                 </>
               )}
@@ -246,6 +294,13 @@ export default function Navbar() {
                     >
                       Matching
                     </Link>
+                    <Link
+                      href="/admin/groups"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                    >
+                      Groups
+                    </Link>
                   </>
                 ) : (
                   <>
@@ -276,6 +331,25 @@ export default function Navbar() {
                       className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
                     >
                       Matches
+                    </Link>
+                    <Link
+                      href="/dashboard/group"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                    >
+                      Group
+                    </Link>
+                    <Link
+                      href="/dashboard/invitations"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center justify-between rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                    >
+                      <span>Invitations</span>
+                      {pendingInvitesCount > 0 && (
+                        <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-amber-500 rounded-full">
+                          {pendingInvitesCount}
+                        </span>
+                      )}
                     </Link>
                   </>
                 )}
