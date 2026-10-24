@@ -118,6 +118,18 @@ export default function Navbar() {
                   >
                     Groups
                   </Link>
+                  <Link
+                    href="/admin/demand"
+                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+                  >
+                    Demand
+                  </Link>
+                  <Link
+                    href="/admin/allocations"
+                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+                  >
+                    Allocations
+                  </Link>
                 </>
               ) : (
                 <>
@@ -300,6 +312,20 @@ export default function Navbar() {
                       className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
                     >
                       Groups
+                    </Link>
+                    <Link
+                      href="/admin/demand"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                    >
+                      Demand Analytics
+                    </Link>
+                    <Link
+                      href="/admin/allocations"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                    >
+                      Allocations
                     </Link>
                   </>
                 ) : (

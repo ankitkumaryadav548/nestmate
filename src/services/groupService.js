@@ -14,6 +14,8 @@ import {
   PENDING_INVITE_BUFFER,
   MIN_PAIR_SCORE,
 } from "@/config/groups";
+import { revalidatePreferencesForGroup } from "./roomPreferenceService";
+import { suggestDefaultAcType } from "./roomPreferences/preferenceLogic";
 
 /**
  * FAIRNESS & INTEGRITY GUARANTEE:
@@ -76,6 +78,8 @@ export async function createGroup(userId, targetSize) {
     throw new Error("You are already a member of an active roommate group");
   }
 
+  const defaultAc = suggestDefaultAcType([{ ...user, preferences: pref }]);
+
   // 3. Create group with leader as initial member
   const newGroup = await RoommateGroup.create({
     leader: userId,
@@ -86,6 +90,14 @@ export async function createGroup(userId, targetSize) {
     averageScore: 100,
     lowestPairScore: 100,
     isDemo: Boolean(user.isDemo),
+    roomPreferences: {
+      preferredHostels: [],
+      acType: defaultAc,
+      floorPreference: "any",
+      updatedAt: new Date(),
+      updatedBy: userId,
+    },
+    preferencesNeedReview: false,
   });
 
   // 4. Update or create student's AllocationIntent
@@ -110,7 +122,9 @@ export async function getMyGroup(userId) {
   const group = await RoommateGroup.findOne({
     "members.user": userId,
     status: { $in: ["forming", "complete", "locked"] },
-  }).lean();
+  })
+    .populate("roomPreferences.preferredHostels", "name code gender totalFloors facilities")
+    .lean();
 
   if (!group) return null;
 
@@ -213,6 +227,26 @@ export async function getMyGroup(userId) {
     completedAt: group.completedAt,
     lockedAt: group.lockedAt,
     createdAt: group.createdAt,
+    roomPreferences: group.roomPreferences
+      ? {
+          preferredHostels: (group.roomPreferences.preferredHostels || []).map((h) => ({
+            id: h._id ? h._id.toString() : h.toString(),
+            name: h.name || "Hostel",
+            code: h.code || "",
+            gender: h.gender || "",
+            totalFloors: h.totalFloors || 1,
+          })),
+          acType: group.roomPreferences.acType || "no-preference",
+          floorPreference: group.roomPreferences.floorPreference || "any",
+          updatedAt: group.roomPreferences.updatedAt || null,
+        }
+      : {
+          preferredHostels: [],
+          acType: "no-preference",
+          floorPreference: "any",
+          updatedAt: null,
+        },
+    preferencesNeedReview: Boolean(group.preferencesNeedReview),
   };
 }
 
@@ -827,6 +861,9 @@ export async function acceptInvitation(userId, invitationId) {
     { upsert: true }
   );
 
+  // 11. Re-validate room preferences against new group composition
+  await revalidatePreferencesForGroup(updatedGroup._id);
+
   return updatedGroup;
 }
 
@@ -923,6 +960,7 @@ export async function leaveGroup(userId) {
   group.lowestPairScore = scores.lowest;
 
   await group.save();
+  await revalidatePreferencesForGroup(group._id);
   return { status: group.status, leader: group.leader };
 }
 
@@ -976,6 +1014,7 @@ export async function removeMember(leaderId, memberId) {
   group.lowestPairScore = scores.lowest;
 
   await group.save();
+  await revalidatePreferencesForGroup(group._id);
   return group;
 }
 
@@ -1125,6 +1164,7 @@ export async function adminGetGroup(id) {
   const group = await RoommateGroup.findById(id)
     .populate("leader", "name email registrationNumber gender")
     .populate("members.user", "name email registrationNumber course department year gender")
+    .populate("roomPreferences.preferredHostels", "name code gender totalFloors facilities allowedYears")
     .lean();
 
   if (!group) throw new Error("Roommate group not found");

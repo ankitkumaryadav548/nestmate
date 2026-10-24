@@ -369,10 +369,21 @@ export default function StudentDashboard() {
 
             {groupInfo ? (
               <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-semibold">
-                <span className="text-slate-600">
-                  {groupInfo.averageScore ? `Average Compatibility: ${groupInfo.averageScore}%` : "Group Active"}
-                </span>
-                <Link href="/dashboard/group" className="text-indigo-600 hover:text-indigo-800">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-slate-600">
+                    {groupInfo.averageScore ? `Average: ${groupInfo.averageScore}%` : "Group Active"}
+                  </span>
+                  {groupInfo.roomPreferences?.preferredHostels?.length > 0 ? (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                      ✓ Room preferences set
+                    </span>
+                  ) : (
+                    <Link href="/dashboard/group" className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full hover:bg-amber-100">
+                      ⚙️ Set room preferences
+                    </Link>
+                  )}
+                </div>
+                <Link href="/dashboard/group" className="text-indigo-600 hover:text-indigo-800 shrink-0">
                   Manage Group &rarr;
                 </Link>
               </div>

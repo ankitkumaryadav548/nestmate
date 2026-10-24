@@ -111,6 +111,14 @@ const RoommateGroupSchema = new mongoose.Schema(
     lockedAt: { type: Date, default: null },
     disbandedAt: { type: Date, default: null },
     isDemo: { type: Boolean, default: false, index: true },
+    roomPreferences: {
+      preferredHostels: [{ type: mongoose.Schema.Types.ObjectId, ref: "Hostel" }],
+      acType: { type: String, default: "no-preference" },
+      floorPreference: { type: String, default: "any" },
+      updatedAt: { type: Date, default: null },
+      updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    },
+    preferencesNeedReview: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
@@ -140,6 +148,26 @@ const AllocationIntentSchema = new mongoose.Schema(
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, unique: true },
     mode: { type: String, enum: ["group", "auto"], default: "group" },
     preferredRoomSize: { type: Number, default: 2 },
+    roomPreferences: {
+      preferredHostels: [{ type: mongoose.Schema.Types.ObjectId, ref: "Hostel" }],
+      acType: { type: String, default: "no-preference" },
+      floorPreference: { type: String, default: "any" },
+      updatedAt: { type: Date, default: null },
+      updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+    },
+  },
+  { timestamps: true }
+);
+
+const HostelSchema = new mongoose.Schema(
+  {
+    name: String,
+    code: String,
+    gender: String,
+    totalFloors: Number,
+    allowedYears: [Number],
+    facilities: [String],
+    isActive: Boolean,
   },
   { timestamps: true }
 );
@@ -150,6 +178,7 @@ const Preference = mongoose.models.Preference || mongoose.model("Preference", Pr
 const RoommateGroup = mongoose.models.RoommateGroup || mongoose.model("RoommateGroup", RoommateGroupSchema);
 const GroupInvitation = mongoose.models.GroupInvitation || mongoose.model("GroupInvitation", GroupInvitationSchema);
 const AllocationIntent = mongoose.models.AllocationIntent || mongoose.model("AllocationIntent", AllocationIntentSchema);
+const Hostel = mongoose.models.Hostel || mongoose.model("Hostel", HostelSchema);
 
 async function main() {
   const args = process.argv.slice(2);
@@ -175,6 +204,16 @@ async function main() {
   const { calculateGroupScore, canJoinGroup } = await import("../src/services/matching/groupScore.js");
   const { DEFAULT_WEIGHTS } = await import("../src/config/matching.js");
   const { MIN_PAIR_SCORE } = await import("../src/config/groups.js");
+
+  // Load pure room preference logic & configs
+  const { isHostelEligibleForGroup, suggestDefaultAcType, resolveAcConflict } =
+    await import("../src/services/roomPreferences/preferenceLogic.js");
+  const { AC_OPTIONS, FLOOR_OPTIONS } =
+    await import("../src/config/roomPreferences.js");
+
+  // Fetch active hostels
+  const activeHostels = await Hostel.find({ isActive: true }).lean();
+  console.log(`Loaded ${activeHostels.length} active hostels for room preference assignments.`);
 
   // Identify demo students safely
   const demoUsers = await User.find({
@@ -307,6 +346,45 @@ async function main() {
     const groupScores = calculateGroupScore(currentMembers, DEFAULT_WEIGHTS);
     const actualStatus = currentMembers.length === targetSize ? "complete" : "forming";
 
+    // Generate realistic room preferences for group
+    const eligibleHostels = activeHostels.filter((h) => {
+      const { eligible } = isHostelEligibleForGroup(h, currentMembers);
+      return eligible;
+    });
+
+    let groupPreferences = {
+      preferredHostels: [],
+      acType: "no-preference",
+      floorPreference: "any",
+      updatedAt: null,
+      updatedBy: null,
+    };
+
+    if (eligibleHostels.length > 0) {
+      const shuffled = [...eligibleHostels].sort(() => 0.5 - Math.random());
+      const countToPick = Math.min(shuffled.length, Math.floor(Math.random() * 3) + 1);
+      const pickedHostels = shuffled.slice(0, countToPick).map((h) => h._id);
+
+      const defaultSuggestion = suggestDefaultAcType(currentMembers);
+      let chosenAc = defaultSuggestion;
+      if (Math.random() > 0.5) {
+        const candidateAc = AC_OPTIONS[Math.floor(Math.random() * AC_OPTIONS.length)];
+        if (!resolveAcConflict(candidateAc, currentMembers).conflict) {
+          chosenAc = candidateAc;
+        }
+      }
+
+      const chosenFloor = FLOOR_OPTIONS[Math.floor(Math.random() * FLOOR_OPTIONS.length)];
+
+      groupPreferences = {
+        preferredHostels: pickedHostels,
+        acType: chosenAc,
+        floorPreference: chosenFloor,
+        updatedAt: new Date(),
+        updatedBy: leader._id,
+      };
+    }
+
     const newGroup = await RoommateGroup.create({
       leader: leader._id,
       gender: leader.gender,
@@ -320,6 +398,7 @@ async function main() {
       lowestPairScore: groupScores.lowest,
       engineVersion: "1.0",
       completedAt: actualStatus === "complete" ? new Date() : null,
+      roomPreferences: groupPreferences,
       isDemo: true,
     });
 
@@ -329,7 +408,7 @@ async function main() {
     for (const member of currentMembers) {
       await AllocationIntent.findOneAndUpdate(
         { user: member._id },
-        { mode: "group", preferredRoomSize: targetSize },
+        { mode: "group", preferredRoomSize: targetSize, roomPreferences: groupPreferences },
         { upsert: true }
       );
     }
@@ -363,9 +442,40 @@ async function main() {
 
   for (const student of autoPoolStudents) {
     const randomSize = targetSizes[Math.floor(Math.random() * targetSizes.length)];
+
+    const eligibleHostels = activeHostels.filter((h) => {
+      const { eligible } = isHostelEligibleForGroup(h, [student]);
+      return eligible;
+    });
+
+    let studentPrefs = {
+      preferredHostels: [],
+      acType: "no-preference",
+      floorPreference: "any",
+      updatedAt: null,
+      updatedBy: null,
+    };
+
+    if (eligibleHostels.length > 0) {
+      const shuffled = [...eligibleHostels].sort(() => 0.5 - Math.random());
+      const countToPick = Math.min(shuffled.length, Math.floor(Math.random() * 3) + 1);
+      const pickedHostels = shuffled.slice(0, countToPick).map((h) => h._id);
+
+      const defaultSuggestion = suggestDefaultAcType([student]);
+      const chosenFloor = FLOOR_OPTIONS[Math.floor(Math.random() * FLOOR_OPTIONS.length)];
+
+      studentPrefs = {
+        preferredHostels: pickedHostels,
+        acType: defaultSuggestion,
+        floorPreference: chosenFloor,
+        updatedAt: new Date(),
+        updatedBy: student._id,
+      };
+    }
+
     await AllocationIntent.findOneAndUpdate(
       { user: student._id },
-      { mode: "auto", preferredRoomSize: randomSize },
+      { mode: "auto", preferredRoomSize: randomSize, roomPreferences: studentPrefs },
       { upsert: true }
     );
   }

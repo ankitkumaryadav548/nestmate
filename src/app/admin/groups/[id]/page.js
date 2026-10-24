@@ -319,8 +319,77 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
           )}
         </div>
 
-        {/* Pairwise Scores Diagnostics (1 Col) */}
-        <div className="lg:col-span-1 space-y-4">
+        {/* Pairwise Scores Diagnostics & Room Preferences (1 Col) */}
+        <div className="lg:col-span-1 space-y-6">
+          {/* Room Preferences Diagnostics */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h2 className="text-base font-bold text-slate-900">Room Preferences</h2>
+              {group.preferencesNeedReview ? (
+                <span className="text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full animate-pulse">
+                  ⚠️ Review Required
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
+                  ✓ Validated
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <span className="text-slate-500 font-semibold block text-[11px] uppercase tracking-wider mb-1.5">
+                  Preferred Hostels (Priority Order):
+                </span>
+                {group.roomPreferences?.preferredHostels?.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {group.roomPreferences.preferredHostels.map((h, idx) => (
+                      <div
+                        key={h._id || idx}
+                        className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="bg-indigo-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                            #{idx + 1}
+                          </span>
+                          <span className="font-bold text-slate-900">{h.name || "Hostel"}</span>
+                        </div>
+                        <span className="text-[11px] text-slate-500 font-mono">{h.code}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-400 italic">No specific hostel priority selected</p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+                <div>
+                  <span className="text-slate-500 font-semibold block text-[11px] uppercase tracking-wider">
+                    AC Preference:
+                  </span>
+                  <span className="font-bold text-slate-900 capitalize mt-0.5 block">
+                    {group.roomPreferences?.acType || "no-preference"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 font-semibold block text-[11px] uppercase tracking-wider">
+                    Floor Preference:
+                  </span>
+                  <span className="font-bold text-slate-900 capitalize mt-0.5 block">
+                    {group.roomPreferences?.floorPreference || "any"} floor
+                  </span>
+                </div>
+              </div>
+
+              {group.roomPreferences?.updatedAt && (
+                <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-400">
+                  Last updated: {new Date(group.roomPreferences.updatedAt).toLocaleDateString()}
+                </div>
+              )}
+            </div>
+          </div>
+
           <h2 className="text-base font-bold text-slate-900">Pairwise Compatibility</h2>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">

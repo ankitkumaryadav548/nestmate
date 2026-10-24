@@ -450,3 +450,144 @@ npm run seed:groups -- --count=40
 # Reset all demo groups, invitations, and intents
 npm run seed:groups -- --reset
 ```
+
+---
+
+## 🛏️ Room Preferences for Groups & Auto-Assign Students (Phase 4 - Part 2)
+
+### 1. Conceptual Design & Soft Preferences
+When a roommate group is formed (or when a solo student selects auto-assign mode), they state their accommodation preferences:
+- **Preferred Hostels**: Up to 3 eligible hostels in priority order (Rank 1, 2, 3).
+- **AC Type**: `ac`, `non-ac`, or `no-preference`.
+- **Floor Preference**: `low` (bottom third), `mid` (middle third), `high` (top third), or `any`.
+
+> [!IMPORTANT]
+> **Soft Preferences Guarantee**: Preferences are soft criteria for the administrator's allocation engine. They are honored in priority order subject to availability, but do not guarantee a specific hostel, floor, or room. Students never pick room numbers directly.
+
+### 2. Hostel Eligibility Rules
+A hostel is selectable by a group only if it passes all three checks:
+1. **Active Status**: `hostel.isActive === true`.
+2. **Gender Rules**:
+   - `boys` accepts male groups.
+   - `girls` accepts female groups.
+   - `mixed` accepts male, female, and other groups.
+3. **Academic Year Matching**:
+   - The hostel's `allowedYears` (if non-empty) must permit **every member's** academic year. If even one member's year is excluded, the hostel cannot be selected.
+
+### 3. Dynamic Floor Band Logic
+Floors are numbered starting from 0 (ground floor) through `totalFloors - 1`. The pure algorithm `floorMatchesBand(floor, totalFloors, band)` evaluates bands relative to building height:
+- **$N = 1$ floor** (Floor 0): Ground floor matches `low`, `mid`, `high`, and `any`.
+- **$N = 2$ floors** (Floors 0 & 1): Floor 0 is `low`, Floor 1 is `high`, and `mid` matches both floors.
+- **$N \ge 3$ floors**: The floors are divided into three roughly equal segments:
+  - `low`: Floors from `0` to `floor(N/3) - 1`
+  - `high`: Floors from `N - floor(N/3)` to `N - 1`
+  - `mid`: All remaining intermediate floors
+- **`any`**: Always matches any floor $0 \le \text{floor} < \text{totalFloors}$.
+
+### 4. Privacy & AC Deal-Breaker Protection
+- **Generic Conflict Warning**: If the group's AC choice directly conflicts with any member's strict `acType` deal-breaker, the system returns an informative 400 rejection: *"One of your members requires a different AC setting due to a strict deal-breaker preference."* No member's name or private survey answer is ever revealed.
+- **Aggregated Availability**: Students only see room and bed availability counts split by AC/Non-AC for their specific room size. Occupant names and room-level details are never leaked.
+
+### 5. Automatic Invalidation (`preferencesNeedReview`)
+Whenever a group's roster changes (a member joins, leaves, or is removed by leader or admin):
+- `revalidatePreferencesForGroup` runs automatically.
+- Any chosen hostel that is no longer eligible for the updated member set is pruned.
+- If the current AC choice conflicts with an incoming member's deal-breaker, it resets safely to `suggestDefaultAcType`.
+- Sets `preferencesNeedReview = true`, displaying a dismissible amber prompt on `/dashboard/group` alerting the leader to review choices.
+
+### 6. Room Preference API Endpoints
+
+| Method | Route | Role | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/groups/me/room-options` | Student | Eligible hostels for group or auto-intent, with live AC/Non-AC room & bed availability |
+| `GET` | `/api/groups/me/room-preferences` | Student | Current saved preferences, suggested default AC, deal-breaker warnings, and review flag |
+| `PUT` | `/api/groups/me/room-preferences` | Student | Save preferences (Leader only for groups, student for auto; revalidates eligibility & deal-breakers) |
+| `POST` | `/api/groups/me/room-preferences` | Student | Acknowledge & clear the `preferencesNeedReview` banner |
+| `GET` | `/api/admin/preferences/summary` | Admin | 1st-choice demand vs available supply per hostel, AC vs Non-AC demand, and capacity demand |
+| `GET` | `/api/admin/groups/[id]` | Admin | Includes full room preferences block with populated hostel names |
+
+### 7. Verification & Seeding Scripts
+
+```bash
+# Run room preferences pure logic unit tests (22 automated tests)
+npm run test:roomprefs
+
+# Run roommate matching unit tests (12 automated tests)
+npm run test:matching
+
+# Run roommate group score unit tests (5 automated tests)
+npm run test:groups
+
+# Seed room preferences for existing demo groups and auto-pool students
+npm run seed:roomprefs
+```
+
+---
+
+## ⚡ Automated Hostel Allocation Engine - Simulation Mode (Phase 5)
+
+### 1. Concept & Algorithm in Plain Words
+The automated allocation engine places complete groups, filled forming groups, and solo students into physical rooms through a deterministic, multi-round optimization pipeline:
+1. **Fill Forming Groups**: Open seats in incomplete groups are filled one-by-one with the best-fitting solo students of the same gender without introducing deal-breaker conflicts.
+2. **Handle Incomplete Groups**: Under the `"shrink"` policy, groups with $\ge 2$ members become smaller units of their current size; groups with only 1 member dissolve back into the solo pool.
+3. **Cluster Remaining Solo Students**: Solo pool students are clustered into compatible groups descending by target room size (4 $\rightarrow$ 3 $\rightarrow$ 2) using a **most-constrained seed heuristic**, followed by an iterative 2-opt member swap pass that strictly increases compatibility.
+4. **Multi-Round Priority Room Placement**:
+   - Every group is placed into a free room whose physical capacity exactly equals group size.
+   - **Rounds 1, 2, 3**: Every unit gets a fair chance at its 1st-choice hostel before anyone gets a 2nd choice, then 2nd, then 3rd choice.
+   - **Round 4 (Fallback)**: Any remaining units are placed into the highest-scoring eligible room across all campus hostels.
+   - Groups that cannot be placed are waitlisted with an exact diagnostic reason (`no_eligible_hostel`, `no_room_of_this_size`, `ac_requirement_unmet`, `all_matching_rooms_taken`).
+5. **Monte Carlo Random Baseline Comparison**: Automatically compares the resulting room placements against a random permutation of the exact same students in the same room capacities across 20 trials, proving the score lift, disputation drop, and elimination of deal-breaker conflicts.
+
+### 2. Preference Satisfaction Points (Total: 100 Points)
+
+| Dimension | Condition | Points Earned |
+| :--- | :--- | :--- |
+| **Hostel Choice Rank** | 1st Choice Hostel | **50 points** |
+| | 2nd Choice Hostel | **35 points** |
+| | 3rd Choice Hostel | **20 points** |
+| | Fallback (outside preferred list) | **0 points** |
+| **Climate Control (AC)** | Matches explicit AC / Non-AC request (or unit is flexible) | **30 points** |
+| | Conflicts with unit's soft AC request | **0 points** |
+| **Floor Band** | Matches proportional floor band (`low`, `mid`, `high`) (or unit is "any") | **20 points** |
+| | Conflicts with unit's floor preference | **0 points** |
+
+### 3. Unit Priority Modes
+
+| Mode | Key | Behavior |
+| :--- | :--- | :--- |
+| **Fair Seeded Lottery** | `lottery` | Units are placed in a pseudo-random order determined by the seed. Unbiased and fair for all students (Default). |
+| **Completion Timestamp** | `completedAt` | Groups that completed or submitted room preferences earliest receive priority for room selection. |
+| **Academic Seniority** | `seniority` | Groups with higher average academic year go first, with ties broken by the seeded lottery. |
+
+### 4. Zero Live Data Modification Guarantee (Draft Mode)
+> [!IMPORTANT]
+> **Draft Simulation Guarantee**: Simulation runs **NEVER** modify live database records. No code path in Phase 5 modifies `Room.currentOccupancy`, `Room.status`, `RoommateGroup` (status or members), `GroupInvitation`, `AllocationIntent`, or `User`. The only records stored are new `AllocationRun` and `AllocationAssignment` documents.
+
+### 5. API Endpoints
+
+| Method | Route | Role | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/admin/allocations/run` | Admin | Execute simulation run (body: options; rate-limited, maxDuration: 60s) |
+| `GET` | `/api/admin/allocations` | Admin | Paginated list of allocation simulation runs |
+| `GET` | `/api/admin/allocations/[id]` | Admin | Run details, summary metrics, satisfaction stats, and baseline comparisons |
+| `DELETE` | `/api/admin/allocations/[id]` | Admin | Delete draft or failed run and all associated assignment records |
+| `GET` | `/api/admin/allocations/[id]/assignments` | Admin | Paginated room placements with search and status/hostel filters |
+| `GET` | `/api/admin/allocations/[id]/unallocated` | Admin | Roster of unallocated students and diagnostic reasons |
+
+### 6. Verification & Demo Scripts
+
+```bash
+# Run pure allocation engine unit tests (32 automated tests)
+npm run test:allocation
+
+# Run console simulation dry-run demo (writes zero records)
+npm run allocation:demo -- --seed=42 --gender=all --priority=lottery
+
+# Run console simulation and persist as admin draft run
+npm run allocation:demo -- --seed=42 --save
+
+# Run all test suites across the entire platform (71 automated tests)
+npm run test:matching && npm run test:groups && npm run test:roomprefs && npm run test:allocation
+```
+
+

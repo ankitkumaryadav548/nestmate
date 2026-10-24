@@ -82,6 +82,27 @@ export async function getAdminStats() {
 
   const groupStats = await getGroupStats();
 
+  // Query latest draft allocation run
+  let latestDraftRun = null;
+  try {
+    const AllocationRun = (await import("@/models/AllocationRun")).default;
+    const draftDoc = await AllocationRun.findOne({ status: "draft" })
+      .sort({ createdAt: -1 })
+      .select("_id createdAt stats waitlistCount")
+      .lean();
+
+    if (draftDoc) {
+      latestDraftRun = {
+        id: draftDoc._id.toString(),
+        createdAt: draftDoc.createdAt,
+        studentsAllocated: draftDoc.stats?.counts?.studentsAllocated || 0,
+        waitlisted: draftDoc.waitlistCount || 0,
+      };
+    }
+  } catch (err) {
+    console.error("[StatsService LatestDraftRun Error]:", err);
+  }
+
   return {
     totals: {
       hostels: totalHostels,
@@ -95,6 +116,7 @@ export async function getAdminStats() {
       studentsWithPendingPreferences,
       internationalStudents,
       groups: groupStats,
+      latestDraftRun,
     },
     hostels: hostelBreakdown,
   };

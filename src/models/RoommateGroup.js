@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { GROUP_SIZE_OPTIONS, GROUP_STATUSES } from "../config/groups.js";
+import { AC_OPTIONS, FLOOR_OPTIONS } from "../config/roomPreferences.js";
 
 /**
  * RoommateGroup Model
@@ -76,6 +77,37 @@ const RoommateGroupSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
       index: true,
+    },
+    roomPreferences: {
+      preferredHostels: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Hostel",
+        },
+      ],
+      acType: {
+        type: String,
+        enum: AC_OPTIONS,
+        default: "no-preference",
+      },
+      floorPreference: {
+        type: String,
+        enum: FLOOR_OPTIONS,
+        default: "any",
+      },
+      updatedAt: {
+        type: Date,
+        default: null,
+      },
+      updatedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+    },
+    preferencesNeedReview: {
+      type: Boolean,
+      default: false,
     },
   },
   {

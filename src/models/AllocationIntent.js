@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { GROUP_SIZE_OPTIONS } from "../config/groups.js";
+import { AC_OPTIONS, FLOOR_OPTIONS } from "../config/roomPreferences.js";
 
 /**
  * AllocationIntent Model
@@ -26,6 +27,33 @@ const AllocationIntentSchema = new mongoose.Schema(
       type: Number,
       enum: GROUP_SIZE_OPTIONS,
       default: 2,
+    },
+    roomPreferences: {
+      preferredHostels: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Hostel",
+        },
+      ],
+      acType: {
+        type: String,
+        enum: AC_OPTIONS,
+        default: "no-preference",
+      },
+      floorPreference: {
+        type: String,
+        enum: FLOOR_OPTIONS,
+        default: "any",
+      },
+      updatedAt: {
+        type: Date,
+        default: null,
+      },
+      updatedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
     },
   },
   {
