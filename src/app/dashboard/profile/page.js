@@ -72,6 +72,7 @@ export default function StudentProfilePage() {
     department: "",
     year: "",
     phone: "",
+    sharePhoneWithRoommates: true,
     homeState: "",
     homeCountry: "India",
     isInternational: false,
@@ -95,6 +96,10 @@ export default function StudentProfilePage() {
           department: user?.department || "",
           year: user?.year ? String(user.year) : "",
           phone: user?.phone || "",
+          sharePhoneWithRoommates:
+            profile?.sharePhoneWithRoommates !== undefined
+              ? Boolean(profile.sharePhoneWithRoommates)
+              : true,
           homeState: profile?.homeState || "",
           homeCountry: profile?.homeCountry || "India",
           isInternational: Boolean(profile?.isInternational),
@@ -335,6 +340,35 @@ export default function StudentProfilePage() {
               error={fieldErrors.phone}
               helperText="Active mobile number for hostel notices"
             />
+
+            {/*
+              PHONE RULE:
+              The student's phone number is only shared with roommates if:
+              1. The viewer has an active allocation in the same room.
+              2. This student has sharePhoneWithRoommates = true.
+              3. This student has a phone number saved.
+              Never exposed to any other student or API endpoint (matches, invitations, etc.)
+            */}
+            <div className="sm:col-span-2 mt-2 pt-3 border-t border-slate-100">
+              <label className="flex items-start gap-3 p-3.5 rounded-xl border border-indigo-100 bg-indigo-50/40 hover:bg-indigo-50/70 cursor-pointer transition-colors">
+                <input
+                  type="checkbox"
+                  name="sharePhoneWithRoommates"
+                  id="sharePhoneWithRoommates"
+                  checked={formData.sharePhoneWithRoommates}
+                  onChange={handleChange}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                />
+                <div className="text-xs">
+                  <span className="font-bold text-slate-900 block">
+                    Share my phone number with my roommates after room allocation
+                  </span>
+                  <span className="text-slate-600 block mt-1 leading-relaxed">
+                    When enabled, your phone number will be visible to your confirmed roommates on the &quot;My Room&quot; page once accommodation is officially published. It is strictly never revealed in prospective match searches, groups, or unassigned listings.
+                  </span>
+                </div>
+              </label>
+            </div>
           </div>
         </div>
 

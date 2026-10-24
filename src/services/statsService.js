@@ -103,6 +103,28 @@ export async function getAdminStats() {
     console.error("[StatsService LatestDraftRun Error]:", err);
   }
 
+  // Allocation and published counts
+  let publishedAllocationsCount = 0;
+  let studentsAllocated = 0;
+  let publishedRunsCount = 0;
+  let draftRunsCount = 0;
+  try {
+    const Allocation = (await import("@/models/Allocation")).default;
+    const AllocationRun = (await import("@/models/AllocationRun")).default;
+
+    publishedAllocationsCount = await Allocation.countDocuments({ status: "active" });
+    const allocatedStudentsList = await Allocation.find({ status: "active" }).distinct("student");
+    studentsAllocated = allocatedStudentsList.length;
+
+    publishedRunsCount = await AllocationRun.countDocuments({ status: "published" });
+    draftRunsCount = await AllocationRun.countDocuments({ status: "draft" });
+  } catch (err) {
+    console.error("[StatsService Allocation Counts Error]:", err);
+  }
+
+  const studentsUnallocated = Math.max(0, studentsRegistered - studentsAllocated);
+  const roomsOccupied = await Room.countDocuments({ currentOccupancy: { $gt: 0 } });
+
   return {
     totals: {
       hostels: totalHostels,
@@ -111,12 +133,18 @@ export async function getAdminStats() {
       occupiedBeds: roomTotals.occupiedBeds,
       availableBeds,
       roomsInMaintenance: roomTotals.roomsInMaintenance,
+      roomsOccupied,
       studentsRegistered,
       studentsWithCompletedPreferences,
       studentsWithPendingPreferences,
       internationalStudents,
       groups: groupStats,
       latestDraftRun,
+      publishedAllocationsCount,
+      studentsAllocated,
+      studentsUnallocated,
+      publishedRunsCount,
+      draftRunsCount,
     },
     hostels: hostelBreakdown,
   };

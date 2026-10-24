@@ -92,6 +92,18 @@ const AllocationAssignmentSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    edited: {
+      type: Boolean,
+      default: false,
+    },
+    overridden: {
+      type: Boolean,
+      default: false,
+    },
+    overrideReason: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true,

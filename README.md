@@ -586,8 +586,136 @@ npm run allocation:demo -- --seed=42 --gender=all --priority=lottery
 # Run console simulation and persist as admin draft run
 npm run allocation:demo -- --seed=42 --save
 
-# Run all test suites across the entire platform (71 automated tests)
+# Run all test suites across the entire platform (90 automated tests)
 npm run test:matching && npm run test:groups && npm run test:roomprefs && npm run test:allocation
 ```
+
+---
+
+## 🚀 Live Allocation Lifecycle, Publishing & Rollback (Phase 6)
+
+### 1. The Allocation Lifecycle Architecture
+
+The system provides an enterprise-grade, transactional state machine for transition from simulated draft to physical campus inventory:
+
+```text
+                     ┌────────────────────────────────────────┐
+                     │           SIMULATION ENGINE            │
+                     └──────────────────┬─────────────────────┘
+                                        │
+                                        ▼
+                              ┌──────────────────┐
+                              │  DRAFT ALLOCATION│ ◄──────────┐
+                              │ (Zero live edits)│            │
+                              └─────────┬────────┘            │
+                                        │                     │
+                     [Admin Edits: move, swap, unassign]      │
+                                        │                     │
+                                        ▼                     │
+                              ┌──────────────────┐            │
+                              │ PUBLISH PREVIEW  │            │
+                              │(Conflict audits) │            │
+                              └─────────┬────────┘            │
+                                        │                     │
+                         Type "PUBLISH" │ (Session Lock)      │
+                                        ▼                     │
+                              ┌──────────────────┐            │
+                              │    PUBLISHING    │            │
+                              │ (Transaction lock)            │
+                              └─────────┬────────┘            │
+                                        │                     │
+             Atomic Commit (Rooms + Groups + Allocations)     │
+                                        ▼                     │
+                              ┌──────────────────┐            │
+                              │    PUBLISHED     │            │
+                              │(Live official)   │            │
+                              └─────────┬────────┘            │
+                                        │                     │
+                    Emergency Reversal? │ Type "ROLLBACK"     │
+                                        ▼                     │
+                              ┌──────────────────┐            │
+                              │   ROLLED_BACK    ├────────────┘
+                              │(Restored to base)│ (Inventory freed)
+                              └──────────────────┘
+```
+
+### 2. Admin Draft Editing Operations (`src/services/allocationEditService.js`)
+
+Admins can fine-tune draft simulations without re-running the solver:
+
+| Action | Function | Rules & Hard Constraints |
+| :--- | :--- | :--- |
+| `move` | Move unit to room | Target room must be empty in draft & live data; capacity must exactly equal unit size; passes hostel gender, allowed years, and hard AC deal-breaker. Soft AC/floor mismatches issue warnings. |
+| `swap_rooms` | Swap rooms between 2 units | Both units must be assigned and have identical size; each unit must satisfy hard constraints of the counterpart's room. |
+| `swap_members` | Swap students between 2 units | Both members and units must share the same gender; re-checks hostel academic years; if a swap introduces an intra-unit deal-breaker, the system blocks the action unless the admin ticks **Override** and inputs an audit reason ($\ge 5$ characters). |
+| `unassign` | Move unit to waitlist | Frees room immediately; marks unit waitlisted with reason `manually_unassigned`. |
+| `assign_waitlisted` | Assign waitlisted unit to room | Same constraints as `move`; assigns free eligible room. |
+
+Every edit updates the run statistics (satisfaction scores, baseline comparisons) and records an immutable audit entry in `editLog` (capped at 200 entries).
+
+### 3. Atomic Publication (`publishRun`) & Rollback (`rollbackRun`)
+
+- **Publication**:
+  1. **Atomic State Lock**: Moves run status from `draft` to `publishing` via `findOneAndUpdate`. Concurrent publication attempts fail immediately with `409 Conflict`.
+  2. **MongoDB Replica Set Transaction**:
+     - Room occupancy incremented with conditional query (`currentOccupancy === 0 && status !== 'maintenance'`).
+     - Rooms reaching capacity are explicitly marked `status: 'full'`.
+     - Group actions applied: `lock_existing`, `fill_and_lock`, `shrink_and_lock`, or `create_and_lock` (new group for solo pool units).
+     - Official `Allocation` records inserted with a database partial unique index on `student` where `status: 'active'`.
+     - Pending invitations for allocated students and groups cancelled.
+     - `publishSnapshot` stored with original group and room states for exact reversal.
+     - Run marked `published`; all other draft runs marked `discarded`.
+- **Rollback**:
+  - Reversible only for the **latest published run**.
+  - Verified against state drift via `buildRollbackPlan`.
+  - Inside a transaction: decrements room occupancies, cancels `Allocation` records (`status: 'cancelled'`, `cancelReason: 'rollback'`), disbands allocation-created groups, and restores original group states.
+
+### 4. Privacy Safeguards & The Phone Rule
+
+- **Strict Student Privacy**:
+  - Roommates in a published, active room can see **ONLY**: `name`, `course`, `department`, `year`, `sharedLanguages`, `compatibilityScore`, and `phone` (subject to the Phone Rule).
+  - Roommates **NEVER** see email addresses, registration numbers, raw questionnaire answers, deal-breaker flags, home country, or home state.
+  - Students never see draft runs, unassigned lists, or other rooms' occupants.
+- **The Phone Rule**:
+  - Controlled by `sharePhoneWithRoommates` (default: `true`) on `StudentProfile`, toggled on `/dashboard/profile`.
+  - A roommate's phone number is returned **ONLY** when ALL 3 conditions are satisfied:
+    1. Viewer has an active allocation in the same room.
+    2. Roommate has `sharePhoneWithRoommates === true`.
+    3. Roommate has a personal phone number saved.
+  - Otherwise returns `phoneStatus: "not_provided"` or `phoneStatus: "hidden_by_student"`.
+  - Phone numbers never appear in match suggestions, group candidates, invitations, or public directories.
+
+### 5. Phase 6 API Routes
+
+| Method | Route | Role | Description |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/api/admin/allocations/[id]/edit` | Admin | Edit draft run (`move`, `swap_rooms`, `swap_members`, `unassign`, `assign_waitlisted`) |
+| `GET` | `/api/admin/allocations/[id]/edit-options` | Admin | Fetch eligible candidate rooms or swap partners for a unit |
+| `GET` | `/api/admin/allocations/[id]/publish-preview`| Admin | Dry-run publish plan and detect any live conflicts |
+| `POST` | `/api/admin/allocations/[id]/publish` | Admin | Atomically publish draft run with live transaction (requires `confirmText: "PUBLISH"`) |
+| `POST` | `/api/admin/allocations/[id]/rollback` | Admin | Atomically roll back latest published run (requires `confirmText: "ROLLBACK"`) |
+| `GET` | `/api/admin/allocations/[id]/export` | Admin | Download official allocation CSV with formula injection sanitization |
+| `GET` | `/api/admin/rooms/[id]/occupants` | Admin | Fetch occupants of an active room for hostel floor plans |
+| `GET` | `/api/admin/integrity` | Admin | Run complete database integrity diagnostics |
+| `POST` | `/api/admin/integrity/fix-occupancy` | Admin | Self-heal room occupancy mismatches based on active allocations |
+| `GET` | `/api/allocation/me` | Student | Official "My Room" portal with room details, rules, and privacy-filtered roommates |
+| `PATCH`| `/api/students/me/profile/sharing` | Student | Update `sharePhoneWithRoommates` privacy toggle |
+
+### 6. Phase 6 Verification & Diagnostic Scripts
+
+```bash
+# 1. Run database integrity diagnostic check (exits non-zero on issues)
+npm run integrity:check
+
+# 2. Run diagnostic check with automatic room occupancy repair
+npm run integrity:check -- --fix
+
+# 3. Self-contained End-to-End Publish & Rollback database verification
+npm run test:publish
+
+# 4. Simultaneous double-publish race condition verification
+npm run test:concurrency
+```
+
 
 

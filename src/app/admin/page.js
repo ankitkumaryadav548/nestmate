@@ -48,23 +48,25 @@ export default function AdminPage() {
       link: "/admin/hostels",
     },
     {
-      label: "Total Rooms",
-      value: totals.rooms,
+      label: "Room Occupancy",
+      value: `${totals.roomsOccupied || 0} / ${totals.rooms}`,
       icon: "🚪",
       color: "bg-indigo-50 text-indigo-700 border-indigo-200",
       link: "/admin/rooms",
+      subtext: `${totals.occupiedBeds} of ${totals.totalBeds} beds occupied`,
     },
     {
-      label: "Available Beds",
-      value: totals.availableBeds,
-      icon: "🛏️",
+      label: "Students Placement",
+      value: `${totals.studentsAllocated || 0} Allocated`,
+      icon: "🎓",
       color: "bg-emerald-50 text-emerald-700 border-emerald-200",
-      subtext: `${totals.occupiedBeds} occupied / ${totals.totalBeds} total`,
+      link: "/admin/allocations",
+      subtext: `${totals.studentsUnallocated || 0} unallocated · ${totals.publishedAllocationsCount || 0} active assignments`,
     },
     {
       label: "Students Registered",
       value: totals.studentsRegistered,
-      icon: "🎓",
+      icon: "👥",
       color: "bg-purple-50 text-purple-700 border-purple-200",
       link: "/admin/students",
       subtext: `${totals.studentsWithCompletedPreferences || 0} completed · ${totals.internationalStudents || 0} intl`,
@@ -346,7 +348,7 @@ export default function AdminPage() {
           </div>
         </Link>
 
-        {/* Allocations - Live Simulation & Draft */}
+        {/* Allocations - Live Simulation, Draft, & Published */}
         <Link
           href="/admin/allocations"
           className="group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all"
@@ -356,19 +358,48 @@ export default function AdminPage() {
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-50 text-xl text-purple-600 group-hover:scale-105 transition-transform">
                 ⚡
               </div>
-              <span className="inline-flex items-center rounded-full bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
-                Phase 5 Active
+              <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
+                Live & Published
               </span>
             </div>
             <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
               Allocations
             </h3>
             <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              Execute algorithmic allocation simulations, evaluate satisfaction vs. random baseline, and review room assignments.
+              Execute multi-round simulations, manually edit draft rooms/roommates, publish live allocations, and rollback.
             </p>
           </div>
           <div className="mt-6 pt-4 border-t border-slate-100 text-xs font-semibold text-indigo-600 flex items-center justify-between">
-            <span>Simulation & Engine</span>
+            <span>
+              {totals.publishedRunsCount || 0} Published · {totals.draftRunsCount || 0} Drafts
+            </span>
+            <span>&rarr;</span>
+          </div>
+        </Link>
+
+        {/* Integrity Diagnostic - Tools */}
+        <Link
+          href="/admin/integrity"
+          className="group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all"
+        >
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-xl text-emerald-600 group-hover:scale-105 transition-transform">
+                🛡️
+              </div>
+              <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
+                Diagnostics
+              </span>
+            </div>
+            <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+              System Integrity
+            </h3>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              Verify database invariants, detect room occupancy discrepancies, and execute self-healing repairs.
+            </p>
+          </div>
+          <div className="mt-6 pt-4 border-t border-slate-100 text-xs font-semibold text-emerald-600 flex items-center justify-between">
+            <span>Run Diagnostics</span>
             <span>&rarr;</span>
           </div>
         </Link>

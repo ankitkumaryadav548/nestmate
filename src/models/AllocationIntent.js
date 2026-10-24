@@ -55,6 +55,10 @@ const AllocationIntentSchema = new mongoose.Schema(
         default: null,
       },
     },
+    allocatedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,

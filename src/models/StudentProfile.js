@@ -54,6 +54,10 @@ const StudentProfileSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    sharePhoneWithRoommates: {
+      type: Boolean,
+      default: true,
+    },
   },
   {
     timestamps: true,

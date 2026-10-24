@@ -65,7 +65,7 @@ const RoomSchema = new mongoose.Schema(
 );
 
 // Pre-save hook: auto-calculate status based on capacity & occupancy
-RoomSchema.pre("save", function (next) {
+RoomSchema.pre("save", function () {
   if (this.status !== "maintenance") {
     if (this.currentOccupancy >= this.capacity) {
       this.status = "full";
@@ -73,7 +73,6 @@ RoomSchema.pre("save", function (next) {
       this.status = "available";
     }
   }
-  next();
 });
 
 // Helper for query updates or manual checks

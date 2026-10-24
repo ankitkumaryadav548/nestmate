@@ -172,6 +172,17 @@ export async function getUnavailableStudentIds() {
     }
   }
 
+  // Also exclude students with an active published room allocation
+  const Allocation = (await import("@/models/Allocation")).default;
+  const activeAllocations = await Allocation.find({ status: "active" })
+    .select("student")
+    .lean();
+  for (const a of activeAllocations) {
+    if (a.student) {
+      userIds.add(a.student.toString());
+    }
+  }
+
   return Array.from(userIds);
 }
 

@@ -65,7 +65,36 @@ export const PREFERENCE_POINTS = {
 /**
  * Lifecycle states of an allocation run.
  */
-export const RUN_STATUSES = ["running", "draft", "failed", "published", "discarded"];
+export const RUN_STATUSES = [
+  "running",
+  "draft",
+  "publishing",
+  "failed",
+  "published",
+  "rolled_back",
+  "discarded",
+];
+
+/**
+ * Status values for official published student room allocations.
+ */
+export const ALLOCATION_STATUSES = ["active", "cancelled"];
+
+/**
+ * Valid administrator manual edit operations on draft allocations.
+ */
+export const EDIT_ACTIONS = [
+  "move",
+  "swap_rooms",
+  "swap_members",
+  "unassign",
+  "assign_waitlisted",
+];
+
+/**
+ * Maximum edit history log entries retained on an allocation run.
+ */
+export const MAX_EDIT_LOG_ENTRIES = 200;
 
 /**
  * Reasons why a group or unit could not be assigned to a room and was waitlisted.
@@ -100,6 +129,11 @@ export const WAITLIST_REASONS = {
     code: "incomplete_group_waitlisted",
     label: "Incomplete Group Waitlisted",
     description: "Group had unfilled seats and the incomplete group policy was set to waitlist.",
+  },
+  manually_unassigned: {
+    code: "manually_unassigned",
+    label: "Manually Unassigned",
+    description: "Administrator manually moved this group to the waitlist.",
   },
 };
 

@@ -191,17 +191,21 @@ export default function AdminAllocationsPage() {
                       <td className="px-6 py-4">
                         <Badge
                           variant={
-                            run.status === "draft"
+                            run.status === "published"
                               ? "emerald"
-                              : run.status === "running"
+                              : run.status === "draft"
+                              ? "blue"
+                              : run.status === "publishing" || run.status === "running"
                               ? "amber"
-                              : run.status === "published"
-                              ? "indigo"
+                              : run.status === "rolled_back"
+                              ? "default"
+                              : run.status === "discarded"
+                              ? "default"
                               : "rose"
                           }
                           size="sm"
                         >
-                          {run.status.toUpperCase()}
+                          {run.status.replace("_", " ").toUpperCase()}
                         </Badge>
                       </td>
                       <td className="px-6 py-4 text-xs font-mono text-slate-600">
@@ -249,7 +253,7 @@ export default function AdminAllocationsPage() {
                         >
                           View
                         </Link>
-                        {(run.status === "draft" || run.status === "failed") && (
+                        {(run.status === "draft" || run.status === "failed" || run.status === "discarded") && (
                           <button
                             type="button"
                             onClick={() => setDeleteRunId(run._id)}

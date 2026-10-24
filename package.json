@@ -17,7 +17,10 @@
     "match:demo": "node scripts/match-demo.js",
     "seed:groups": "node scripts/seed-groups.js",
     "seed:roomprefs": "node scripts/seed-room-prefs.js",
-    "allocation:demo": "node scripts/allocation-demo.js"
+    "allocation:demo": "node scripts/allocation-demo.js",
+    "integrity:check": "node scripts/check-integrity.js",
+    "test:publish": "node scripts/test-publish-rollback.js",
+    "test:concurrency": "node scripts/test-concurrency.js"
   },
   "dependencies": {
     "axios": "^1.20.0",

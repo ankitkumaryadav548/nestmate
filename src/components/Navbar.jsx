@@ -130,9 +130,21 @@ export default function Navbar() {
                   >
                     Allocations
                   </Link>
+                  <Link
+                    href="/admin/integrity"
+                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+                  >
+                    Integrity
+                  </Link>
                 </>
               ) : (
                 <>
+                  <Link
+                    href="/dashboard/room"
+                    className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+                  >
+                    My Room
+                  </Link>
                   <Link
                     href="/dashboard/hostels"
                     className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
@@ -327,9 +339,23 @@ export default function Navbar() {
                     >
                       Allocations
                     </Link>
+                    <Link
+                      href="/admin/integrity"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                    >
+                      Integrity Diagnostic
+                    </Link>
                   </>
                 ) : (
                   <>
+                    <Link
+                      href="/dashboard/room"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-base font-bold text-indigo-600 hover:bg-indigo-50"
+                    >
+                      My Room
+                    </Link>
                     <Link
                       href="/dashboard/hostels"
                       onClick={() => setMobileMenuOpen(false)}

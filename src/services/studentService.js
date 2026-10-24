@@ -112,6 +112,7 @@ export async function upsertProfile(userId, data) {
   if (data.arrivalDate !== undefined) profile.arrivalDate = data.arrivalDate ? new Date(data.arrivalDate) : null;
   if (data.emergencyContactName !== undefined) profile.emergencyContactName = data.emergencyContactName.trim();
   if (data.emergencyContactPhone !== undefined) profile.emergencyContactPhone = data.emergencyContactPhone.trim();
+  if (data.sharePhoneWithRoommates !== undefined) profile.sharePhoneWithRoommates = Boolean(data.sharePhoneWithRoommates);
 
   // Determine completion status
   if (isProfileComplete(user, profile)) {

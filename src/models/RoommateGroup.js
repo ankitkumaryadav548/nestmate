@@ -78,6 +78,16 @@ const RoommateGroupSchema = new mongoose.Schema(
       default: false,
       index: true,
     },
+    allocationRun: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "AllocationRun",
+      default: null,
+      index: true,
+    },
+    createdByAllocation: {
+      type: Boolean,
+      default: false,
+    },
     roomPreferences: {
       preferredHostels: [
         {

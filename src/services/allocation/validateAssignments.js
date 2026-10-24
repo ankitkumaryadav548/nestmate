@@ -23,9 +23,13 @@ import { checkDealBreakers } from "../matching/scoreEngine.js";
  * @param {Array<object>|Map<string, object>} units 
  * @param {Array<object>|Map<string, object>} rooms 
  * @param {Array<object>|Map<string, object>} hostels 
+ * @param {Set<string>|Array<string>} [overriddenUnitIds] Optional set of unitIds where deal-breakers were overridden by admin
  * @throws {Error} If any invariant is violated
  */
-export function validateAssignments(assignments = [], units = [], rooms = [], hostels = []) {
+export function validateAssignments(assignments = [], units = [], rooms = [], hostels = [], overriddenUnitIds = new Set()) {
+  const overriddenSet = overriddenUnitIds instanceof Set 
+    ? overriddenUnitIds 
+    : new Set(Array.isArray(overriddenUnitIds) ? overriddenUnitIds.map(String) : []);
   const roomMap = new Map();
   if (Array.isArray(rooms)) {
     for (const r of rooms) roomMap.set(String(r.id || r._id), r);
@@ -129,13 +133,15 @@ export function validateAssignments(assignments = [], units = [], rooms = [], ho
     }
 
     // 6. Internal Deal-Breaker Protection
-    for (let i = 0; i < unit.members.length; i++) {
-      for (let j = i + 1; j < unit.members.length; j++) {
-        const check = checkDealBreakers(unit.members[i], unit.members[j]);
-        if (check.excluded) {
-          throw new Error(
-            `Invariant Violation: Unit "${unitId}" contains members with mutual deal-breaker conflict (${unit.members[i].name || unit.members[i].id} and ${unit.members[j].name || unit.members[j].id}).`
-          );
+    if (!overriddenSet.has(unitId)) {
+      for (let i = 0; i < unit.members.length; i++) {
+        for (let j = i + 1; j < unit.members.length; j++) {
+          const check = checkDealBreakers(unit.members[i], unit.members[j]);
+          if (check.excluded) {
+            throw new Error(
+              `Invariant Violation: Unit "${unitId}" contains members with mutual deal-breaker conflict (${unit.members[i].name || unit.members[i].id} and ${unit.members[j].name || unit.members[j].id}).`
+            );
+          }
         }
       }
     }

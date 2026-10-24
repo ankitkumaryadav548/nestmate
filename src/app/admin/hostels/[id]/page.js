@@ -8,6 +8,7 @@ import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import Modal from "@/components/ui/Modal";
 import RoomModal from "@/components/rooms/RoomModal";
 import BulkRoomModal from "@/components/rooms/BulkRoomModal";
 
@@ -25,6 +26,12 @@ export default function HostelDetailPage() {
   const [isSingleRoomModalOpen, setIsSingleRoomModalOpen] = useState(false);
   const [isBulkRoomModalOpen, setIsBulkRoomModalOpen] = useState(false);
   const [selectedRoomToEdit, setSelectedRoomToEdit] = useState(null);
+
+  // Occupants modal state
+  const [occupantsModalRoom, setOccupantsModalRoom] = useState(null);
+  const [occupantsData, setOccupantsData] = useState(null);
+  const [loadingOccupants, setLoadingOccupants] = useState(false);
+  const [occupantsError, setOccupantsError] = useState(null);
 
   // Room deletion state
   const [deleteRoomTarget, setDeleteRoomTarget] = useState(null);
@@ -69,6 +76,25 @@ export default function HostelDetailPage() {
   useEffect(() => {
     if (id) loadData();
   }, [id, loadData]);
+
+  const handleViewOccupants = async (room) => {
+    if (!room || room.currentOccupancy <= 0) return;
+    setOccupantsModalRoom(room);
+    setOccupantsData(null);
+    setOccupantsError(null);
+    setLoadingOccupants(true);
+
+    try {
+      const res = await axios.get(`/api/admin/rooms/${room._id}/occupants`);
+      if (res.data?.success) {
+        setOccupantsData(res.data.data);
+      }
+    } catch (err) {
+      setOccupantsError(err.response?.data?.message || "Failed to load occupants");
+    } finally {
+      setLoadingOccupants(false);
+    }
+  };
 
   // Handle room delete
   const handleDeleteRoom = async () => {
@@ -367,7 +393,11 @@ export default function HostelDetailPage() {
                       key={room._id}
                       className="flex flex-col justify-between rounded-xl border border-slate-200 bg-slate-50/50 p-3.5 hover:bg-white hover:border-indigo-300 hover:shadow-xs transition-all group"
                     >
-                      <div>
+                      <div
+                        onClick={() => room.currentOccupancy > 0 && handleViewOccupants(room)}
+                        className={room.currentOccupancy > 0 ? "cursor-pointer" : ""}
+                        title={room.currentOccupancy > 0 ? "Click to view occupants" : ""}
+                      >
                         {/* Room Number & Status */}
                         <div className="flex items-center justify-between gap-1 mb-2">
                           <span className="font-mono text-sm font-black text-slate-900 group-hover:text-indigo-600">
@@ -398,6 +428,11 @@ export default function HostelDetailPage() {
                             {room.currentOccupancy}
                           </span>{" "}
                           / {room.capacity} occupied
+                          {room.currentOccupancy > 0 && (
+                            <span className="text-[10px] text-indigo-600 font-semibold block mt-0.5">
+                              View Occupants &rarr;
+                            </span>
+                          )}
                           <span className="block text-[10px] text-emerald-600 font-medium">
                             {freeBeds} available
                           </span>
@@ -478,6 +513,52 @@ export default function HostelDetailPage() {
             : handleDeleteRoom
         }
       />
+
+      {/* Room Occupants Modal */}
+      <Modal
+        isOpen={Boolean(occupantsModalRoom)}
+        onClose={() => setOccupantsModalRoom(null)}
+        title={`Room #${occupantsModalRoom?.roomNumber} Occupants`}
+        description={`${occupantsModalRoom?.roomType} room • Floor ${occupantsModalRoom?.floor} • ${occupantsModalRoom?.currentOccupancy} of ${occupantsModalRoom?.capacity} beds occupied`}
+        maxWidth="max-w-lg"
+      >
+        {loadingOccupants ? (
+          <div className="py-8 text-center">
+            <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+            <p className="mt-2 text-xs text-slate-500">Loading occupants...</p>
+          </div>
+        ) : occupantsError ? (
+          <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700">
+            {occupantsError}
+          </div>
+        ) : occupantsData?.occupants?.length === 0 ? (
+          <p className="text-xs text-slate-500 py-4 text-center">No active occupants assigned to this room.</p>
+        ) : (
+          <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+            {occupantsData?.occupants?.map((occ) => {
+              const s = occ.student || {};
+              return (
+                <div key={occ.allocationId} className="py-3 flex items-start justify-between text-xs">
+                  <div>
+                    <span className="font-bold text-slate-900 block">{s.name}</span>
+                    <span className="text-slate-500 block font-mono text-[11px]">
+                      {s.registrationNumber || "No Reg"} • Year {s.year} • {s.course}
+                    </span>
+                    <span className="text-slate-400 block text-[11px] mt-0.5">
+                      Email: {s.email} {s.phone ? `• Phone: ${s.phone}` : ""}
+                    </span>
+                  </div>
+                  {occ.group?.averageScore !== undefined && (
+                    <Badge variant="blue" size="sm">
+                      {occ.group.averageScore}% avg
+                    </Badge>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

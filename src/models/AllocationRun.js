@@ -77,6 +77,57 @@ const AllocationRunSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    publishedAt: {
+      type: Date,
+      default: null,
+    },
+    publishedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    rolledBackAt: {
+      type: Date,
+      default: null,
+    },
+    rolledBackBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    edited: {
+      type: Boolean,
+      default: false,
+    },
+    overrideCount: {
+      type: Number,
+      default: 0,
+    },
+    editLog: [
+      {
+        admin: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          default: null,
+        },
+        action: {
+          type: String,
+          required: true,
+        },
+        summary: {
+          type: String,
+          required: true,
+        },
+        at: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+    publishSnapshot: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
     errorMessage: {
       type: String,
       default: null,

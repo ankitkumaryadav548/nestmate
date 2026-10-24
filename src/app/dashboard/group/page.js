@@ -522,14 +522,28 @@ export default function StudentGroupPage() {
 
       {/* State 4: Locked Group Banner */}
       {group.status === "locked" && (
-        <div className="rounded-2xl border border-purple-200 bg-purple-50 p-5 sm:p-6 flex items-start gap-4 shadow-sm animate-in fade-in">
-          <span className="text-3xl">🔒</span>
-          <div>
-            <h3 className="text-base font-bold text-purple-900">Group Allocation Finalized</h3>
-            <p className="text-xs sm:text-sm text-purple-800 mt-1 leading-relaxed">
-              A room has been allocated to this group. Group membership is locked and can no longer be edited.
-            </p>
+        <div className="rounded-2xl border border-purple-200 bg-purple-50/90 p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in">
+          <div className="flex items-start gap-4">
+            <span className="text-3xl">🏠</span>
+            <div>
+              <h3 className="text-base font-bold text-purple-950">Room Allocation Finalized</h3>
+              {group.allocatedRoom ? (
+                <p className="text-xs sm:text-sm text-purple-800 mt-1 leading-relaxed">
+                  Allocated to <strong className="font-semibold">{group.allocatedRoom.hostelName} ({group.allocatedRoom.hostelCode})</strong> — Room <strong className="font-semibold">{group.allocatedRoom.roomNumber}</strong> (Floor {group.allocatedRoom.floor}). Group membership is locked.
+                </p>
+              ) : (
+                <p className="text-xs sm:text-sm text-purple-800 mt-1 leading-relaxed">
+                  Your room allocation has been confirmed and locked.
+                </p>
+              )}
+            </div>
           </div>
+          <Link
+            href="/dashboard/room"
+            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-purple-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-purple-700 transition-colors"
+          >
+            View My Room & Roommates &rarr;
+          </Link>
         </div>
       )}
 

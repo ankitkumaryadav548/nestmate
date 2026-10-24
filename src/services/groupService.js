@@ -78,6 +78,13 @@ export async function createGroup(userId, targetSize) {
     throw new Error("You are already a member of an active roommate group");
   }
 
+  // 2b. Check if student already has an active room allocation
+  const Allocation = (await import("@/models/Allocation")).default;
+  const activeAlloc = await Allocation.findOne({ student: userId, status: "active" }).lean();
+  if (activeAlloc) {
+    throw new Error("You already have an active room allocation and cannot create a group");
+  }
+
   const defaultAc = suggestDefaultAcType([{ ...user, preferences: pref }]);
 
   // 3. Create group with leader as initial member
@@ -210,7 +217,7 @@ export async function getMyGroup(userId) {
     }));
   }
 
-  return {
+  const result = {
     _id: group._id.toString(),
     leaderId: group.leader.toString(),
     gender: group.gender,
@@ -247,7 +254,31 @@ export async function getMyGroup(userId) {
           updatedAt: null,
         },
     preferencesNeedReview: Boolean(group.preferencesNeedReview),
+    allocatedRoom: null,
   };
+
+  if (group.status === "locked") {
+    try {
+      const Allocation = (await import("@/models/Allocation")).default;
+      const alloc = await Allocation.findOne({ group: group._id, status: "active" })
+        .populate("room", "roomNumber floor roomType capacity")
+        .populate("hostel", "name code")
+        .lean();
+      if (alloc && alloc.room && alloc.hostel) {
+        result.allocatedRoom = {
+          hostelName: alloc.hostel.name,
+          hostelCode: alloc.hostel.code,
+          roomNumber: alloc.room.roomNumber,
+          floor: alloc.room.floor,
+          roomType: alloc.room.roomType,
+        };
+      }
+    } catch (e) {
+      console.warn("Failed to lookup allocated room for locked group:", e.message);
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -387,6 +418,13 @@ export async function getGroupCandidates(leaderId, filters = {}) {
 
   pendingInvites.forEach((inv) => {
     if (inv.invitedUser) unavailableIds.add(inv.invitedUser.toString());
+  });
+
+  // Students with active published allocations
+  const Allocation = (await import("@/models/Allocation")).default;
+  const activeAllocations = await Allocation.find({ status: "active" }).select("student").lean();
+  activeAllocations.forEach((a) => {
+    if (a.student) unavailableIds.add(a.student.toString());
   });
 
   // 4. Query candidate users of the identical gender
@@ -565,6 +603,13 @@ export async function sendInvitation(leaderId, invitedUserId) {
 
   if (candidateActiveGroup) {
     throw new Error("Student is already a member of an active roommate group");
+  }
+
+  // Check candidate does not have an active room allocation
+  const Allocation = (await import("@/models/Allocation")).default;
+  const candidateAlloc = await Allocation.findOne({ student: invitedUserId, status: "active" }).lean();
+  if (candidateAlloc) {
+    throw new Error("Student already has an active room allocation");
   }
 
   // Check no existing pending invitation
@@ -752,6 +797,13 @@ export async function acceptInvitation(userId, invitationId) {
 
   if (existingGroup) {
     throw new Error("You already belong to an active roommate group");
+  }
+
+  // Check user does not have an active room allocation
+  const Allocation = (await import("@/models/Allocation")).default;
+  const userAlloc = await Allocation.findOne({ student: userId, status: "active" }).lean();
+  if (userAlloc) {
+    throw new Error("You already have an active room allocation");
   }
 
   // 3. Verify group is still forming

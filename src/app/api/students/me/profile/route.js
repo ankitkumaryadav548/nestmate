@@ -26,6 +26,7 @@ const profileSchema = z.object({
     .default(null),
   emergencyContactName: z.string().trim().max(100).optional().default(""),
   emergencyContactPhone: z.string().trim().max(25).optional().default(""),
+  sharePhoneWithRoommates: z.boolean().optional(),
 });
 
 /**

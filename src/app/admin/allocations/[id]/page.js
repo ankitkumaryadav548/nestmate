@@ -5,8 +5,9 @@ import Link from "next/link";
 import axios from "@/lib/axios";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
+import Modal from "@/components/ui/Modal";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Pagination from "@/components/ui/Pagination";
-import EmptyState from "@/components/ui/EmptyState";
 import { WAITLIST_REASONS, UNALLOCATED_REASONS } from "@/config/allocation";
 
 export default function AdminAllocationResultPage({ params }) {
@@ -29,6 +30,43 @@ export default function AdminAllocationResultPage({ params }) {
   const [unallocatedList, setUnallocatedList] = useState([]);
   const [loadingUnallocated, setLoadingUnallocated] = useState(false);
   const [showUnallocated, setShowUnallocated] = useState(false);
+
+  // Publication & Rollback Modal State
+  const [publishModalOpen, setPublishModalOpen] = useState(false);
+  const [publishPreview, setPublishPreview] = useState(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [publishConfirmText, setPublishConfirmText] = useState("");
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishError, setPublishError] = useState(null);
+
+  const [rollbackModalOpen, setRollbackModalOpen] = useState(false);
+  const [rollbackConfirmText, setRollbackConfirmText] = useState("");
+  const [isRollingBack, setIsRollingBack] = useState(false);
+  const [rollbackError, setRollbackError] = useState(null);
+
+  // Edit Action Modals State
+  const [activeEditModal, setActiveEditModal] = useState(null); // "move" | "swap_rooms" | "swap_members" | "assign_waitlisted"
+  const [selectedUnit, setSelectedUnit] = useState(null);
+  const [editOptions, setEditOptions] = useState(null);
+  const [loadingEditOptions, setLoadingEditOptions] = useState(false);
+  const [editActionLoading, setEditActionLoading] = useState(false);
+  const [editModalError, setEditModalError] = useState(null);
+
+  // Swap Members State
+  const [swapMemberA, setSwapMemberA] = useState("");
+  const [swapUnitB, setSwapUnitB] = useState("");
+  const [swapMemberB, setSwapMemberB] = useState("");
+  const [swapOverrideRequired, setSwapOverrideRequired] = useState(false);
+  const [swapConflictingPairs, setSwapConflictingPairs] = useState([]);
+  const [confirmOverrideChecked, setConfirmOverrideChecked] = useState(false);
+  const [overrideReasonText, setOverrideReasonText] = useState("");
+
+  // Unassign Confirm
+  const [unassignUnitId, setUnassignUnitId] = useState(null);
+  const [isUnassigning, setIsUnassigning] = useState(false);
+
+  // Edit History Panel State
+  const [showEditLog, setShowEditLog] = useState(false);
 
   // Fetch Run Metadata & Compiled Stats
   const fetchRun = useCallback(async () => {
@@ -101,11 +139,218 @@ export default function AdminAllocationResultPage({ params }) {
     }
   }, [showUnallocated, unallocatedList.length, fetchUnallocated]);
 
+  // Handle Publish Preview Load
+  const handleOpenPublishModal = async () => {
+    setPublishModalOpen(true);
+    setPublishPreview(null);
+    setPublishConfirmText("");
+    setPublishError(null);
+    setLoadingPreview(true);
+
+    try {
+      const res = await axios.get(`/api/admin/allocations/${runId}/publish-preview`);
+      if (res.data?.success) {
+        setPublishPreview(res.data.data);
+      }
+    } catch (err) {
+      setPublishError(err.response?.data?.message || "Failed to load publication preview");
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
+
+  // Submit Publish
+  const handleExecutePublish = async (e) => {
+    e.preventDefault();
+    if (publishConfirmText !== "PUBLISH") return;
+
+    setIsPublishing(true);
+    setPublishError(null);
+    try {
+      const res = await axios.post(`/api/admin/allocations/${runId}/publish`, {
+        confirmText: "PUBLISH",
+      });
+      if (res.data?.success) {
+        setPublishModalOpen(false);
+        fetchRun();
+        fetchAssignments(1);
+      }
+    } catch (err) {
+      setPublishError(err.response?.data?.message || "Publication failed");
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  // Submit Rollback
+  const handleExecuteRollback = async (e) => {
+    e.preventDefault();
+    if (rollbackConfirmText !== "ROLLBACK") return;
+
+    setIsRollingBack(true);
+    setRollbackError(null);
+    try {
+      const res = await axios.post(`/api/admin/allocations/${runId}/rollback`, {
+        confirmText: "ROLLBACK",
+      });
+      if (res.data?.success) {
+        setRollbackModalOpen(false);
+        fetchRun();
+        fetchAssignments(1);
+      }
+    } catch (err) {
+      setRollbackError(err.response?.data?.message || "Rollback failed");
+    } finally {
+      setIsRollingBack(false);
+    }
+  };
+
+  // Open Edit Modals and fetch candidate options
+  const handleOpenEditModal = async (unit, mode) => {
+    setSelectedUnit(unit);
+    setActiveEditModal(mode);
+    setEditOptions(null);
+    setEditModalError(null);
+    setLoadingEditOptions(true);
+
+    // Reset swap state
+    setSwapMemberA(unit.members?.[0]?._id || "");
+    setSwapUnitB("");
+    setSwapMemberB("");
+    setSwapOverrideRequired(false);
+    setSwapConflictingPairs([]);
+    setConfirmOverrideChecked(false);
+    setOverrideReasonText("");
+
+    try {
+      const res = await axios.get(
+        `/api/admin/allocations/${runId}/edit-options?unitId=${unit._id}&mode=${mode}`
+      );
+      if (res.data?.success) {
+        setEditOptions(res.data.data);
+      }
+    } catch (err) {
+      setEditModalError(err.response?.data?.message || "Failed to load options");
+    } finally {
+      setLoadingEditOptions(false);
+    }
+  };
+
+  // Submit Move or Assign Waitlisted
+  const handleExecuteMoveOrAssign = async (targetRoomId) => {
+    setEditActionLoading(true);
+    setEditModalError(null);
+    const action = activeEditModal === "assign_waitlisted" ? "assign_waitlisted" : "move";
+
+    try {
+      await axios.post(`/api/admin/allocations/${runId}/edit`, {
+        action,
+        params: {
+          unitId: selectedUnit._id,
+          targetRoomId,
+        },
+      });
+
+      setActiveEditModal(null);
+      fetchRun();
+      fetchAssignments(assignmentsPagination.page);
+    } catch (err) {
+      setEditModalError(err.response?.data?.message || "Action failed");
+    } finally {
+      setEditActionLoading(false);
+    }
+  };
+
+  // Submit Swap Rooms
+  const handleExecuteSwapRooms = async (partnerUnitId) => {
+    setEditActionLoading(true);
+    setEditModalError(null);
+    try {
+      await axios.post(`/api/admin/allocations/${runId}/edit`, {
+        action: "swap_rooms",
+        params: {
+          unitIdA: selectedUnit._id,
+          unitIdB: partnerUnitId,
+        },
+      });
+
+      setActiveEditModal(null);
+      fetchRun();
+      fetchAssignments(assignmentsPagination.page);
+    } catch (err) {
+      setEditModalError(err.response?.data?.message || "Room swap failed");
+    } finally {
+      setEditActionLoading(false);
+    }
+  };
+
+  // Submit Swap Members
+  const handleExecuteSwapMembers = async (e) => {
+    if (e) e.preventDefault();
+    if (!swapMemberA || !swapUnitB || !swapMemberB) {
+      setEditModalError("Please select students from both units to swap");
+      return;
+    }
+
+    setEditActionLoading(true);
+    setEditModalError(null);
+
+    try {
+      const res = await axios.post(`/api/admin/allocations/${runId}/edit`, {
+        action: "swap_members",
+        params: {
+          unitIdA: selectedUnit._id,
+          memberIdA: swapMemberA,
+          unitIdB: swapUnitB,
+          memberIdB: swapMemberB,
+        },
+        confirmOverride: confirmOverrideChecked,
+        overrideReason: overrideReasonText.trim(),
+      });
+
+      if (res.data?.success) {
+        setActiveEditModal(null);
+        fetchRun();
+        fetchAssignments(assignmentsPagination.page);
+      }
+    } catch (err) {
+      const resp = err.response?.data;
+      if (resp?.details?.requiresOverride || err.response?.status === 409) {
+        setSwapOverrideRequired(true);
+        setSwapConflictingPairs(resp?.details?.conflictingPairs || []);
+        setEditModalError(resp?.message || "Lifestyle deal-breaker conflict detected. Check override to proceed.");
+      } else {
+        setEditModalError(resp?.message || err.message || "Failed to swap members");
+      }
+    } finally {
+      setEditActionLoading(false);
+    }
+  };
+
+  // Submit Unassign Unit
+  const handleExecuteUnassign = async () => {
+    if (!unassignUnitId) return;
+    setIsUnassigning(true);
+    try {
+      await axios.post(`/api/admin/allocations/${runId}/edit`, {
+        action: "unassign",
+        params: { unitId: unassignUnitId },
+      });
+      setUnassignUnitId(null);
+      fetchRun();
+      fetchAssignments(assignmentsPagination.page);
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to unassign unit");
+    } finally {
+      setIsUnassigning(false);
+    }
+  };
+
   if (loadingRun) {
     return (
       <div className="py-24 text-center">
         <div className="inline-block h-9 w-9 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-        <p className="mt-3 text-sm text-slate-500">Loading allocation simulation results...</p>
+        <p className="mt-3 text-sm text-slate-500">Loading allocation run results...</p>
       </div>
     );
   }
@@ -133,61 +378,189 @@ export default function AdminAllocationResultPage({ params }) {
   const improvement = stats.improvement || {};
   const hostelUsage = stats.hostelUsage || [];
   const waitlistReasonCounts = stats.waitlistReasonCounts || {};
+  const isDraft = run.status === "draft";
+  const isPublished = run.status === "published";
+  const isRolledBack = run.status === "rolled_back";
+  const isPublishingState = run.status === "publishing";
 
   return (
     <div className="space-y-6">
-      {/* Draft Simulation Notice Banner */}
-      <div className="flex items-center justify-between rounded-2xl bg-amber-50 border border-amber-200 p-4 text-amber-900 shadow-sm">
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-white font-bold text-lg">
-            ⚠️
+      {/* 1. STATUS LIFECYCLE BANNERS */}
+      {isPublished && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-emerald-900 shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-600 text-white font-bold text-lg shadow-sm">
+              ✓
+            </span>
+            <div>
+              <p className="text-sm font-bold">Official Published Allocation</p>
+              <p className="text-xs text-emerald-800 mt-0.5">
+                Published on{" "}
+                <strong>
+                  {run.publishedAt
+                    ? new Date(run.publishedAt).toLocaleString(undefined, {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })
+                    : "Recently"}
+                </strong>
+                . Physical room occupancies are live and assigned groups are locked.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <a
+              href={`/api/admin/allocations/${runId}/export`}
+              className="inline-flex items-center rounded-xl bg-white border border-emerald-300 px-3 py-2 text-xs font-bold text-emerald-800 hover:bg-emerald-100 transition-colors shadow-sm"
+              download
+            >
+              <span className="mr-1.5">📥</span> Download CSV
+            </a>
+            <Button
+              onClick={() => {
+                setRollbackError(null);
+                setRollbackConfirmText("");
+                setRollbackModalOpen(true);
+              }}
+              variant="outline"
+              size="sm"
+              className="border-rose-300 text-rose-700 hover:bg-rose-50"
+            >
+              Rollback Run
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {isRolledBack && (
+        <div className="flex items-center gap-3 rounded-2xl bg-slate-100 border border-slate-200 p-4 text-slate-800 shadow-sm">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-500 text-white font-bold text-lg">
+            ↩
           </span>
-          <div>
-            <p className="text-xs sm:text-sm font-bold">Draft Simulation Run</p>
-            <p className="text-[11px] sm:text-xs text-amber-800 mt-0.5">
-              Draft mode. Nothing has been published or permanently allocated. Official publishing and manual overrides are scheduled for the next update.
+          <div className="text-xs sm:text-sm">
+            <p className="font-bold">Allocation Rolled Back</p>
+            <p className="text-slate-600 mt-0.5">
+              This run was rolled back on{" "}
+              {run.rolledBackAt ? new Date(run.rolledBackAt).toLocaleString() : "N/A"}. Room occupancies and original group states were restored.
             </p>
           </div>
         </div>
-        <Link
-          href="/admin/allocations"
-          className="text-xs font-bold text-amber-900 hover:text-amber-950 underline shrink-0 hidden sm:inline-block"
-        >
-          &larr; All Runs
-        </Link>
-      </div>
+      )}
+
+      {isPublishingState && (
+        <div className="flex items-center gap-3 rounded-2xl bg-amber-50 border border-amber-200 p-4 text-amber-900 shadow-sm">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-amber-600 border-t-transparent shrink-0" />
+          <div className="text-xs sm:text-sm">
+            <p className="font-bold">Publishing in Progress...</p>
+            <p className="text-amber-800 mt-0.5">
+              Database transactions are committing room occupancies, group locks, and final allocation records.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {isDraft && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl bg-indigo-50 border border-indigo-200 p-4 text-indigo-900 shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white font-bold text-lg">
+              ✏️
+            </span>
+            <div>
+              <p className="text-sm font-bold">Draft Allocation & Edit Mode</p>
+              <p className="text-xs text-indigo-700 mt-0.5">
+                Review, move units, swap rooms, swap roommates with deal-breaker overrides, and publish when satisfied.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {run.editLog?.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowEditLog(!showEditLog)}
+                className="text-xs font-bold text-indigo-700 hover:text-indigo-900 underline"
+              >
+                {showEditLog ? "Hide History" : `Edit History (${run.editLog.length})`}
+              </button>
+            )}
+            <Button
+              onClick={handleOpenPublishModal}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md shadow-emerald-600/20"
+            >
+              <span className="mr-1.5">🚀</span> Publish Allocations
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit History Panel (Collapsible) */}
+      {showEditLog && run.editLog?.length > 0 && (
+        <div className="rounded-2xl border border-indigo-100 bg-white p-5 shadow-sm space-y-3 animate-in fade-in">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h3 className="text-sm font-bold text-slate-900">
+              Manual Edit Audit Log ({run.editLog.length} actions)
+            </h3>
+            {run.overrideCount > 0 && (
+              <Badge variant="rose" size="sm">
+                {run.overrideCount} Deal-Breaker Overrides
+              </Badge>
+            )}
+          </div>
+          <div className="max-h-52 overflow-y-auto divide-y divide-slate-100 text-xs">
+            {run.editLog.slice().reverse().map((entry, idx) => (
+              <div key={idx} className="py-2 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <Badge variant="blue" size="sm">
+                    {entry.action.replace("_", " ").toUpperCase()}
+                  </Badge>
+                  <span className="text-slate-800 font-medium">{entry.summary}</span>
+                </div>
+                <span className="text-[11px] text-slate-400 font-mono shrink-0">
+                  {new Date(entry.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              {run.name}
-            </h1>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">{run.name}</h1>
             <Badge
               variant={
-                run.status === "draft"
+                run.status === "published"
                   ? "emerald"
-                  : run.status === "published"
-                  ? "indigo"
+                  : run.status === "draft"
+                  ? "blue"
+                  : run.status === "rolled_back"
+                  ? "default"
                   : "amber"
               }
             >
-              {run.status.toUpperCase()}
+              {run.status.replace("_", " ").toUpperCase()}
             </Badge>
+            {run.edited && (
+              <Badge variant="amber" size="sm">
+                MANUALLY EDITED
+              </Badge>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 mt-1 font-mono">
-            <span>Priority: <strong className="font-sans font-semibold capitalize text-slate-700">{run.options?.priorityMode}</strong></span>
-            <span>•</span>
-            <span>Seed: <strong className="font-mono text-slate-700">{String(run.options?.seed)}</strong></span>
-            <span>•</span>
-            <span>Gender: <strong className="font-sans capitalize text-slate-700">{run.options?.gender}</strong></span>
+            <span>
+              Priority:{" "}
+              <strong className="font-sans font-semibold capitalize text-slate-700">
+                {run.options?.priorityMode}
+              </strong>
+            </span>
             <span>•</span>
             <span>
-              {new Date(run.createdAt).toLocaleString(undefined, {
-                dateStyle: "medium",
-                timeStyle: "short",
-              })}
+              Seed: <strong className="font-mono text-slate-700">{String(run.options?.seed)}</strong>
+            </span>
+            <span>•</span>
+            <span>
+              Created: {new Date(run.createdAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
             </span>
           </div>
         </div>
@@ -200,7 +573,7 @@ export default function AdminAllocationResultPage({ params }) {
         </Link>
       </div>
 
-      {/* 1. Summary Metric Cards */}
+      {/* Summary Metric Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Allocated</span>
@@ -243,392 +616,23 @@ export default function AdminAllocationResultPage({ params }) {
         </div>
 
         <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Overrides</span>
+          <span className="text-xl font-bold text-purple-600 mt-1 block font-mono">
+            {run.overrideCount ?? 0}
+          </span>
+          <span className="text-[11px] text-slate-500">deal-breakers</span>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Runtime</span>
           <span className="text-xl font-bold text-slate-900 mt-1 block font-mono">
             {stats.durationMs ?? 0}ms
           </span>
           <span className="text-[11px] text-slate-500">execution</span>
         </div>
-
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Seed</span>
-          <span className="text-xl font-bold text-slate-700 mt-1 block font-mono truncate">
-            {run.options?.seed ?? "N/A"}
-          </span>
-          <span className="text-[11px] text-slate-500">deterministic</span>
-        </div>
       </div>
 
-      {/* 2. Side-by-Side: Random Baseline vs HostelMatch */}
-      <div className="rounded-2xl border border-slate-200/80 bg-white shadow-sm p-6 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-slate-100 pb-4">
-          <div>
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <span>Scientific Proof: Random Baseline vs. HostelMatch</span>
-              <span className="rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold px-2 py-0.5">
-                Monte Carlo Proof
-              </span>
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Exact same students, exact same room capacities per gender; only roommate pairing differs.
-            </p>
-          </div>
-          <span className="text-xs text-slate-400 font-medium">
-            Based on {baseline.trials ?? 20} random permutation trials
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {/* Average Pair Score */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-            <span className="text-xs font-semibold text-slate-600 block mb-1">Average Pair Score</span>
-            <div className="flex items-baseline justify-between">
-              <div>
-                <span className="text-2xl font-bold text-indigo-700">{metrics.avgPairScore ?? 0}%</span>
-                <span className="text-xs text-slate-400 block">HostelMatch</span>
-              </div>
-              <div className="text-right">
-                <span className="text-lg font-bold text-slate-500">{baseline.avg?.avgPairScore ?? 0}%</span>
-                <span className="text-xs text-slate-400 block">Random</span>
-              </div>
-            </div>
-            <div className="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs font-semibold">
-              <span className="text-slate-500">Algorithm Lift:</span>
-              <span className="text-emerald-600 font-bold">
-                +{improvement.avgPairScoreDiff ?? 0}% pts
-              </span>
-            </div>
-          </div>
-
-          {/* Good or Above Percentage */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-            <span className="text-xs font-semibold text-slate-600 block mb-1">Good/Above Pairs (&ge; 70%)</span>
-            <div className="flex items-baseline justify-between">
-              <div>
-                <span className="text-2xl font-bold text-indigo-700">{metrics.goodOrAbovePercent ?? 0}%</span>
-                <span className="text-xs text-slate-400 block">HostelMatch</span>
-              </div>
-              <div className="text-right">
-                <span className="text-lg font-bold text-slate-500">{baseline.avg?.goodOrAbovePercent ?? 0}%</span>
-                <span className="text-xs text-slate-400 block">Random</span>
-              </div>
-            </div>
-            <div className="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs font-semibold">
-              <span className="text-slate-500">Quality Lift:</span>
-              <span className="text-emerald-600 font-bold">
-                +{improvement.goodOrAbovePercentDiff ?? 0}% pts
-              </span>
-            </div>
-          </div>
-
-          {/* Deal-Breaker Conflicts */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-            <span className="text-xs font-semibold text-slate-600 block mb-1">Deal-Breaker Conflicts</span>
-            <div className="flex items-baseline justify-between">
-              <div>
-                <span className="text-2xl font-bold text-emerald-600">{metrics.pairsExcluded ?? 0}</span>
-                <span className="text-xs text-slate-400 block">HostelMatch (Zero)</span>
-              </div>
-              <div className="text-right">
-                <span className="text-lg font-bold text-rose-500">{baseline.avg?.pairsExcluded ?? 0}</span>
-                <span className="text-xs text-slate-400 block">Random Average</span>
-              </div>
-            </div>
-            <div className="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs font-semibold">
-              <span className="text-slate-500">Harm Reduction:</span>
-              <span className="text-emerald-600 font-bold">
-                -{improvement.pairsExcludedDiff ?? 0} conflicts
-              </span>
-            </div>
-          </div>
-
-          {/* Rooms with Conflict */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4">
-            <span className="text-xs font-semibold text-slate-600 block mb-1">Rooms with Conflicts</span>
-            <div className="flex items-baseline justify-between">
-              <div>
-                <span className="text-2xl font-bold text-emerald-600">{metrics.roomsWithConflict ?? 0}</span>
-                <span className="text-xs text-slate-400 block">HostelMatch</span>
-              </div>
-              <div className="text-right">
-                <span className="text-lg font-bold text-rose-500">{baseline.avg?.roomsWithConflict ?? 0}</span>
-                <span className="text-xs text-slate-400 block">Random Average</span>
-              </div>
-            </div>
-            <div className="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-xs font-semibold">
-              <span className="text-slate-500">Dispute Avoidance:</span>
-              <span className="text-emerald-600 font-bold">
-                -{improvement.roomsWithConflictDiff ?? 0} rooms
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 3. Preference Satisfaction Breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Hostel Choice Ranks */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm space-y-3">
-          <div className="border-b border-slate-100 pb-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-              Hostel Choice Satisfaction
-            </h3>
-            <span className="text-[11px] text-slate-500">
-              {satisfaction.withHostelPrefs ?? 0} units submitted preferences
-            </span>
-          </div>
-
-          <div className="space-y-2 text-xs">
-            <div>
-              <div className="flex justify-between font-semibold mb-1">
-                <span className="text-emerald-700">1st Choice Hostel</span>
-                <span>{satisfaction.rank1?.percent ?? 0}% ({satisfaction.rank1?.count ?? 0})</span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
-                <div
-                  className="h-full bg-emerald-500 rounded-full"
-                  style={{ width: `${satisfaction.rank1?.percent ?? 0}%` }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between font-semibold mb-1">
-                <span className="text-blue-700">2nd Choice Hostel</span>
-                <span>{satisfaction.rank2?.percent ?? 0}% ({satisfaction.rank2?.count ?? 0})</span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
-                <div
-                  className="h-full bg-blue-500 rounded-full"
-                  style={{ width: `${satisfaction.rank2?.percent ?? 0}%` }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between font-semibold mb-1">
-                <span className="text-purple-700">3rd Choice Hostel</span>
-                <span>{satisfaction.rank3?.percent ?? 0}% ({satisfaction.rank3?.count ?? 0})</span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
-                <div
-                  className="h-full bg-purple-500 rounded-full"
-                  style={{ width: `${satisfaction.rank3?.percent ?? 0}%` }}
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex justify-between font-semibold mb-1">
-                <span className="text-slate-600">Other (Fallback Round)</span>
-                <span>{satisfaction.other?.percent ?? 0}% ({satisfaction.other?.count ?? 0})</span>
-              </div>
-              <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
-                <div
-                  className="h-full bg-slate-400 rounded-full"
-                  style={{ width: `${satisfaction.other?.percent ?? 0}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* AC Satisfaction */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm space-y-3">
-          <div className="border-b border-slate-100 pb-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-              AC Climate Satisfaction
-            </h3>
-            <span className="text-[11px] text-slate-500">
-              {satisfaction.acRequested ?? 0} units requested specific AC/Non-AC
-            </span>
-          </div>
-
-          <div className="pt-2">
-            <div className="flex items-baseline justify-between mb-2">
-              <span className="text-2xl font-bold text-cyan-600">
-                {satisfaction.acSatisfied?.percent ?? 0}%
-              </span>
-              <span className="text-xs text-slate-500 font-semibold">
-                {satisfaction.acSatisfied?.count ?? 0} of {satisfaction.acRequested ?? 0} satisfied
-              </span>
-            </div>
-            <div className="h-2.5 w-full rounded-full bg-slate-100 overflow-hidden">
-              <div
-                className="h-full bg-cyan-500 rounded-full"
-                style={{ width: `${satisfaction.acSatisfied?.percent ?? 0}%` }}
-              />
-            </div>
-            <p className="text-[11px] text-slate-500 mt-4 leading-relaxed">
-              Units without a specific AC preference (flexible) are excluded from this metric and placed in whichever room type is available.
-            </p>
-          </div>
-        </div>
-
-        {/* Floor Band Satisfaction */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm space-y-3">
-          <div className="border-b border-slate-100 pb-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">
-              Floor Band Satisfaction
-            </h3>
-            <span className="text-[11px] text-slate-500">
-              {satisfaction.floorRequested ?? 0} units requested specific floor band
-            </span>
-          </div>
-
-          <div className="pt-2">
-            <div className="flex items-baseline justify-between mb-2">
-              <span className="text-2xl font-bold text-indigo-600">
-                {satisfaction.floorSatisfied?.percent ?? 0}%
-              </span>
-              <span className="text-xs text-slate-500 font-semibold">
-                {satisfaction.floorSatisfied?.count ?? 0} of {satisfaction.floorRequested ?? 0} satisfied
-              </span>
-            </div>
-            <div className="h-2.5 w-full rounded-full bg-slate-100 overflow-hidden">
-              <div
-                className="h-full bg-indigo-500 rounded-full"
-                style={{ width: `${satisfaction.floorSatisfied?.percent ?? 0}%` }}
-              />
-            </div>
-            <p className="text-[11px] text-slate-500 mt-4 leading-relaxed">
-              Evaluated dynamically relative to building total floors (low = bottom third, mid = middle third, high = top third).
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. Hostel Usage Breakdown Table */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-        <div className="border-b border-slate-200/80 bg-slate-50/60 px-6 py-4">
-          <h2 className="text-sm font-bold text-slate-900">Hostel Inventory Utilization</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50/80 text-xs font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-200/80">
-              <tr>
-                <th className="px-6 py-3.5">Hostel</th>
-                <th className="px-6 py-3.5">Rooms Used</th>
-                <th className="px-6 py-3.5">Beds Filled</th>
-                <th className="px-6 py-3.5">Capacity Utilization</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {hostelUsage.map((h) => {
-                const utilPercent = h.totalBeds > 0 ? Math.round((h.bedsFilled / h.totalBeds) * 100) : 0;
-                return (
-                  <tr key={h.id} className="hover:bg-slate-50/50">
-                    <td className="px-6 py-3 font-semibold text-slate-900">
-                      {h.name} <span className="font-mono text-xs text-slate-400">({h.code})</span>
-                    </td>
-                    <td className="px-6 py-3 text-xs">
-                      <strong>{h.roomsUsed}</strong> / {h.totalRooms} rooms
-                    </td>
-                    <td className="px-6 py-3 text-xs">
-                      <strong>{h.bedsFilled}</strong> / {h.totalBeds} beds
-                    </td>
-                    <td className="px-6 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="h-2 w-32 rounded-full bg-slate-100 overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${
-                              utilPercent > 80 ? "bg-amber-500" : "bg-indigo-600"
-                            }`}
-                            style={{ width: `${utilPercent}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-semibold text-slate-700">{utilPercent}%</span>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* 5. Waitlist Breakdown & Unallocated Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Waitlist Reasons Card */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm space-y-3">
-          <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2">
-            Waitlist Diagnostics ({counts.unitsWaitlisted ?? 0} units)
-          </h3>
-          {Object.keys(waitlistReasonCounts).length === 0 ? (
-            <p className="text-xs text-slate-500 py-3">Zero units were waitlisted in this run.</p>
-          ) : (
-            <div className="space-y-2">
-              {Object.entries(waitlistReasonCounts).map(([reasonCode, count]) => {
-                const meta = WAITLIST_REASONS[reasonCode] || { label: reasonCode };
-                return (
-                  <div key={reasonCode} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 text-xs">
-                    <div>
-                      <span className="font-bold text-slate-800">{meta.label}</span>
-                      <span className="text-[11px] text-slate-500 block">{meta.description}</span>
-                    </div>
-                    <Badge variant="amber" size="sm">
-                      {count} {count === 1 ? "unit" : "units"}
-                    </Badge>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Unallocated Students Card */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm space-y-3">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <h3 className="text-sm font-bold text-slate-900">
-              Unallocated Students ({counts.studentsUnallocated ?? 0})
-            </h3>
-            <button
-              type="button"
-              onClick={() => setShowUnallocated(!showUnallocated)}
-              className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
-            >
-              {showUnallocated ? "Hide List" : "View List"}
-            </button>
-          </div>
-
-          <p className="text-xs text-slate-500 leading-relaxed">
-            Solo students who could not be placed due to incomplete preferences, inactive accounts, or lack of compatible roommate partners.
-          </p>
-
-          {showUnallocated && (
-            <div className="pt-2">
-              {loadingUnallocated ? (
-                <div className="py-4 text-center text-xs text-slate-500">Loading unallocated students...</div>
-              ) : unallocatedList.length === 0 ? (
-                <p className="text-xs text-slate-500 py-2">No unallocated students in this run.</p>
-              ) : (
-                <div className="max-h-60 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl">
-                  {unallocatedList.map((item, idx) => {
-                    const u = item.user || {};
-                    const meta = UNALLOCATED_REASONS[item.reason] || { label: item.reason };
-                    return (
-                      <div key={idx} className="p-3 text-xs flex items-center justify-between hover:bg-slate-50">
-                        <div>
-                          <span className="font-bold text-slate-800">{u.name || "Student"}</span>
-                          <span className="text-[11px] text-slate-400 block font-mono">
-                            {u.registrationNumber || u.email || "No Reg"}
-                          </span>
-                        </div>
-                        <Badge variant="rose" size="sm">
-                          {meta.label}
-                        </Badge>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 6. Assignments Table with Filters */}
+      {/* 2. Room Placements & Assignments Table */}
       <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
         <div className="border-b border-slate-200/80 bg-slate-50/60 p-4 sm:px-6 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
@@ -694,7 +698,7 @@ export default function AdminAllocationResultPage({ params }) {
                   <th className="px-6 py-3.5">Compatibility</th>
                   <th className="px-6 py-3.5">Hostel Rank</th>
                   <th className="px-6 py-3.5">AC / Floor</th>
-                  <th className="px-6 py-3.5">Round</th>
+                  {isDraft && <th className="px-6 py-3.5 text-right">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -709,15 +713,30 @@ export default function AdminAllocationResultPage({ params }) {
                         {item.order}
                       </td>
                       <td className="px-6 py-3.5">
-                        <Badge
-                          variant={item.status === "assigned" ? "emerald" : "amber"}
-                          size="sm"
-                        >
-                          {item.status.toUpperCase()}
-                        </Badge>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <Badge
+                            variant={item.status === "assigned" ? "emerald" : "amber"}
+                            size="sm"
+                          >
+                            {item.status.toUpperCase()}
+                          </Badge>
+                          {item.edited && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
+                              Edited
+                            </span>
+                          )}
+                          {item.overridden && (
+                            <span
+                              title={`Override: ${item.overrideReason || "Admin approval"}`}
+                              className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 cursor-help"
+                            >
+                              Overridden
+                            </span>
+                          )}
+                        </div>
                         {item.waitlistReason && (
-                          <span className="block text-[10px] text-amber-700 mt-0.5">
-                            {item.waitlistReason}
+                          <span className="block text-[10px] text-amber-700 mt-1">
+                            {WAITLIST_REASONS[item.waitlistReason]?.label || item.waitlistReason}
                           </span>
                         )}
                       </td>
@@ -779,13 +798,6 @@ export default function AdminAllocationResultPage({ params }) {
                       <td className="px-6 py-3.5 text-xs">
                         <div className="flex items-center gap-1.5">
                           <span
-                            title={
-                              item.acMatch === true
-                                ? "AC Matched"
-                                : item.acMatch === false
-                                ? "AC Not Matched"
-                                : "No AC Preference"
-                            }
                             className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
                               item.acMatch === true
                                 ? "bg-cyan-100 text-cyan-800"
@@ -797,13 +809,6 @@ export default function AdminAllocationResultPage({ params }) {
                             AC: {item.acMatch === true ? "✓" : item.acMatch === false ? "✗" : "—"}
                           </span>
                           <span
-                            title={
-                              item.floorMatch === true
-                                ? "Floor Band Matched"
-                                : item.floorMatch === false
-                                ? "Floor Band Not Matched"
-                                : "No Floor Preference"
-                            }
                             className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
                               item.floorMatch === true
                                 ? "bg-indigo-100 text-indigo-800"
@@ -816,9 +821,50 @@ export default function AdminAllocationResultPage({ params }) {
                           </span>
                         </div>
                       </td>
-                      <td className="px-6 py-3.5 text-xs font-mono text-slate-500">
-                        {item.round ? `Round ${item.round}` : "—"}
-                      </td>
+                      {isDraft && (
+                        <td className="px-6 py-3.5 text-right space-x-1">
+                          {item.status === "assigned" ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditModal(item, "move")}
+                                className="px-2 py-1 text-xs font-semibold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100"
+                              >
+                                Move
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditModal(item, "swap_rooms")}
+                                className="px-2 py-1 text-xs font-semibold rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100"
+                              >
+                                Swap Room
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditModal(item, "swap_members")}
+                                className="px-2 py-1 text-xs font-semibold rounded-lg border border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                              >
+                                Swap Member
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setUnassignUnitId(item._id)}
+                                className="px-2 py-1 text-xs font-semibold rounded-lg border border-rose-200 text-rose-700 hover:bg-rose-50"
+                              >
+                                Unassign
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditModal(item, "assign_waitlisted")}
+                              className="px-2.5 py-1 text-xs font-bold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
+                            >
+                              Assign Room
+                            </button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -837,6 +883,475 @@ export default function AdminAllocationResultPage({ params }) {
           </div>
         )}
       </div>
+
+      {/* 3. PUBLISH REVIEW MODAL */}
+      <Modal
+        isOpen={publishModalOpen}
+        onClose={() => !isPublishing && setPublishModalOpen(false)}
+        title="Review & Publish Allocation"
+        description="Verify database pre-flight checks before official publication."
+        maxWidth="max-w-2xl"
+      >
+        {loadingPreview ? (
+          <div className="py-12 text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent"></div>
+            <p className="mt-3 text-xs text-slate-500">Checking room occupancies and group integrity...</p>
+          </div>
+        ) : publishError && !publishPreview ? (
+          <div className="space-y-4">
+            <div className="rounded-xl bg-rose-50 border border-rose-200 p-4 text-xs text-rose-700 font-medium">
+              {publishError}
+            </div>
+            <div className="flex justify-end pt-2">
+              <Button variant="outline" onClick={() => setPublishModalOpen(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        ) : publishPreview ? (
+          <form onSubmit={handleExecutePublish} className="space-y-4">
+            {publishError && (
+              <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-700 font-medium">
+                {publishError}
+              </div>
+            )}
+
+            {publishPreview.conflicts?.length > 0 ? (
+              <div className="rounded-xl bg-rose-50 border border-rose-200 p-4 space-y-2">
+                <p className="text-xs font-bold text-rose-900">
+                  Publication Blocked: {publishPreview.conflicts.length} conflict(s) detected:
+                </p>
+                <div className="max-h-40 overflow-y-auto space-y-1 text-xs text-rose-800">
+                  {publishPreview.conflicts.map((c, i) => (
+                    <div key={i} className="flex items-start gap-1.5">
+                      <span>•</span>
+                      <span>{c.message}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-[11px] font-bold text-slate-400 block uppercase">Students</span>
+                    <span className="text-lg font-bold text-slate-900">
+                      {publishPreview.summary?.students}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-[11px] font-bold text-slate-400 block uppercase">Rooms</span>
+                    <span className="text-lg font-bold text-slate-900">
+                      {publishPreview.summary?.rooms}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-[11px] font-bold text-slate-400 block uppercase">Groups Locked</span>
+                    <span className="text-lg font-bold text-slate-900">
+                      {publishPreview.summary?.groupsLocked}
+                    </span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-[11px] font-bold text-slate-400 block uppercase">Overrides</span>
+                    <span className="text-lg font-bold text-purple-700">
+                      {publishPreview.summary?.overrides}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900">
+                  ⚠️ <strong>Notice:</strong> Publishing updates live room occupancy and locks roommate groups. You can roll this run back later if necessary.
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Type &quot;PUBLISH&quot; to confirm:
+                  </label>
+                  <input
+                    type="text"
+                    value={publishConfirmText}
+                    onChange={(e) => setPublishConfirmText(e.target.value)}
+                    placeholder="PUBLISH"
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-mono focus:border-emerald-500 focus:outline-none"
+                    disabled={isPublishing}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPublishModalOpen(false)}
+                disabled={isPublishing}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isPublishing || !publishPreview.canPublish || publishConfirmText !== "PUBLISH"}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+              >
+                {isPublishing ? "Publishing Live..." : "Confirm & Publish"}
+              </Button>
+            </div>
+          </form>
+        ) : null}
+      </Modal>
+
+      {/* 4. ROLLBACK MODAL */}
+      <Modal
+        isOpen={rollbackModalOpen}
+        onClose={() => !isRollingBack && setRollbackModalOpen(false)}
+        title="Rollback Published Allocation"
+        description="Reverses room occupancy increments and returns roommate groups to prior state."
+        maxWidth="max-w-md"
+      >
+        <form onSubmit={handleExecuteRollback} className="space-y-4">
+          {rollbackError && (
+            <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-700 font-medium">
+              {rollbackError}
+            </div>
+          )}
+
+          <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-900 space-y-1">
+            <p className="font-bold">⚠️ Warning:</p>
+            <p>
+              Rolling back will cancel all active student room allocations from this run, decrement room occupancies, and restore original roommate groups.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              Type &quot;ROLLBACK&quot; to confirm:
+            </label>
+            <input
+              type="text"
+              value={rollbackConfirmText}
+              onChange={(e) => setRollbackConfirmText(e.target.value)}
+              placeholder="ROLLBACK"
+              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-mono focus:border-rose-500 focus:outline-none"
+              disabled={isRollingBack}
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setRollbackModalOpen(false)}
+              disabled={isRollingBack}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isRollingBack || rollbackConfirmText !== "ROLLBACK"}
+              className="bg-rose-600 hover:bg-rose-700 text-white font-bold"
+            >
+              {isRollingBack ? "Rolling Back..." : "Execute Rollback"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* 5. MOVE & ASSIGN WAITLISTED MODAL */}
+      <Modal
+        isOpen={activeEditModal === "move" || activeEditModal === "assign_waitlisted"}
+        onClose={() => !editActionLoading && setActiveEditModal(null)}
+        title={activeEditModal === "assign_waitlisted" ? "Assign Waitlisted Unit" : "Move Unit to Another Room"}
+        description={`Available free rooms matching unit capacity (${selectedUnit?.size} beds).`}
+        maxWidth="max-w-xl"
+      >
+        {loadingEditOptions ? (
+          <div className="py-12 text-center">
+            <div className="inline-block h-7 w-7 animate-spin rounded-full border-3 border-indigo-600 border-t-transparent" />
+            <p className="mt-2 text-xs text-slate-500">Checking available rooms...</p>
+          </div>
+        ) : editOptions ? (
+          <div className="space-y-4">
+            {editModalError && (
+              <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-700">
+                {editModalError}
+              </div>
+            )}
+
+            {editOptions.hostels?.length === 0 ? (
+              <p className="text-xs text-slate-500 py-6 text-center">
+                No free rooms of capacity {selectedUnit?.size} satisfy hard constraints for this unit.
+              </p>
+            ) : (
+              <div className="max-h-80 overflow-y-auto space-y-4 pr-1">
+                {editOptions.hostels?.map((h) => (
+                  <div key={h.hostelId} className="border border-slate-200 rounded-xl p-3 bg-white">
+                    <h4 className="text-xs font-bold text-slate-900 border-b border-slate-100 pb-1.5 mb-2">
+                      {h.hostelName} ({h.hostelCode})
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {h.rooms.map((r) => (
+                        <div
+                          key={r.id}
+                          className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 bg-slate-50 text-xs hover:border-indigo-400 transition-colors"
+                        >
+                          <div>
+                            <span className="font-bold text-slate-900">Room {r.roomNumber}</span>
+                            <span className="text-[11px] text-slate-500 block">
+                              Floor {r.floor} • {r.roomType}
+                            </span>
+                            {r.acMismatch && (
+                              <span className="text-[10px] text-amber-700 font-semibold block">
+                                ⚠ AC Mismatch
+                              </span>
+                            )}
+                            {r.floorMismatch && (
+                              <span className="text-[10px] text-amber-700 font-semibold block">
+                                ⚠ Floor Mismatch
+                              </span>
+                            )}
+                          </div>
+                          <Button
+                            size="sm"
+                            disabled={editActionLoading}
+                            onClick={() => handleExecuteMoveOrAssign(r.id)}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-[11px]"
+                          >
+                            Select
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : null}
+      </Modal>
+
+      {/* 6. SWAP ROOMS MODAL */}
+      <Modal
+        isOpen={activeEditModal === "swap_rooms"}
+        onClose={() => !editActionLoading && setActiveEditModal(null)}
+        title="Swap Rooms with Another Unit"
+        description={`Select an assigned unit of equal size (${selectedUnit?.size} beds) to swap rooms.`}
+        maxWidth="max-w-xl"
+      >
+        {loadingEditOptions ? (
+          <div className="py-12 text-center">
+            <div className="inline-block h-7 w-7 animate-spin rounded-full border-3 border-indigo-600 border-t-transparent" />
+            <p className="mt-2 text-xs text-slate-500">Loading partner units...</p>
+          </div>
+        ) : editOptions ? (
+          <div className="space-y-4">
+            {editModalError && (
+              <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-700">
+                {editModalError}
+              </div>
+            )}
+
+            {editOptions.partners?.length === 0 ? (
+              <p className="text-xs text-slate-500 py-6 text-center">
+                No eligible swap partner units of capacity {selectedUnit?.size} found.
+              </p>
+            ) : (
+              <div className="max-h-80 overflow-y-auto space-y-2 pr-1">
+                {editOptions.partners?.map((p) => (
+                  <div
+                    key={p.unitId}
+                    className="flex items-center justify-between p-3 rounded-xl border border-slate-200 bg-white hover:border-indigo-400 transition-colors text-xs"
+                  >
+                    <div>
+                      <div className="font-bold text-slate-900">
+                        {p.hostelName} - Room {p.roomNumber} ({p.roomType})
+                      </div>
+                      <div className="text-slate-500 mt-0.5">
+                        {p.members?.map((m) => m.name).join(", ")}
+                      </div>
+                      <div className="text-[11px] text-indigo-700 font-semibold mt-0.5">
+                        {p.groupAverage}% group average
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      disabled={editActionLoading}
+                      onClick={() => handleExecuteSwapRooms(p.unitId)}
+                      className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-[11px]"
+                    >
+                      Swap Room
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : null}
+      </Modal>
+
+      {/* 7. SWAP MEMBERS MODAL */}
+      <Modal
+        isOpen={activeEditModal === "swap_members"}
+        onClose={() => !editActionLoading && setActiveEditModal(null)}
+        title="Swap Roommate Between Units"
+        description="Select a student from this unit and a student from another unit of the same gender."
+        maxWidth="max-w-xl"
+      >
+        {loadingEditOptions ? (
+          <div className="py-12 text-center">
+            <div className="inline-block h-7 w-7 animate-spin rounded-full border-3 border-indigo-600 border-t-transparent" />
+            <p className="mt-2 text-xs text-slate-500">Loading units...</p>
+          </div>
+        ) : editOptions ? (
+          <form onSubmit={handleExecuteSwapMembers} className="space-y-4">
+            {editModalError && (
+              <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-700">
+                {editModalError}
+              </div>
+            )}
+
+            {/* Student A selection */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Student to move out of Unit A:
+              </label>
+              <select
+                value={swapMemberA}
+                onChange={(e) => setSwapMemberA(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-800"
+              >
+                {editOptions.members?.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} (Year {m.year})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Target Unit B selection */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                Target Unit B:
+              </label>
+              <select
+                value={swapUnitB}
+                onChange={(e) => {
+                  setSwapUnitB(e.target.value);
+                  const partner = editOptions.otherUnits?.find((u) => u.unitId === e.target.value);
+                  setSwapMemberB(partner?.members?.[0]?.id || "");
+                }}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-800"
+              >
+                <option value="">-- Select Partner Unit --</option>
+                {editOptions.otherUnits?.map((u) => (
+                  <option key={u.unitId} value={u.unitId}>
+                    Room {u.roomNumber} ({u.members?.map((m) => m.name).join(", ")})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Student B selection */}
+            {swapUnitB && (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Student to bring in from Unit B:
+                </label>
+                <select
+                  value={swapMemberB}
+                  onChange={(e) => setSwapMemberB(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs text-slate-800"
+                >
+                  {editOptions.otherUnits
+                    ?.find((u) => u.unitId === swapUnitB)
+                    ?.members?.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} (Year {m.year})
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
+
+            {/* Override Controls if deal-breaker triggered */}
+            {swapOverrideRequired && (
+              <div className="rounded-xl bg-purple-50 border border-purple-200 p-3 space-y-2">
+                <p className="text-xs font-bold text-purple-900">
+                  Deal-Breaker Conflict Detected
+                </p>
+                <div className="space-y-1 text-[11px] text-purple-800">
+                  {swapConflictingPairs.map((p, i) => (
+                    <div key={i}>
+                      • Mutual conflict between {p.member1?.name} and {p.member2?.name}
+                    </div>
+                  ))}
+                </div>
+
+                <label className="flex items-start gap-2 pt-1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={confirmOverrideChecked}
+                    onChange={(e) => setConfirmOverrideChecked(e.target.checked)}
+                    className="mt-0.5 rounded text-purple-600 focus:ring-purple-500"
+                  />
+                  <span className="text-xs font-bold text-purple-950">
+                    Approve administrator override for this deal-breaker conflict
+                  </span>
+                </label>
+
+                {confirmOverrideChecked && (
+                  <div>
+                    <label className="block text-[11px] font-bold text-purple-900 mb-1">
+                      Reason for override (min 5 characters):
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={overrideReasonText}
+                      onChange={(e) => setOverrideReasonText(e.target.value)}
+                      placeholder="e.g. Special administrative accommodation requested by students..."
+                      className="w-full rounded-lg border border-purple-300 px-2.5 py-1.5 text-xs text-purple-950 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setActiveEditModal(null)}
+                disabled={editActionLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  editActionLoading ||
+                  !swapMemberA ||
+                  !swapUnitB ||
+                  !swapMemberB ||
+                  (swapOverrideRequired && (!confirmOverrideChecked || overrideReasonText.trim().length < 5))
+                }
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+              >
+                {editActionLoading ? "Swapping..." : "Execute Swap"}
+              </Button>
+            </div>
+          </form>
+        ) : null}
+      </Modal>
+
+      {/* 8. UNASSIGN CONFIRMATION */}
+      <ConfirmDialog
+        isOpen={Boolean(unassignUnitId)}
+        title="Unassign Unit & Free Room"
+        message="Are you sure you want to move this unit to the waitlist and release their assigned room?"
+        confirmLabel={isUnassigning ? "Unassigning..." : "Unassign to Waitlist"}
+        isDestructive={true}
+        onConfirm={handleExecuteUnassign}
+        onCancel={() => setUnassignUnitId(null)}
+      />
     </div>
   );
 }

@@ -67,14 +67,16 @@ const runOptionsSchema = z.object({
 });
 
 /**
- * Placeholder hook for allocated user IDs.
- * In Phase 6 (Publishing & Locking), this will return IDs of students whose
- * allocations have been officially finalized to prevent duplicate placement.
+ * Returns IDs of students whose allocations are currently active.
+ * Used across matching, grouping, and allocation pipelines to prevent duplicate placement.
  * 
  * @returns {Promise<string[]>}
  */
 export async function getAllocatedUserIds() {
-  return [];
+  await connectDB();
+  const Allocation = (await import("../models/Allocation.js")).default;
+  const activeAllocations = await Allocation.find({ status: "active" }).select("student").lean();
+  return activeAllocations.map((a) => a.student.toString());
 }
 
 /**
