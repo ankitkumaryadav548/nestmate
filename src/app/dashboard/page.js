@@ -16,22 +16,25 @@ export default function StudentDashboard() {
   const [groupInfo, setGroupInfo] = useState(null);
   const [pendingInvitesCount, setPendingInvitesCount] = useState(0);
   const [allocation, setAllocation] = useState(null);
+  const [recentNotifications, setRecentNotifications] = useState([]);
   const [loadingStatus, setLoadingStatus] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
         setLoadingStatus(true);
-        const [statusRes, groupRes, invRes, allocRes] = await Promise.all([
+        const [statusRes, groupRes, invRes, allocRes, notifRes] = await Promise.all([
           axios.get("/api/students/me/status").catch(() => ({ data: { data: null } })),
           axios.get("/api/groups/me").catch(() => ({ data: { data: null } })),
           axios.get("/api/invitations/me").catch(() => ({ data: { data: null } })),
           axios.get("/api/allocation/me").catch(() => ({ data: { data: null } })),
+          axios.get("/api/notifications?limit=3").catch(() => ({ data: { data: null } })),
         ]);
         if (statusRes.data?.data) setStatus(statusRes.data.data);
         if (groupRes.data?.data) setGroupInfo(groupRes.data.data);
         if (invRes.data?.data?.pending) setPendingInvitesCount(invRes.data.data.pending.length);
         if (allocRes.data?.data) setAllocation(allocRes.data.data);
+        if (notifRes.data?.data?.notifications) setRecentNotifications(notifRes.data.data.notifications);
       } catch (err) {
         console.error("Failed to load student status:", err);
       } finally {
@@ -246,6 +249,50 @@ export default function StudentDashboard() {
               >
                 ✏️ Edit Profile Details
               </Link>
+            </div>
+          </div>
+
+          {/* Recent Notifications Card */}
+          <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-xs">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🔔</span>
+                <h2 className="text-sm font-bold text-slate-900">Recent Notifications</h2>
+              </div>
+              <Link
+                href="/dashboard/notifications"
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
+              >
+                View all &rarr;
+              </Link>
+            </div>
+
+            <div className="mt-3 divide-y divide-slate-100">
+              {recentNotifications.length === 0 ? (
+                <div className="py-4 text-center">
+                  <p className="text-xs text-slate-400">No new notifications</p>
+                </div>
+              ) : (
+                recentNotifications.map((notif) => (
+                  <Link
+                    key={notif._id}
+                    href={notif.link || "/dashboard/notifications"}
+                    className="block py-2.5 px-1 hover:bg-slate-50 rounded-lg transition-colors group"
+                  >
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 truncate">
+                        {notif.title}
+                      </span>
+                      {!notif.readAt && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-indigo-600 shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                      {notif.message}
+                    </p>
+                  </Link>
+                ))
+              )}
             </div>
           </div>
         </div>

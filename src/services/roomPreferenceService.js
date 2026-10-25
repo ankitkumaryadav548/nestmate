@@ -489,6 +489,8 @@ export async function revalidatePreferencesForGroup(groupId) {
     changed = true;
   }
 
+  const wasNeedReview = !!group.preferencesNeedReview;
+
   // Whenever members change while preferences were configured, signal review
   if (
     changed ||
@@ -499,6 +501,24 @@ export async function revalidatePreferencesForGroup(groupId) {
   }
 
   await group.save();
+
+  // Post-commit notification: group_preferences_review to LEADER only (best-effort)
+  if (!wasNeedReview && group.preferencesNeedReview && group.leader) {
+    try {
+      const { notify } = await import("./notificationService.js");
+      await notify(
+        group.leader,
+        "group_preferences_review",
+        {},
+        {
+          dedupeParts: [group._id.toString(), "pref_review"],
+          data: { groupId: group._id.toString() },
+        }
+      );
+    } catch (notifErr) {
+      console.error("[Notification Error]:", notifErr.message);
+    }
+  }
 }
 
 /**

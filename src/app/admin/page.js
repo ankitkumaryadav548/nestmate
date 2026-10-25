@@ -10,14 +10,25 @@ export default function AdminPage() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [announcementsInfo, setAnnouncementsInfo] = useState({ total: 0, lastSent: null });
 
   useEffect(() => {
     async function fetchStats() {
       try {
         setLoading(true);
-        const res = await axios.get("/api/admin/stats");
+        const [res, annRes] = await Promise.all([
+          axios.get("/api/admin/stats"),
+          axios.get("/api/admin/announcements?limit=1").catch(() => ({ data: { data: null } })),
+        ]);
         if (res.data?.success) {
           setStats(res.data.data);
+        }
+        if (annRes.data?.success && annRes.data.data) {
+          const list = annRes.data.data.announcements || [];
+          setAnnouncementsInfo({
+            total: annRes.data.data.total || 0,
+            lastSent: list.length > 0 ? list[0] : null,
+          });
         }
       } catch (err) {
         console.error("Failed to load admin stats:", err);
@@ -400,6 +411,38 @@ export default function AdminPage() {
           </div>
           <div className="mt-6 pt-4 border-t border-slate-100 text-xs font-semibold text-emerald-600 flex items-center justify-between">
             <span>Run Diagnostics</span>
+            <span>&rarr;</span>
+          </div>
+        </Link>
+
+        {/* Announcements - Live Broadcast & In-App Bulletins */}
+        <Link
+          href="/admin/announcements"
+          className="group flex flex-col justify-between rounded-2xl border border-purple-200 bg-white p-6 shadow-sm hover:shadow-md hover:border-purple-500 transition-all"
+        >
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-50 text-xl text-purple-600 group-hover:scale-105 transition-transform">
+                📢
+              </div>
+              <span className="inline-flex items-center rounded-full bg-purple-50 border border-purple-200 px-2.5 py-0.5 text-xs font-semibold text-purple-700">
+                Live Broadcast
+              </span>
+            </div>
+            <h3 className="text-base font-bold text-slate-900 group-hover:text-purple-600 transition-colors">
+              Announcements
+            </h3>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              Broadcast targeted campus announcements by cohort, gender, year, or hostel with live read tracking.
+            </p>
+          </div>
+          <div className="mt-6 pt-4 border-t border-slate-100 text-xs font-semibold text-purple-600 flex items-center justify-between">
+            <span>
+              {announcementsInfo.total} Sent ·{" "}
+              {announcementsInfo.lastSent
+                ? `Last: ${new Date(announcementsInfo.lastSent.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+                : "No broadcasts"}
+            </span>
             <span>&rarr;</span>
           </div>
         </Link>

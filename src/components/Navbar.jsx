@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import axios from "@/lib/axios";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -136,6 +137,18 @@ export default function Navbar() {
                   >
                     Integrity
                   </Link>
+                  <Link
+                    href="/admin/announcements"
+                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+                  >
+                    Announcements
+                  </Link>
+                  <Link
+                    href="/admin/notifications"
+                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+                  >
+                    Notifications
+                  </Link>
                 </>
               ) : (
                 <>
@@ -186,6 +199,12 @@ export default function Navbar() {
                       </span>
                     )}
                   </Link>
+                  <Link
+                    href="/dashboard/notifications"
+                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+                  >
+                    Notifications
+                  </Link>
                 </>
               )}
             </>
@@ -198,6 +217,9 @@ export default function Navbar() {
             <div className="h-9 w-24 animate-pulse rounded-lg bg-slate-100" />
           ) : user ? (
             <div className="flex items-center gap-3">
+              {/* Notification Bell */}
+              <NotificationBell userRole={user.role} />
+
               {/* User details & badge */}
               <div className="flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200/80 px-3 py-1.5">
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-100 text-xs font-bold text-indigo-700">
@@ -246,8 +268,9 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Mobile Menu Toggle Button */}
-        <div className="flex md:hidden">
+        {/* Mobile Actions: Bell & Menu Toggle */}
+        <div className="flex md:hidden items-center gap-2">
+          {user && <NotificationBell userRole={user.role} />}
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -346,6 +369,20 @@ export default function Navbar() {
                     >
                       Integrity Diagnostic
                     </Link>
+                    <Link
+                      href="/admin/announcements"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                    >
+                      Announcements
+                    </Link>
+                    <Link
+                      href="/admin/notifications"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                    >
+                      Notifications
+                    </Link>
                   </>
                 ) : (
                   <>
@@ -402,6 +439,13 @@ export default function Navbar() {
                           {pendingInvitesCount}
                         </span>
                       )}
+                    </Link>
+                    <Link
+                      href="/dashboard/notifications"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                    >
+                      Notifications
                     </Link>
                   </>
                 )}

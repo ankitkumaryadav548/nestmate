@@ -717,5 +717,103 @@ npm run test:publish
 npm run test:concurrency
 ```
 
+---
+
+## 🔔 Phase 7: In-App Notifications & Admin Announcements
+
+HostelMatch features a real-time, privacy-preserving in-app notification engine and administrative broadcast announcement system.
+
+### 1. Architectural Invariants & Design Rules
+
+- **After Commit & Best-Effort Guarantee**: Creating notifications is strictly best-effort. Notifications are triggered **ONLY AFTER** primary database operations and transactions have successfully committed. Notification calls are wrapped in robust `try/catch` handlers that log failures and never break, roll back, or fail the primary action.
+- **Strict Privacy Invariant**: Notification messages and metadata are strictly cleansed of sensitive data. They **NEVER** contain phone numbers, email addresses, registration numbers, deal-breaker reasons, raw lifestyle answers, home country, or home state. A student may be referenced only by their display name where naturally required (e.g., an invitation from a group leader).
+- **Session-Bound Authorization**: Users can view, update, and delete **ONLY** their own notifications. User IDs are extracted strictly from the validated JWT session (`hm_token`), never trusted from client request bodies. Re-checking user roles is enforced in every API route handler. Requesting a notification belonging to another user returns a generic `404 Not Found`.
+- **Plain-Text & Safe Link Enforcement**: All notification titles and messages are rendered as plain text (never using `dangerouslySetInnerHTML`). Embedded links must pass strict internal link validation: they must begin with a single `/` (rejecting schemes, protocol-relative `//`, backslashes, whitespace, and exceeding 200 characters).
+- **Idempotency & Deduplication**: Every event constructs a deterministic `dedupeKey` (e.g., `invitation_received:<id>`). Coupled with a MongoDB partial unique index on `(user, dedupeKey)`, duplicate events or network retries are safely and silently deduplicated without throwing errors.
+- **Scalable Fan-Out & Retention**: Bulk notifications are batched into chunks of 500 (`FANOUT_CHUNK_SIZE`) with `ordered: false`. Notifications feature a TTL index on `expiresAt` automatically purging records after 90 days (`RETENTION_DAYS`).
+
+---
+
+### 2. Notification Types & Categories
+
+| Category | Type Key | Label | Severity | Link | Trigger Condition |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Invitations** | `invitation_received` | New Roommate Invitation | `info` | `/dashboard/invitations` | Leader sends an invitation to a student |
+| **Invitations** | `invitation_accepted` | Invitation Accepted | `success` | `/dashboard/group` | Invited student accepts leader's invitation |
+| **Invitations** | `invitation_declined` | Invitation Declined | `info` | `/dashboard/group` | Invited student declines leader's invitation |
+| **Invitations** | `invitation_cancelled` | Invitation Cancelled | `info` | `/dashboard/invitations` | Leader withdraws a pending invitation |
+| **Groups** | `group_member_joined` | New Roommate Joined | `info` | `/dashboard/group` | Non-leader existing members notified when peer joins |
+| **Groups** | `group_member_left` | Member Left Group | `warning` | `/dashboard/group` | A member leaves or is removed from the group |
+| **Groups** | `group_member_removed` | Removed from Group | `warning` | `/dashboard/group` | Removed student notified with neutral wording |
+| **Groups** | `group_complete` | Roommate Group Complete | `success` | `/dashboard/group` | Group reaches its target capacity |
+| **Groups** | `group_disbanded` | Group Disbanded | `warning` | `/dashboard/group` | Leader or admin disbands the group |
+| **Groups** | `group_leader_changed` | New Group Leader | `info` | `/dashboard/group` | Leadership transfers after former leader leaves |
+| **Groups** | `group_preferences_review` | Room Preferences Review | `warning` | `/dashboard/group` | Group changes and leader must review room preferences |
+| **Allocation** | `allocation_published` | Room Allocated! | `success` | `/dashboard/room` | Run published: student gets allocated hostel & room |
+| **Allocation** | `allocation_waitlisted` | Allocation Waitlisted | `warning` | `/dashboard/room` | Run published: unit placed on waitlist with reason |
+| **Allocation** | `allocation_unallocated` | Allocation Update | `warning` | `/dashboard/room` | Run published: student unallocated with next steps |
+| **Allocation** | `allocation_rolled_back` | Allocation Withdrawn | `warning` | `/dashboard/room` | Published allocation run rolled back by administration |
+| **Announcements**| `announcement` | Admin Announcement | `info` | (Optional validated link) | Targeted administrative broadcast announcement |
+
+*(Note: Types `room_change_submitted`, `room_change_approved`, `room_change_rejected`, `complaint_submitted`, and `complaint_status_updated` are reserved for upcoming phases).*
+
+---
+
+### 3. Admin Announcement Audiences
+
+Announcements can be dynamically broadcast to targeted cohorts of active students (capped at 5,000 recipients per broadcast):
+
+| Audience Type | Target Cohort | Extra Field / Criteria |
+| :--- | :--- | :--- |
+| `all_students` | All active students | None |
+| `gender` | Students of a specific gender | `gender: "male"` \| `"female"` \| `"other"` |
+| `year` | Students of a specific academic year | `year: 1` through `6` |
+| `hostel` | Students with an active room allocation in a hostel | `hostelId`: Valid active Hostel ObjectId |
+| `allocated` | All students with an active room allocation | None |
+| `not_allocated`| Active students currently without a room allocation | None |
+| `group_status` | Filtered by group status | `status: "forming"` \| `"complete"` \| `"locked"` \| `"none"` |
+
+---
+
+### 4. Phase 7 API Routes
+
+#### In-App Notifications (Authenticated Users: Student or Admin)
+| Method | Route | Description |
+| :--- | :--- | :--- |
+| `GET` | `/api/notifications` | Paginated notifications list with filters (`unreadOnly=true`, `category`) |
+| `GET` | `/api/notifications/unread-count` | Live count of unread notifications (indexed query) |
+| `POST` | `/api/notifications/[id]/read` | Mark a specific notification as read |
+| `POST` | `/api/notifications/read-all` | Mark all notifications (or all in a category) as read |
+| `DELETE` | `/api/notifications/[id]` | Delete a single notification owned by the user |
+| `DELETE` | `/api/notifications` | Delete all read notifications owned by the user |
+
+#### Administrative Announcements (Admin Only)
+| Method | Route | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/admin/announcements/preview` | Preview audience recipient count & descriptive label without sending |
+| `POST` | `/api/admin/announcements` | Broadcast announcement to audience (Rate limit: 10 per hour per admin) |
+| `GET` | `/api/admin/announcements` | Paginated announcement history with real-time read receipt counts |
+| `GET` | `/api/admin/announcements/[id]` | Get single announcement detail with live read count |
+| `DELETE` | `/api/admin/announcements/[id]` | Withdraw active announcement and purge delivered in-app notifications |
+
+---
+
+### 5. Phase 7 Verification Scripts
+
+```bash
+# 1. Run pure unit test suite (templates, link validator, audience, dedupe)
+npm run test:notifications
+
+# 2. Generate sample notifications for a demo student (for UI verification)
+npm run notify:test -- --reg=DEMO-0001
+
+# 3. Clear generated sample notifications for a demo student
+npm run notify:test -- --reg=DEMO-0001 --clear
+
+# 4. Run end-to-end flow test (invitation, group completion, cross-user isolation, announcement broadcast & withdrawal)
+npm run test:notify-flow
+```
+
+
 
 

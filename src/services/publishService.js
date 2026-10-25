@@ -225,6 +225,7 @@ export async function publishRun(adminId, runId, { confirmText }) {
 
   try {
     let resultPayload = null;
+    let executedPlan = null;
 
     await session.withTransaction(async () => {
       // Re-load live data inside transaction
@@ -256,6 +257,7 @@ export async function publishRun(adminId, runId, { confirmText }) {
       }
 
       const plan = planResult.plan;
+      executedPlan = plan;
 
       // 1. CONDITIONAL ROOM INCREMENTS
       // Each room must still have currentOccupancy === 0 and status !== "maintenance"
@@ -450,6 +452,102 @@ export async function publishRun(adminId, runId, { confirmText }) {
       };
     });
 
+    // Post-commit notifications for published run (best-effort, outside transaction)
+    try {
+      const { notify, notifyMany } = await import("./notificationService.js");
+
+      // 1. Allocation published to allocated students
+      if (executedPlan?.allocationRecords?.length > 0) {
+        const roomIds = executedPlan.allocationRecords.map((r) => r.room);
+        const hostelIds = executedPlan.allocationRecords.map((r) => r.hostel);
+
+        const [rooms, hostels] = await Promise.all([
+          Room.find({ _id: { $in: roomIds } }).select("_id roomNumber").lean(),
+          Hostel.find({ _id: { $in: hostelIds } }).select("_id name").lean(),
+        ]);
+
+        const roomMap = new Map();
+        rooms.forEach((r) => roomMap.set(r._id.toString(), r.roomNumber));
+        const hostelMap = new Map();
+        hostels.forEach((h) => hostelMap.set(h._id.toString(), h.name));
+
+        const byRoomHostel = new Map();
+        for (const rec of executedPlan.allocationRecords) {
+          const rNum = roomMap.get(rec.room.toString()) || "Assigned Room";
+          const hName = hostelMap.get(rec.hostel.toString()) || "Assigned Hostel";
+          const key = `${hName}:::${rNum}:::${rec.room.toString()}:::${rec.hostel.toString()}`;
+          if (!byRoomHostel.has(key)) {
+            byRoomHostel.set(key, {
+              hName,
+              rNum,
+              roomId: rec.room.toString(),
+              hostelId: rec.hostel.toString(),
+              studentIds: [],
+            });
+          }
+          byRoomHostel.get(key).studentIds.push(rec.student.toString());
+        }
+
+        for (const { hName, rNum, roomId, hostelId, studentIds } of byRoomHostel.values()) {
+          await notifyMany(
+            studentIds,
+            "allocation_published",
+            { hostelName: hName, roomNumber: rNum },
+            {
+              dedupeParts: [runId.toString(), "published"],
+              data: { runId: runId.toString(), roomId, hostelId },
+            }
+          );
+        }
+      }
+
+      // 2. Waitlisted units: allocation_waitlisted
+      const waitlistedAssignments = await AllocationAssignment.find({
+        run: runId,
+        status: "waitlisted",
+      }).lean();
+
+      if (waitlistedAssignments.length > 0) {
+        for (const assignment of waitlistedAssignments) {
+          const waitlistMemberIds = assignment.members.map((m) => m.toString());
+          await notifyMany(
+            waitlistMemberIds,
+            "allocation_waitlisted",
+            {
+              reason:
+                assignment.waitlistReason ||
+                "All eligible rooms for your group are currently filled.",
+            },
+            {
+              dedupeParts: [runId.toString(), "waitlisted"],
+              data: { runId: runId.toString() },
+            }
+          );
+        }
+      }
+
+      // 3. Unallocated students: allocation_unallocated
+      const runDoc = await AllocationRun.findById(runId).select("unallocated").lean();
+      if (runDoc?.unallocated?.length > 0) {
+        for (const unalloc of runDoc.unallocated) {
+          await notify(
+            unalloc.user,
+            "allocation_unallocated",
+            {
+              reason: unalloc.reason || "No matching room was available during this run.",
+              nextStep: "Please review your room preferences or contact the hostel warden office.",
+            },
+            {
+              dedupeParts: [runId.toString(), "unallocated"],
+              data: { runId: runId.toString() },
+            }
+          );
+        }
+      }
+    } catch (notifErr) {
+      console.error("[Publish Run Notifications Error]:", notifErr.message);
+    }
+
     return {
       success: true,
       message: "Allocation run published successfully.",
@@ -510,6 +608,7 @@ export async function rollbackRun(adminId, runId, { confirmText }) {
   }
 
   let session = null;
+  let rolledBackStudentIds = [];
   try {
     session = await mongoose.startSession();
   } catch (sessErr) {
@@ -537,6 +636,7 @@ export async function rollbackRun(adminId, runId, { confirmText }) {
         { session }
       ).lean();
       const liveAllocations = await Allocation.find({ _id: { $in: snapshot.allocationIds } }, null, { session }).lean();
+      rolledBackStudentIds = liveAllocations.map((a) => a.student.toString());
 
       const planResult = buildRollbackPlan(snapshot, {
         isLatestPublishedRun: true,
@@ -635,6 +735,24 @@ export async function rollbackRun(adminId, runId, { confirmText }) {
         { session }
       );
     });
+
+    // Post-commit notification: allocation_rolled_back to students with active allocation in that run (best-effort)
+    try {
+      const { notifyMany } = await import("./notificationService.js");
+      if (rolledBackStudentIds.length > 0) {
+        await notifyMany(
+          rolledBackStudentIds,
+          "allocation_rolled_back",
+          {},
+          {
+            dedupeParts: [runId.toString(), "rolled_back"],
+            data: { runId: runId.toString() },
+          }
+        );
+      }
+    } catch (notifErr) {
+      console.error("[Rollback Run Notifications Error]:", notifErr.message);
+    }
 
     return {
       success: true,

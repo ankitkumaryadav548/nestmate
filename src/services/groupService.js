@@ -16,6 +16,7 @@ import {
 } from "@/config/groups";
 import { revalidatePreferencesForGroup } from "./roomPreferenceService";
 import { suggestDefaultAcType } from "./roomPreferences/preferenceLogic";
+import { notify, notifyMany } from "./notificationService.js";
 
 /**
  * FAIRNESS & INTEGRITY GUARANTEE:
@@ -668,6 +669,25 @@ export async function sendInvitation(leaderId, invitedUserId) {
     },
   });
 
+  // Post-commit notification: invitation_received to invited student (best-effort)
+  try {
+    const leaderUser = await User.findById(leaderId).select("name").lean();
+    await notify(
+      invitedUserId,
+      "invitation_received",
+      {
+        leaderName: leaderUser?.name || "A group leader",
+        size: group.targetSize,
+      },
+      {
+        dedupeParts: [invitation._id.toString()],
+        data: { invitationId: invitation._id.toString(), groupId: group._id.toString() },
+      }
+    );
+  } catch (notifErr) {
+    console.error("[Notification Error]:", notifErr.message);
+  }
+
   return invitation;
 }
 
@@ -694,6 +714,21 @@ export async function cancelInvitation(leaderId, invitationId) {
   invitation.status = "cancelled";
   invitation.respondedAt = new Date();
   await invitation.save();
+
+  // Post-commit notification: invitation_cancelled to invited student (best-effort)
+  try {
+    await notify(
+      invitation.invitedUser,
+      "invitation_cancelled",
+      {},
+      {
+        dedupeParts: [invitation._id.toString(), "cancelled"],
+        data: { invitationId: invitation._id.toString(), groupId: invitation.group.toString() },
+      }
+    );
+  } catch (notifErr) {
+    console.error("[Notification Error]:", notifErr.message);
+  }
 
   return invitation;
 }
@@ -916,6 +951,57 @@ export async function acceptInvitation(userId, invitationId) {
   // 11. Re-validate room preferences against new group composition
   await revalidatePreferencesForGroup(updatedGroup._id);
 
+  // Post-commit notifications: invitation_accepted, group_member_joined, group_complete (best-effort)
+  try {
+    const joinerName = candidateUser?.name || "A student";
+    const leaderIdStr = updatedGroup.leader.toString();
+    const joinerIdStr = userId.toString();
+
+    // 1. To group leader: invitation_accepted
+    await notify(
+      updatedGroup.leader,
+      "invitation_accepted",
+      { name: joinerName },
+      {
+        dedupeParts: [invitation._id.toString(), "accepted"],
+        data: { invitationId: invitation._id.toString(), groupId: updatedGroup._id.toString() },
+      }
+    );
+
+    // 2. To OTHER existing members (not leader twice, not joiner): group_member_joined
+    const otherMemberIds = updatedGroup.members
+      .map((m) => m.user.toString())
+      .filter((id) => id !== joinerIdStr && id !== leaderIdStr);
+
+    for (const otherId of otherMemberIds) {
+      await notify(
+        otherId,
+        "group_member_joined",
+        { name: joinerName },
+        {
+          dedupeParts: [updatedGroup._id.toString(), joinerIdStr, "joined"],
+          data: { groupId: updatedGroup._id.toString() },
+        }
+      );
+    }
+
+    // 3. When group becomes complete: group_complete to ALL members
+    if (updatedGroup.status === "complete") {
+      const allMemberIds = updatedGroup.members.map((m) => m.user.toString());
+      await notifyMany(
+        allMemberIds,
+        "group_complete",
+        {},
+        {
+          dedupeParts: [updatedGroup._id.toString(), "complete"],
+          data: { groupId: updatedGroup._id.toString() },
+        }
+      );
+    }
+  } catch (notifErr) {
+    console.error("[Notification Error]:", notifErr.message);
+  }
+
   return updatedGroup;
 }
 
@@ -942,6 +1028,22 @@ export async function declineInvitation(userId, invitationId) {
   invitation.status = "declined";
   invitation.respondedAt = new Date();
   await invitation.save();
+
+  // Post-commit notification: invitation_declined to leader (best-effort)
+  try {
+    const decliner = await User.findById(userId).select("name").lean();
+    await notify(
+      invitation.invitedBy,
+      "invitation_declined",
+      { name: decliner?.name || "A student" },
+      {
+        dedupeParts: [invitation._id.toString(), "declined"],
+        data: { invitationId: invitation._id.toString(), groupId: invitation.group.toString() },
+      }
+    );
+  } catch (notifErr) {
+    console.error("[Notification Error]:", notifErr.message);
+  }
 
   return invitation;
 }
@@ -982,17 +1084,20 @@ export async function leaveGroup(userId) {
     return { status: "disbanded" };
   }
 
+  const wasComplete = group.status === "complete";
+  const wasLeader = group.leader.toString() === userId.toString();
+
   // Remove student from members array
   group.members = group.members.filter((m) => m.user.toString() !== userId.toString());
 
   // If leader is leaving, transfer leadership to earliest joined member
-  if (group.leader.toString() === userId.toString()) {
+  if (wasLeader) {
     group.members.sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt));
     group.leader = group.members[0].user;
   }
 
   // If group was complete, revert to forming
-  if (group.status === "complete") {
+  if (wasComplete) {
     group.status = "forming";
     group.completedAt = null;
   }
@@ -1013,6 +1118,49 @@ export async function leaveGroup(userId) {
 
   await group.save();
   await revalidatePreferencesForGroup(group._id);
+
+  // Post-commit notifications for leaveGroup (best-effort)
+  try {
+    const leaverUser = await User.findById(userId).select("name").lean();
+    const leaverName = leaverUser?.name || "A member";
+    const remainingMemberIds = group.members.map((m) => m.user.toString());
+
+    // 1. group_member_left to remaining members
+    for (const remId of remainingMemberIds) {
+      await notify(
+        remId,
+        "group_member_left",
+        {
+          name: leaverName,
+          statusChange: wasComplete ? "Group status is now forming." : "",
+        },
+        {
+          dedupeParts: [group._id.toString(), userId.toString(), "left"],
+          data: { groupId: group._id.toString() },
+        }
+      );
+    }
+
+    // 2. group_leader_changed if leadership passed
+    if (wasLeader && group.leader) {
+      const newLeaderDoc = await User.findById(group.leader).select("name").lean();
+      const newLeaderName = newLeaderDoc?.name || "A member";
+      for (const remId of remainingMemberIds) {
+        await notify(
+          remId,
+          "group_leader_changed",
+          { newLeaderName },
+          {
+            dedupeParts: [group._id.toString(), group.leader.toString(), "leader_changed"],
+            data: { groupId: group._id.toString() },
+          }
+        );
+      }
+    }
+  } catch (notifErr) {
+    console.error("[Notification Error]:", notifErr.message);
+  }
+
   return { status: group.status, leader: group.leader };
 }
 
@@ -1044,6 +1192,11 @@ export async function removeMember(leaderId, memberId) {
     throw new Error("Target student is not a member of this group");
   }
 
+  const wasComplete = group.status === "complete";
+  const remainingMemberIds = group.members
+    .filter((m) => m.user.toString() !== memberId.toString())
+    .map((m) => m.user.toString());
+
   group.members = group.members.filter((m) => m.user.toString() !== memberId.toString());
 
   if (group.status === "complete") {
@@ -1067,6 +1220,42 @@ export async function removeMember(leaderId, memberId) {
 
   await group.save();
   await revalidatePreferencesForGroup(group._id);
+
+  // Post-commit notifications: group_member_removed to student, group_member_left to others (best-effort)
+  try {
+    // 1. group_member_removed to removed student
+    await notify(
+      memberId,
+      "group_member_removed",
+      {},
+      {
+        dedupeParts: [group._id.toString(), memberId.toString(), "removed"],
+        data: { groupId: group._id.toString() },
+      }
+    );
+
+    // 2. group_member_left to remaining members
+    const removedUser = await User.findById(memberId).select("name").lean();
+    const removedName = removedUser?.name || "A member";
+
+    for (const remId of remainingMemberIds) {
+      await notify(
+        remId,
+        "group_member_left",
+        {
+          name: removedName,
+          statusChange: wasComplete ? "Group status is now forming." : "",
+        },
+        {
+          dedupeParts: [group._id.toString(), memberId.toString(), "removed_notice"],
+          data: { groupId: group._id.toString() },
+        }
+      );
+    }
+  } catch (notifErr) {
+    console.error("[Notification Error]:", notifErr.message);
+  }
+
   return group;
 }
 
@@ -1088,6 +1277,10 @@ export async function disbandGroup(leaderId) {
     throw new Error("Active group not found or you are not the leader");
   }
 
+  const otherMemberIds = group.members
+    .map((m) => m.user.toString())
+    .filter((id) => id !== leaderId.toString());
+
   group.status = "disbanded";
   group.disbandedAt = new Date();
 
@@ -1097,6 +1290,24 @@ export async function disbandGroup(leaderId) {
   );
 
   await group.save();
+
+  // Post-commit notification: group_disbanded to other members (best-effort)
+  try {
+    if (otherMemberIds.length > 0) {
+      await notifyMany(
+        otherMemberIds,
+        "group_disbanded",
+        {},
+        {
+          dedupeParts: [group._id.toString(), "disbanded"],
+          data: { groupId: group._id.toString() },
+        }
+      );
+    }
+  } catch (notifErr) {
+    console.error("[Notification Error]:", notifErr.message);
+  }
+
   return group;
 }
 
@@ -1277,6 +1488,8 @@ export async function adminDisbandGroup(groupId) {
     throw new Error("Cannot disband a locked group. The room allocation must be cancelled first.");
   }
 
+  const allMemberIds = group.members.map((m) => m.user.toString());
+
   group.status = "disbanded";
   group.disbandedAt = new Date();
 
@@ -1286,6 +1499,24 @@ export async function adminDisbandGroup(groupId) {
   );
 
   await group.save();
+
+  // Post-commit notification: group_disbanded to all members (best-effort)
+  try {
+    if (allMemberIds.length > 0) {
+      await notifyMany(
+        allMemberIds,
+        "group_disbanded",
+        {},
+        {
+          dedupeParts: [group._id.toString(), "disbanded_admin"],
+          data: { groupId: group._id.toString() },
+        }
+      );
+    }
+  } catch (notifErr) {
+    console.error("[Notification Error]:", notifErr.message);
+  }
+
   return group;
 }
 
