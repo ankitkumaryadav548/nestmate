@@ -9,7 +9,6 @@ import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Alert from "@/components/ui/Alert";
 import EmptyState from "@/components/ui/EmptyState";
 import { GROUP_SIZE_OPTIONS } from "@/config/groups";
-import RoomPreferencesCard from "@/components/groups/RoomPreferencesCard";
 
 export default function StudentGroupPage() {
   const [loading, setLoading] = useState(true);
@@ -397,17 +396,7 @@ export default function StudentGroupPage() {
             </div>
           </div>
 
-          {/* Auto-Assign Room Preferences Card */}
-          {intent.mode === "auto" && (
-            <div className="mt-6 pt-6 border-t border-slate-200">
-              <RoomPreferencesCard
-                isLeader={true}
-                isLocked={false}
-                targetSize={intent.preferredRoomSize || 2}
-                onPreferencesUpdated={fetchGroupData}
-              />
-            </div>
-          )}
+
         </div>
       </div>
     );
@@ -503,19 +492,6 @@ export default function StudentGroupPage() {
             <p className="text-xs sm:text-sm text-emerald-800 mt-1 leading-relaxed">
               All {group.targetSize} seats have been filled with compatible roommates. Your group is ready and waiting for the residential warden to allocate an accommodation block.
             </p>
-            {group.roomPreferences && (
-              <div className="mt-3 pt-3 border-t border-emerald-200/80 flex flex-wrap items-center gap-2 text-xs font-semibold text-emerald-950">
-                <span className="bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-200">
-                  🏛️ 1st Choice: {group.roomPreferences.preferredHostels?.[0]?.name || "Flexible"}
-                </span>
-                <span className="bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-200 uppercase">
-                  ❄️ {group.roomPreferences.acType || "no-preference"}
-                </span>
-                <span className="bg-emerald-100/90 px-2 py-0.5 rounded-md border border-emerald-200 capitalize">
-                  🏢 {group.roomPreferences.floorPreference || "any"} floor
-                </span>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -700,14 +676,6 @@ export default function StudentGroupPage() {
           </div>
         )}
       </div>
-
-      {/* Room Preferences Section */}
-      <RoomPreferencesCard
-        isLeader={group.myRole === "leader"}
-        isLocked={group.status === "locked"}
-        targetSize={group.targetSize}
-        onPreferencesUpdated={fetchGroupData}
-      />
 
       {/* Pending Invitations Sent by Leader */}
       {group.myRole === "leader" && group.pendingInvitations?.length > 0 && (
