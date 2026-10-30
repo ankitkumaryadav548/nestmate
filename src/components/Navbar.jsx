@@ -73,12 +73,6 @@ export default function Navbar() {
 
         {/* Desktop Navigation Links */}
         <nav className="hidden md:flex items-center gap-5">
-          <Link
-            href="/"
-            className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
-          >
-            Home
-          </Link>
           {user && (
             <>
               <Link
@@ -295,22 +289,34 @@ export default function Navbar() {
       {mobileMenuOpen && (
         <div className="md:hidden border-b border-slate-200 bg-white/95 px-4 pt-2 pb-6 space-y-3 backdrop-blur-md">
           <div className="space-y-1">
-            <Link
-              href="/"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block rounded-lg px-3 py-2 text-base font-medium text-slate-900 hover:bg-indigo-50 hover:text-indigo-600"
-            >
-              Home
-            </Link>
-            {user && (
+            {user ? (
+              <Link
+                href={user.role === "admin" ? "/admin" : "/dashboard"}
+                onClick={() => setMobileMenuOpen(false)}
+                className="block rounded-lg px-3 py-2 text-base font-semibold text-indigo-600 hover:bg-indigo-50"
+              >
+                {user.role === "admin" ? "Admin Console" : "Dashboard"}
+              </Link>
+            ) : (
               <>
                 <Link
-                  href={user.role === "admin" ? "/admin" : "/dashboard"}
+                  href="/login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block rounded-lg px-3 py-2 text-base font-semibold text-indigo-600 hover:bg-indigo-50"
+                  className="block rounded-lg px-3 py-2 text-base font-medium text-slate-900 hover:bg-indigo-50 hover:text-indigo-600"
                 >
-                  {user.role === "admin" ? "Admin Console" : "Dashboard"}
+                  Sign In
                 </Link>
+                <Link
+                  href="/register"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block rounded-lg px-3 py-2 text-base font-medium text-indigo-600 hover:bg-indigo-50"
+                >
+                  Create Account
+                </Link>
+              </>
+            )}
+            {user && (
+              <>
                 {user.role === "admin" ? (
                   <>
                     <Link

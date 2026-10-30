@@ -52,11 +52,21 @@ export default async function proxy(request) {
     }
   }
 
+  // 4. Root path ('/') redirect: send directly to login portal or dashboard
+  if (pathname === "/") {
+    if (isAuthenticated) {
+      const target = role === "admin" ? "/admin" : "/dashboard";
+      return NextResponse.redirect(new URL(target, request.url));
+    }
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
   matcher: [
+    "/",
     "/dashboard/:path*",
     "/admin/:path*",
     "/login",
