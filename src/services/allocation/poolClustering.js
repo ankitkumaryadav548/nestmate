@@ -124,10 +124,12 @@ export function fillFormingGroups(formingGroups = [], poolStudents = [], weights
 
     // Fill seats one by one
     while (currentMembers.length < targetSize) {
-      // Find candidate pool students of identical gender
+      // Find candidate pool students of identical gender and identical room size
       const candidates = poolStudents.filter((s) => {
         if (usedStudentIds.has(s.id)) return false;
         if (s.gender !== groupGender) return false;
+        const sSize = s.roomSize || s.preferredRoomSize;
+        if (sSize !== undefined && sSize !== targetSize) return false;
         return true;
       });
 
@@ -285,6 +287,21 @@ export function clusterPool(students = [], weights, scoreFn, options = {}) {
       unplaced.set(s.id, s);
     }
 
+    // Size-1 students need no roommates and become trivial units of size 1
+    for (const s of genderStudents) {
+      const prefSize = s.roomSize || s.preferredRoomSize;
+      if (prefSize === 1) {
+        groups.push({
+          members: [s],
+          size: 1,
+          average: 100,
+          lowest: 100,
+          shrunk: false,
+        });
+        unplaced.delete(s.id);
+      }
+    }
+
     // Helper: count non-excluded partners for a student among unplaced
     const countCompatiblePartners = (student) => {
       let count = 0;
@@ -305,7 +322,7 @@ export function clusterPool(students = [], weights, scoreFn, options = {}) {
       while (true) {
         // Find unplaced students that desire this room size
         const candidatesForSize = Array.from(unplaced.values()).filter((s) => {
-          const prefSize = s.preferredRoomSize || defaultRoomSize;
+          const prefSize = s.roomSize || s.preferredRoomSize || defaultRoomSize;
           return prefSize === size;
         });
 
@@ -325,8 +342,11 @@ export function clusterPool(students = [], weights, scoreFn, options = {}) {
 
         // Add members up to target size
         while (groupMembers.length < size) {
-          // Look among remaining unplaced students of this gender
-          const available = Array.from(unplaced.values());
+          // Look among remaining unplaced students of this gender with same room size
+          const available = Array.from(unplaced.values()).filter((cand) => {
+            const candSize = cand.roomSize || cand.preferredRoomSize || defaultRoomSize;
+            return candSize === size;
+          });
           if (available.length === 0) break;
 
           let bestNext = null;
@@ -389,6 +409,9 @@ export function clusterPool(students = [], weights, scoreFn, options = {}) {
         for (let j = i + 1; j < remainingLeftovers.length; j++) {
           const a = remainingLeftovers[i];
           const b = remainingLeftovers[j];
+          const sizeA = a.roomSize || a.preferredRoomSize || defaultRoomSize;
+          const sizeB = b.roomSize || b.preferredRoomSize || defaultRoomSize;
+          if (sizeA === 1 || sizeB === 1 || sizeA !== sizeB) continue;
           const res = scoreFn(a, b);
           if (!res.excluded && res.score >= minPairScore && res.score > highestScore) {
             highestScore = res.score;
@@ -460,10 +483,10 @@ export function improveBySwaps(groups = [], weights, scoreFn, maxPasses = 3) {
         const g1 = resultGroups[i];
         const g2 = resultGroups[j];
 
-        // Same gender and same size only
+        // Same gender and same size (>= 2 members) only
         const gender1 = g1.members[0]?.gender;
         const gender2 = g2.members[0]?.gender;
-        if (gender1 !== gender2 || g1.members.length !== g2.members.length) {
+        if (gender1 !== gender2 || g1.members.length !== g2.members.length || g1.members.length < 2) {
           continue;
         }
 

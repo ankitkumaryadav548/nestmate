@@ -126,6 +126,12 @@ export default function Navbar() {
                     Allocations
                   </Link>
                   <Link
+                    href="/admin/selection"
+                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+                  >
+                    Selection Window
+                  </Link>
+                  <Link
                     href="/admin/integrity"
                     className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
                   >
@@ -151,6 +157,12 @@ export default function Navbar() {
                     className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
                   >
                     My Room
+                  </Link>
+                  <Link
+                    href="/dashboard/rooms"
+                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+                  >
+                    Choose Room
                   </Link>
                   <Link
                     href="/dashboard/hostels"
@@ -369,6 +381,13 @@ export default function Navbar() {
                       Allocations
                     </Link>
                     <Link
+                      href="/admin/selection"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                    >
+                      Selection Window
+                    </Link>
+                    <Link
                       href="/admin/integrity"
                       onClick={() => setMobileMenuOpen(false)}
                       className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
@@ -398,6 +417,13 @@ export default function Navbar() {
                       className="block rounded-lg px-3 py-2 text-base font-bold text-indigo-600 hover:bg-indigo-50"
                     >
                       My Room
+                    </Link>
+                    <Link
+                      href="/dashboard/rooms"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
+                    >
+                      Choose Room
                     </Link>
                     <Link
                       href="/dashboard/hostels"

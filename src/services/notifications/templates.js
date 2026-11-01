@@ -203,6 +203,45 @@ export function buildNotification(type, params = {}) {
       break;
     }
 
+    case "room_selection_open": {
+      const windowName = safeStr(p.windowName, "Hostel room selection");
+      rawTitle = "Room Selection Window Open";
+      rawMessage = `${windowName} is now open. Group leaders and single-room students can choose rooms.`;
+      defaultLink = "/dashboard/rooms";
+      severity = "info";
+      break;
+    }
+
+    case "room_selected": {
+      const hostelName = safeStr(p.hostelName, "Your hostel");
+      const roomNumber = safeStr(p.roomNumber, "your room");
+      rawTitle = "Room Selected!";
+      rawMessage = `Your room has been chosen: ${hostelName}, room ${roomNumber}.`;
+      defaultLink = "/dashboard/room";
+      severity = "success";
+      break;
+    }
+
+    case "room_released": {
+      const hostelName = safeStr(p.hostelName, "The hostel");
+      const roomNumber = safeStr(p.roomNumber, "the room");
+      rawTitle = "Room Released";
+      rawMessage = `The reservation for ${hostelName}, room ${roomNumber} was released.`;
+      defaultLink = "/dashboard/group";
+      severity = "warning";
+      break;
+    }
+
+    case "room_auto_filled": {
+      const hostelName = safeStr(p.hostelName, "Assigned Hostel");
+      const roomNumber = safeStr(p.roomNumber, "Assigned Room");
+      rawTitle = "Room Placement Confirmed";
+      rawMessage = `You have been placed into an open seat: ${hostelName}, room ${roomNumber}.`;
+      defaultLink = "/dashboard/room";
+      severity = "info";
+      break;
+    }
+
     // ==========================================
     // 4. ANNOUNCEMENTS
     // ==========================================

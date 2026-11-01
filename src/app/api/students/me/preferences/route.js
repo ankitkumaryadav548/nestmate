@@ -5,6 +5,11 @@ import { success, failure } from "@/lib/apiResponse";
 import { getPreferences, upsertPreferences } from "@/services/studentService";
 
 const preferencesSchema = z.object({
+  roomSize: z
+    .preprocess(
+      (val) => (val === "" || val === null || val === undefined ? null : Number(val)),
+      z.number().int().min(1, "Room size must be between 1 and 4").max(4, "Room size must be between 1 and 4").nullable().optional()
+    ),
   sleepSchedule: z
     .enum(["early", "normal", "late"], {
       errorMap: () => ({ message: "Please select an option for sleep schedule" }),
@@ -113,6 +118,41 @@ export async function PUT(request) {
     }
 
     await connectDB();
+
+    // Check room size change validity
+    const newRoomSize = validation.data.roomSize !== undefined ? validation.data.roomSize : undefined;
+    if (newRoomSize !== undefined) {
+      const currentPref = await getPreferences(user._id);
+      const currentRoomSize = currentPref?.roomSize ?? null;
+
+      if (newRoomSize !== currentRoomSize) {
+        const RoommateGroup = (await import("@/models/RoommateGroup")).default;
+        const Allocation = (await import("@/models/Allocation")).default;
+        const { validateRoomSizeChange } = await import("@/services/roomSize/roomSizeRules");
+
+        const activeGroup = await RoommateGroup.findOne({
+          "members.user": user._id,
+          status: { $in: ["forming", "complete", "locked"] },
+        }).lean();
+
+        const activeAlloc = await Allocation.findOne({
+          student: user._id,
+          status: "active",
+        }).lean();
+
+        const check = validateRoomSizeChange({
+          currentRoomSize,
+          newRoomSize,
+          inActiveGroup: Boolean(activeGroup),
+          hasAllocation: Boolean(activeAlloc),
+        });
+
+        if (!check.allowed) {
+          return failure(check.reason, 409);
+        }
+      }
+    }
+
     const updated = await upsertPreferences(user._id, validation.data);
 
     return success(updated, "Preferences saved successfully");

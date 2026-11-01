@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import api from "@/lib/axios";
+import Alert from "@/components/ui/Alert";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import Modal from "@/components/ui/Modal";
@@ -16,6 +17,7 @@ export default function StudentMatchesPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [preferencesIncomplete, setPreferencesIncomplete] = useState(false);
+  const [singleRoom, setSingleRoom] = useState(false);
   const [groupStatusBanner, setGroupStatusBanner] = useState(null);
   const [leaderGroup, setLeaderGroup] = useState(null);
   const [invitedUserIds, setInvitedUserIds] = useState(new Set());
@@ -49,6 +51,7 @@ export default function StudentMatchesPage() {
           const data = res.data.data;
           setGroupStatusBanner(data.groupStatusBanner || null);
           setLeaderGroup(data.leaderGroup || null);
+          setSingleRoom(Boolean(data.singleRoom));
           setMatches(data.matches || []);
           setTotal(data.total || 0);
           setPage(data.page || 1);
@@ -170,6 +173,39 @@ export default function StudentMatchesPage() {
               className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3.5 text-sm font-bold text-white shadow-md shadow-indigo-600/25 hover:bg-indigo-700 transition-all"
             >
               Start 4-Step Questionnaire &rarr;
+            </Link>
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Back to Dashboard
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // State: Single Room Selection (No Roommates Needed)
+  if (singleRoom) {
+    return (
+      <div className="mx-auto max-w-4xl py-8 px-4 sm:px-6 lg:px-8">
+        <div className="relative overflow-hidden rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 via-white to-blue-50/60 p-8 sm:p-12 text-center shadow-sm">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-indigo-600 text-white shadow-xl shadow-indigo-500/25 text-3xl mb-6">
+            🛏️
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+            Single Room Selected
+          </h1>
+          <p className="mx-auto mt-4 max-w-xl text-sm sm:text-base text-slate-600 leading-relaxed">
+            You chose a single room, so no roommate matching is needed. You will be allocated a 1-bed room independently without roommates.
+          </p>
+          <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link
+              href="/dashboard/preferences"
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3.5 text-sm font-bold text-white shadow-md shadow-indigo-600/25 hover:bg-indigo-700 transition-all"
+            >
+              Change room type preference &rarr;
             </Link>
             <Link
               href="/dashboard"
@@ -471,24 +507,15 @@ export default function StudentMatchesPage() {
                   </button>
 
                   <div className="flex items-center">
-                    {leaderGroup && leaderGroup.freeSeats > 0 ? (
-                      <Button
-                        variant={invitedUserIds.has(item.id) ? "outline" : "primary"}
-                        size="sm"
-                        disabled={invitedUserIds.has(item.id) || invitingId === item.id}
-                        loading={invitingId === item.id}
-                        onClick={() => handleInviteToGroup(item.id)}
-                      >
-                        {invitedUserIds.has(item.id) ? "Invited ✓" : "Invite to group"}
-                      </Button>
-                    ) : (
-                      <Link
-                        href="/dashboard/group"
-                        className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors"
-                      >
-                        Create a group first &rarr;
-                      </Link>
-                    )}
+                    <Button
+                      variant={invitedUserIds.has(item.id) ? "outline" : "primary"}
+                      size="sm"
+                      disabled={invitedUserIds.has(item.id) || invitingId === item.id}
+                      loading={invitingId === item.id}
+                      onClick={() => handleInviteToGroup(item.id)}
+                    >
+                      {invitedUserIds.has(item.id) ? "Invited ✓" : "Invite to Room"}
+                    </Button>
                   </div>
                 </div>
               </div>

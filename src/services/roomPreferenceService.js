@@ -10,19 +10,19 @@
  */
 
 import mongoose from "mongoose";
-import connectDB from "@/lib/db";
-import User from "@/models/User";
-import Preference from "@/models/Preference";
-import Hostel from "@/models/Hostel";
-import Room from "@/models/Room";
-import RoommateGroup from "@/models/RoommateGroup";
-import AllocationIntent from "@/models/AllocationIntent";
+import connectDB from "../lib/db.js";
+import User from "../models/User.js";
+import Preference from "../models/Preference.js";
+import Hostel from "../models/Hostel.js";
+import Room from "../models/Room.js";
+import RoommateGroup from "../models/RoommateGroup.js";
+import AllocationIntent from "../models/AllocationIntent.js";
 import {
   isHostelEligibleForGroup,
   resolveAcConflict,
   suggestDefaultAcType,
   normalizePreferences,
-} from "./roomPreferences/preferenceLogic";
+} from "./roomPreferences/preferenceLogic.js";
 
 /**
  * Retrieves eligible hostels for a student's group or auto-assign intent,
@@ -316,6 +316,11 @@ export async function saveRoomPreferences(userId, rawData) {
     if (group.status === "disbanded") {
       throw new Error("Cannot save room preferences for a disbanded group");
     }
+    if (group.selectedRoom) {
+      const err = new Error("Room preferences cannot be modified because your group already has a selected room");
+      err.statusCode = 409;
+      throw err;
+    }
     if (group.leader.toString() !== userId.toString()) {
       const err = new Error("Only the group leader has permission to save room preferences");
       err.statusCode = 403;
@@ -551,7 +556,7 @@ export async function getPreferencesDemandSummary() {
   await connectDB();
 
   // 1. Fetch active groups & auto-assign intents
-  const [activeGroups, autoIntents, allHostels, roomAgg] = await Promise.all([
+  const [activeGroups, autoIntents, allHostels, roomAgg, allPrefs] = await Promise.all([
     RoommateGroup.find({ status: { $in: ["forming", "complete"] } })
       .select("targetSize status roomPreferences members")
       .lean(),
@@ -584,7 +589,15 @@ export async function getPreferencesDemandSummary() {
         },
       },
     ]),
+    Preference.find({ completedAt: { $ne: null } })
+      .select("student roomSize")
+      .lean(),
   ]);
+
+  const prefMap = new Map();
+  allPrefs.forEach((p) => {
+    if (p.student) prefMap.set(p.student.toString(), p.roomSize);
+  });
 
   // Map inventory by hostel
   const inventoryByHostel = new Map();
@@ -594,6 +607,7 @@ export async function getPreferencesDemandSummary() {
     availableRooms: 0,
     availableBeds: 0,
     bySize: {
+      1: { rooms: 0, beds: 0, availableRooms: 0, availableBeds: 0 },
       2: { rooms: 0, beds: 0, availableRooms: 0, availableBeds: 0 },
       3: { rooms: 0, beds: 0, availableRooms: 0, availableBeds: 0 },
       4: { rooms: 0, beds: 0, availableRooms: 0, availableBeds: 0 },
@@ -613,8 +627,8 @@ export async function getPreferencesDemandSummary() {
         totalBeds: 0,
         availableRooms: 0,
         availableBeds: 0,
-        bySize: { 2: 0, 3: 0, 4: 0 },
-        bySizeAvailable: { 2: 0, 3: 0, 4: 0 },
+        bySize: { 1: 0, 2: 0, 3: 0, 4: 0 },
+        bySizeAvailable: { 1: 0, 2: 0, 3: 0, 4: 0 },
         acBedsAvailable: 0,
         nonAcBedsAvailable: 0,
       });
@@ -659,6 +673,7 @@ export async function getPreferencesDemandSummary() {
   const acDemand = { ac: 0, "non-ac": 0, "no-preference": 0 };
   const floorDemand = { low: 0, mid: 0, high: 0, any: 0 };
   const roomSizeDemand = {
+    1: { groups: 0, autoStudents: 0, totalBedsDemanded: 0 },
     2: { groups: 0, autoStudents: 0, totalBedsDemanded: 0 },
     3: { groups: 0, autoStudents: 0, totalBedsDemanded: 0 },
     4: { groups: 0, autoStudents: 0, totalBedsDemanded: 0 },
@@ -685,7 +700,7 @@ export async function getPreferencesDemandSummary() {
     }
   });
 
-  // Auto students demand
+  // Auto students demand (uses Preference.roomSize if available)
   autoIntents.forEach((intent) => {
     const p = intent.roomPreferences || {};
     const firstChoice = p.preferredHostels?.[0]?.toString();
@@ -699,7 +714,8 @@ export async function getPreferencesDemandSummary() {
     const floor = p.floorPreference || "any";
     floorDemand[floor] = (floorDemand[floor] || 0) + 1;
 
-    const size = intent.preferredRoomSize || 2;
+    const userId = intent.user?.toString();
+    const size = prefMap.get(userId) || intent.preferredRoomSize || 2;
     if (roomSizeDemand[size]) {
       roomSizeDemand[size].autoStudents += 1;
       roomSizeDemand[size].totalBedsDemanded += 1; // 1 bed per auto student

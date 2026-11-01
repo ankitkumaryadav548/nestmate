@@ -98,6 +98,36 @@ export async function getHostelsWithStats(user, options = {}) {
         totalRooms: { $size: "$roomsData" },
         totalCapacity: { $sum: "$roomsData.capacity" },
         occupiedBeds: { $sum: "$roomsData.currentOccupancy" },
+        reservedBeds: {
+          $sum: {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$roomsData",
+                  as: "r",
+                  cond: { $eq: ["$$r.status", "claimed"] },
+                },
+              },
+              as: "cr",
+              in: { $max: [0, { $subtract: ["$$cr.capacity", "$$cr.currentOccupancy"] }] },
+            },
+          },
+        },
+        availableBeds: {
+          $sum: {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$roomsData",
+                  as: "r",
+                  cond: { $eq: ["$$r.status", "available"] },
+                },
+              },
+              as: "ar",
+              in: "$$ar.capacity",
+            },
+          },
+        },
         maintenanceRooms: {
           $size: {
             $filter: {
@@ -106,13 +136,6 @@ export async function getHostelsWithStats(user, options = {}) {
               cond: { $eq: ["$$r.status", "maintenance"] },
             },
           },
-        },
-      },
-    },
-    {
-      $addFields: {
-        availableBeds: {
-          $max: [0, { $subtract: ["$totalCapacity", "$occupiedBeds"] }],
         },
       },
     },
@@ -170,6 +193,36 @@ export async function getHostelByIdWithStats(id, user) {
         totalRooms: { $size: "$roomsData" },
         totalCapacity: { $sum: "$roomsData.capacity" },
         occupiedBeds: { $sum: "$roomsData.currentOccupancy" },
+        reservedBeds: {
+          $sum: {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$roomsData",
+                  as: "r",
+                  cond: { $eq: ["$$r.status", "claimed"] },
+                },
+              },
+              as: "cr",
+              in: { $max: [0, { $subtract: ["$$cr.capacity", "$$cr.currentOccupancy"] }] },
+            },
+          },
+        },
+        availableBeds: {
+          $sum: {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$roomsData",
+                  as: "r",
+                  cond: { $eq: ["$$r.status", "available"] },
+                },
+              },
+              as: "ar",
+              in: "$$ar.capacity",
+            },
+          },
+        },
         maintenanceRooms: {
           $size: {
             $filter: {
@@ -178,13 +231,6 @@ export async function getHostelByIdWithStats(id, user) {
               cond: { $eq: ["$$r.status", "maintenance"] },
             },
           },
-        },
-      },
-    },
-    {
-      $addFields: {
-        availableBeds: {
-          $max: [0, { $subtract: ["$totalCapacity", "$occupiedBeds"] }],
         },
       },
     },

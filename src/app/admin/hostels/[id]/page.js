@@ -148,6 +148,9 @@ export default function HostelDetailPage() {
     if (status === "maintenance") {
       return <Badge variant="warning" size="sm">Maintenance</Badge>;
     }
+    if (status === "claimed") {
+      return <Badge variant="indigo" size="sm">Claimed</Badge>;
+    }
     if (currentOccupancy >= capacity) {
       return <Badge variant="danger" size="sm">Full</Badge>;
     }

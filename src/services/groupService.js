@@ -1,22 +1,29 @@
 import mongoose from "mongoose";
-import connectDB from "@/lib/db";
-import User from "@/models/User";
-import Preference from "@/models/Preference";
-import RoommateGroup from "@/models/RoommateGroup";
-import GroupInvitation from "@/models/GroupInvitation";
-import AllocationIntent from "@/models/AllocationIntent";
-import { getSettings } from "@/services/matchingService";
-import { calculateGroupScore, canJoinGroup } from "@/services/matching/groupScore";
+import connectDB from "../lib/db.js";
+import User from "../models/User.js";
+import Preference from "../models/Preference.js";
+import RoommateGroup from "../models/RoommateGroup.js";
+import GroupInvitation from "../models/GroupInvitation.js";
+import AllocationIntent from "../models/AllocationIntent.js";
+import { getSettings } from "./matchingService.js";
+import { calculateGroupScore, canJoinGroup } from "./matching/groupScore.js";
 import {
   GROUP_SIZE_OPTIONS,
   INVITE_EXPIRY_DAYS,
   MAX_INVITES_PER_STUDENT_PER_DAY,
   PENDING_INVITE_BUFFER,
   MIN_PAIR_SCORE,
-} from "@/config/groups";
-import { revalidatePreferencesForGroup } from "./roomPreferenceService";
-import { suggestDefaultAcType } from "./roomPreferences/preferenceLogic";
+} from "../config/groups.js";
+import { revalidatePreferencesForGroup } from "./roomPreferenceService.js";
+import { suggestDefaultAcType } from "./roomPreferences/preferenceLogic.js";
 import { notify, notifyMany } from "./notificationService.js";
+import { joinRoomedGroup, leaveRoomedGroup, releaseRoomForDisbandedGroup } from "./roomSelectionService.js";
+import { canJoinRoomedGroup } from "./selection/roomState.js";
+import { effectiveWindowStatus } from "./selection/windowStatus.js";
+import SelectionWindow from "../models/SelectionWindow.js";
+import Room from "../models/Room.js";
+import Hostel from "../models/Hostel.js";
+import Allocation from "../models/Allocation.js";
 
 /**
  * FAIRNESS & INTEGRITY GUARANTEE:
@@ -43,18 +50,13 @@ function formatPublicMember(user, isLeader = false, joinedAt = null) {
 
 /**
  * Creates a new roommate group with the authenticated student as leader.
+ * Target room size is automatically derived from the student's questionnaire roomSize preference.
  * 
  * @param {string} userId 
- * @param {number} targetSize 
  * @returns {Promise<object>}
  */
-export async function createGroup(userId, targetSize) {
+export async function createGroup(userId) {
   await connectDB();
-
-  const parsedSize = Number(targetSize);
-  if (!GROUP_SIZE_OPTIONS.includes(parsedSize)) {
-    throw new Error(`Target room size must be one of: [${GROUP_SIZE_OPTIONS.join(", ")}]`);
-  }
 
   // 1. Verify student and completed questionnaire
   const user = await User.findById(userId).lean();
@@ -63,11 +65,25 @@ export async function createGroup(userId, targetSize) {
   }
 
   const pref = await Preference.findOne({ student: userId }).lean();
-  if (!pref || !pref.completedAt) {
+  if (!pref || !pref.completedAt || !pref.roomSize) {
     const error = new Error("Complete your preferences questionnaire first");
     error.code = "PREFERENCES_INCOMPLETE";
     throw error;
   }
+
+  if (pref.roomSize === 1) {
+    const error = new Error("Single-room students do not need a group");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (![2, 3, 4].includes(pref.roomSize)) {
+    const error = new Error(`Target room size must be one of: [${GROUP_SIZE_OPTIONS.filter((s) => s > 1).join(", ")}]`);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const parsedSize = pref.roomSize;
 
   // 2. Check if student already belongs to an active group
   const existingGroup = await RoommateGroup.findOne({
@@ -80,7 +96,7 @@ export async function createGroup(userId, targetSize) {
   }
 
   // 2b. Check if student already has an active room allocation
-  const Allocation = (await import("@/models/Allocation")).default;
+
   const activeAlloc = await Allocation.findOne({ student: userId, status: "active" }).lean();
   if (activeAlloc) {
     throw new Error("You already have an active room allocation and cannot create a group");
@@ -260,7 +276,7 @@ export async function getMyGroup(userId) {
 
   if (group.status === "locked") {
     try {
-      const Allocation = (await import("@/models/Allocation")).default;
+    
       const alloc = await Allocation.findOne({ group: group._id, status: "active" })
         .populate("room", "roomNumber floor roomType capacity")
         .populate("hostel", "name code")
@@ -282,62 +298,6 @@ export async function getMyGroup(userId) {
   return result;
 }
 
-/**
- * Updates group target room size (leader only).
- * Automatically transitions group between "forming" and "complete".
- * 
- * @param {string} leaderId 
- * @param {number} newSize 
- * @returns {Promise<object>}
- */
-export async function updateTargetSize(leaderId, newSize) {
-  await connectDB();
-
-  const parsedSize = Number(newSize);
-  if (!GROUP_SIZE_OPTIONS.includes(parsedSize)) {
-    throw new Error(`Target room size must be one of: [${GROUP_SIZE_OPTIONS.join(", ")}]`);
-  }
-
-  const group = await RoommateGroup.findOne({
-    leader: leaderId,
-    status: { $in: ["forming", "complete"] },
-  });
-
-  if (!group) {
-    throw new Error("Active group not found or you are not the leader");
-  }
-
-  if (parsedSize < group.members.length) {
-    throw new Error(
-      `Cannot shrink target size to ${parsedSize}. Your group already has ${group.members.length} members.`
-    );
-  }
-
-  group.targetSize = parsedSize;
-
-  if (parsedSize === group.members.length) {
-    group.status = "complete";
-    group.completedAt = new Date();
-    // Cancel remaining pending invitations
-    await GroupInvitation.updateMany(
-      { group: group._id, status: "pending" },
-      { $set: { status: "cancelled" } }
-    );
-  } else {
-    group.status = "forming";
-    group.completedAt = null;
-  }
-
-  await group.save();
-
-  // Update leader's allocation intent
-  await AllocationIntent.findOneAndUpdate(
-    { user: leaderId },
-    { $set: { preferredRoomSize: parsedSize } }
-  );
-
-  return group;
-}
 
 /**
  * Evaluates candidate students that can be invited to the leader's group.
@@ -422,7 +382,7 @@ export async function getGroupCandidates(leaderId, filters = {}) {
   });
 
   // Students with active published allocations
-  const Allocation = (await import("@/models/Allocation")).default;
+
   const activeAllocations = await Allocation.find({ status: "active" }).select("student").lean();
   activeAllocations.forEach((a) => {
     if (a.student) unavailableIds.add(a.student.toString());
@@ -446,19 +406,35 @@ export async function getGroupCandidates(leaderId, filters = {}) {
   const candidatePrefs = await Preference.find({
     student: { $in: candidateIds },
     completedAt: { $ne: null },
+    roomSize: group.targetSize,
   }).lean();
 
   const candidatePrefMap = new Map();
   candidatePrefs.forEach((p) => candidatePrefMap.set(p.student.toString(), p));
 
   // 5. Evaluate canJoinGroup in memory
+  let selectedRoomDoc = null;
+  let selectedHostelDoc = null;
+  if (group.selectedRoom) {
+    selectedRoomDoc = await Room.findById(group.selectedRoom).lean();
+    if (selectedRoomDoc) {
+      selectedHostelDoc = await Hostel.findById(selectedRoomDoc.hostel).lean();
+    }
+  }
+
   const scoredCandidates = [];
 
   for (const user of candidateUsers) {
     const pref = candidatePrefMap.get(user._id.toString());
-    if (!pref) continue;
+    if (!pref || pref.roomSize !== group.targetSize) continue;
 
     const candidateObj = { ...user, preferences: pref };
+
+    // If group already has a room, candidate must be eligible for that room & hostel
+    if (selectedRoomDoc && selectedHostelDoc) {
+      const roomCheck = canJoinRoomedGroup(candidateObj, selectedRoomDoc, selectedHostelDoc);
+      if (!roomCheck.ok) continue;
+    }
 
     const joinEval = canJoinGroup(
       candidateObj,
@@ -532,21 +508,137 @@ export async function getGroupCandidates(leaderId, filters = {}) {
  * @param {string} invitedUserId 
  * @returns {Promise<object>}
  */
-export async function sendInvitation(leaderId, invitedUserId) {
+export async function sendInvitation(inviterId, invitedUserId) {
   await connectDB();
 
-  if (leaderId === invitedUserId) {
+  if (inviterId === invitedUserId) {
     throw new Error("You cannot invite yourself");
   }
 
-  // 1. Verify forming group
-  const group = await RoommateGroup.findOne({
-    leader: leaderId,
+  // 1. Verify inviter is an active student with completed preferences
+  const inviterUser = await User.findById(inviterId).lean();
+  if (!inviterUser || inviterUser.role !== "student" || !inviterUser.isActive) {
+    throw new Error("Active student account required");
+  }
+
+  const inviterPref = await Preference.findOne({ student: inviterId }).lean();
+  if (!inviterPref || !inviterPref.completedAt) {
+    const err = new Error("Complete your preferences questionnaire before inviting others");
+    err.code = "PREFERENCES_INCOMPLETE";
+    throw err;
+  }
+
+  // 2. Check inviter not already in a finalized / locked group
+  const inviterLockedGroup = await RoommateGroup.findOne({
+    "members.user": inviterId,
+    status: { $in: ["complete", "locked"] },
+  }).lean();
+  if (inviterLockedGroup) {
+    throw new Error("Your group is already full or has been allocated a room");
+  }
+
+  // 3. Check daily invite limit
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const dailySentCount = await GroupInvitation.countDocuments({
+    invitedBy: inviterId,
+    createdAt: { $gte: twentyFourHoursAgo },
+  });
+  if (dailySentCount >= MAX_INVITES_PER_STUDENT_PER_DAY) {
+    throw new Error(
+      `Daily invitation limit reached (${MAX_INVITES_PER_STUDENT_PER_DAY} invitations per 24 hours).`
+    );
+  }
+
+  // 4. Verify invited student
+  const invitedUser = await User.findById(invitedUserId).lean();
+  if (!invitedUser || invitedUser.role !== "student" || !invitedUser.isActive) {
+    throw new Error("Invited student is not available");
+  }
+  if (invitedUser.gender !== inviterUser.gender) {
+    throw new Error("Cannot invite students of different gender. Strict gender separation applies.");
+  }
+
+  const invitedPref = await Preference.findOne({ student: invitedUserId }).lean();
+  if (!invitedPref || !invitedPref.completedAt || !invitedPref.roomSize) {
+    throw new Error("Invited student is not available");
+  }
+
+  // 5. Check invited student is not in a finalized/committed group
+  const inviteeLockedGroup = await RoommateGroup.findOne({
+    "members.user": invitedUserId,
+    status: { $in: ["complete", "locked"] },
+  }).lean();
+  if (inviteeLockedGroup) {
+    throw new Error("This student already has a finalized room group or allocation");
+  }
+
+  // If invitee is a non-leader member of another forming group, block
+  const inviteeFormingGroup = await RoommateGroup.findOne({
+    "members.user": invitedUserId,
+    status: "forming",
+  }).lean();
+  if (inviteeFormingGroup) {
+    const isTheirOwnGroup =
+      inviteeFormingGroup.leader.toString() === invitedUserId.toString();
+    if (!isTheirOwnGroup) {
+      throw new Error("Student is already a member of another forming roommate group");
+    }
+    if (inviteeFormingGroup.members.length > 1) {
+      throw new Error(
+        "Student already leads a group with other members and cannot join a different group"
+      );
+    }
+  }
+
+  // Check active room allocation
+
+  const inviteeAlloc = await Allocation.findOne({ student: invitedUserId, status: "active" }).lean();
+  if (inviteeAlloc) {
+    throw new Error("Student already has an active room allocation");
+  }
+
+  // 6. Get or auto-create the inviter's forming group
+  let group = await RoommateGroup.findOne({
+    leader: inviterId,
     status: "forming",
   });
 
   if (!group) {
-    throw new Error("Forming roommate group not found or you are not the leader");
+    if (!inviterPref.roomSize || inviterPref.roomSize === 1) {
+      throw new Error("Single-room students do not need a group");
+    }
+    const targetSize = inviterPref.roomSize;
+    const defaultAc = suggestDefaultAcType([{ ...inviterUser, preferences: inviterPref }]);
+    group = await RoommateGroup.create({
+      leader: inviterId,
+      gender: inviterUser.gender,
+      targetSize,
+      members: [{ user: inviterId, joinedAt: new Date() }],
+      status: "forming",
+      averageScore: 100,
+      lowestPairScore: 100,
+      isDemo: Boolean(inviterUser.isDemo),
+      roomPreferences: {
+        preferredHostels: [],
+        acType: defaultAc,
+        floorPreference: "any",
+        updatedAt: new Date(),
+        updatedBy: inviterId,
+      },
+      preferencesNeedReview: false,
+    });
+
+    // Upsert allocation intent
+    await AllocationIntent.findOneAndUpdate(
+      { user: inviterId },
+      { $set: { mode: "group", preferredRoomSize: targetSize } },
+      { upsert: true, new: true }
+    );
+  }
+
+  // Validate invited student has same roomSize as group targetSize
+  if (invitedPref.roomSize !== group.targetSize) {
+    throw new Error("Invited student is not available");
   }
 
   const freeSeats = group.targetSize - group.members.length;
@@ -554,131 +646,80 @@ export async function sendInvitation(leaderId, invitedUserId) {
     throw new Error("Your group is already full");
   }
 
-  // 2. Check pending invitation buffer limit
+  // 7. Check pending invite buffer
   const activePendingCount = await GroupInvitation.countDocuments({
     group: group._id,
     status: "pending",
     expiresAt: { $gt: new Date() },
   });
-
   const maxAllowedPending = freeSeats + PENDING_INVITE_BUFFER;
   if (activePendingCount >= maxAllowedPending) {
     throw new Error(
-      `Pending invitations limit reached (${maxAllowedPending}). Wait for responses or cancel pending invitations.`
+      `Pending invitations limit reached (${maxAllowedPending}). Wait for responses or cancel existing ones.`
     );
   }
 
-  // 3. Daily invitation limit check
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-  const dailySentCount = await GroupInvitation.countDocuments({
-    invitedBy: leaderId,
-    createdAt: { $gte: twentyFourHoursAgo },
-  });
-
-  if (dailySentCount >= MAX_INVITES_PER_STUDENT_PER_DAY) {
-    throw new Error(
-      `Daily invitation limit reached (${MAX_INVITES_PER_STUDENT_PER_DAY} invitations per 24 hours).`
-    );
-  }
-
-  // 4. Verify candidate student
-  const invitedUser = await User.findById(invitedUserId).lean();
-  if (!invitedUser || invitedUser.role !== "student" || !invitedUser.isActive) {
-    throw new Error("Invited student is not available");
-  }
-
-  if (invitedUser.gender !== group.gender) {
-    throw new Error("Cannot invite students of different gender. Strict gender separation applies.");
-  }
-
-  const invitedPref = await Preference.findOne({ student: invitedUserId }).lean();
-  if (!invitedPref || !invitedPref.completedAt) {
-    throw new Error("Invited student has not completed their preferences questionnaire");
-  }
-
-  // Check candidate not already in an active group
-  const candidateActiveGroup = await RoommateGroup.findOne({
-    "members.user": invitedUserId,
-    status: { $in: ["forming", "complete", "locked"] },
-  }).lean();
-
-  if (candidateActiveGroup) {
-    throw new Error("Student is already a member of an active roommate group");
-  }
-
-  // Check candidate does not have an active room allocation
-  const Allocation = (await import("@/models/Allocation")).default;
-  const candidateAlloc = await Allocation.findOne({ student: invitedUserId, status: "active" }).lean();
-  if (candidateAlloc) {
-    throw new Error("Student already has an active room allocation");
-  }
-
-  // Check no existing pending invitation
+  // 8. No duplicate pending invite to the same person
   const existingInvite = await GroupInvitation.findOne({
     group: group._id,
     invitedUser: invitedUserId,
     status: "pending",
     expiresAt: { $gt: new Date() },
   }).lean();
-
   if (existingInvite) {
     throw new Error("An active invitation has already been sent to this student");
   }
 
-  // 5. Server-side re-validation of canJoinGroup
+  // 9. Compatibility check
   const memberUserIds = group.members.map((m) => m.user);
   const [memberUsers, memberPrefs, settings] = await Promise.all([
     User.find({ _id: { $in: memberUserIds } }).lean(),
     Preference.find({ student: { $in: memberUserIds } }).lean(),
     getSettings(),
   ]);
-
   const memberPrefMap = new Map();
   memberPrefs.forEach((p) => memberPrefMap.set(p.student.toString(), p));
-
   const currentMembers = memberUsers.map((u) => ({
     ...u,
     preferences: memberPrefMap.get(u._id.toString()) || {},
   }));
 
   const candidateObj = { ...invitedUser, preferences: invitedPref };
-  const joinCheck = canJoinGroup(
-    candidateObj,
-    currentMembers,
-    settings.weights,
-    MIN_PAIR_SCORE
-  );
 
+  // If group already has a selected room, invited candidate must be eligible for it
+  if (group.selectedRoom) {
+    const roomDoc = await Room.findById(group.selectedRoom).lean();
+    const hostelDoc = roomDoc ? await Hostel.findById(roomDoc.hostel).lean() : null;
+    if (roomDoc && hostelDoc) {
+      const roomCheck = canJoinRoomedGroup(candidateObj, roomDoc, hostelDoc);
+      if (!roomCheck.ok) {
+        throw new Error("Invited student is not available");
+      }
+    }
+  }
+
+  const joinCheck = canJoinGroup(candidateObj, currentMembers, settings.weights, MIN_PAIR_SCORE);
   if (!joinCheck.allowed) {
-    // Generic privacy-preserving message
     throw new Error("Candidate is not compatible with current group criteria");
   }
 
-  // 6. Create invitation with expiry
+  // 10. Create the invitation
   const expiresAt = new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
-
   const invitation = await GroupInvitation.create({
     group: group._id,
     invitedUser: invitedUserId,
-    invitedBy: leaderId,
+    invitedBy: inviterId,
     status: "pending",
     expiresAt,
-    scoreSnapshot: {
-      average: joinCheck.average,
-      lowest: joinCheck.lowest,
-    },
+    scoreSnapshot: { average: joinCheck.average, lowest: joinCheck.lowest },
   });
 
-  // Post-commit notification: invitation_received to invited student (best-effort)
+  // Notify invited student
   try {
-    const leaderUser = await User.findById(leaderId).select("name").lean();
     await notify(
       invitedUserId,
       "invitation_received",
-      {
-        leaderName: leaderUser?.name || "A group leader",
-        size: group.targetSize,
-      },
+      { leaderName: inviterUser.name || "A student", size: group.targetSize },
       {
         dedupeParts: [invitation._id.toString()],
         data: { invitationId: invitation._id.toString(), groupId: group._id.toString() },
@@ -824,18 +865,42 @@ export async function acceptInvitation(userId, invitationId) {
     throw new Error("Active invitation not found or already expired/handled");
   }
 
-  // 2. Check user is not in an active group
+  // 2. Check user is not in an active group (complete/locked → hard block).
+  //    If they are the solo leader of a forming group, auto-disband it so they
+  //    can join the new group (their group had no other members to orphan).
   const existingGroup = await RoommateGroup.findOne({
     "members.user": userId,
     status: { $in: ["forming", "complete", "locked"] },
   }).lean();
 
   if (existingGroup) {
-    throw new Error("You already belong to an active roommate group");
+    if (existingGroup.status === "complete" || existingGroup.status === "locked") {
+      throw new Error("You already belong to a finalized roommate group");
+    }
+
+    // forming group: only auto-disband if they are the sole leader with no other members
+    const isLeader = existingGroup.leader.toString() === userId.toString();
+    const memberCount = existingGroup.members.length;
+
+    if (!isLeader || memberCount > 1) {
+      throw new Error(
+        "You already belong to an active roommate group. Leave your current group before accepting a new invitation."
+      );
+    }
+
+    // Safe to disband — student is the only member of their own forming group
+    await RoommateGroup.findByIdAndUpdate(existingGroup._id, {
+      $set: { status: "disbanded", disbandedAt: new Date() },
+    });
+    // Cancel any pending outgoing invites from this disbanded group
+    await GroupInvitation.updateMany(
+      { group: existingGroup._id, status: "pending" },
+      { $set: { status: "cancelled", respondedAt: new Date() } }
+    );
   }
 
   // Check user does not have an active room allocation
-  const Allocation = (await import("@/models/Allocation")).default;
+
   const userAlloc = await Allocation.findOne({ student: userId, status: "active" }).lean();
   if (userAlloc) {
     throw new Error("You already have an active room allocation");
@@ -866,6 +931,12 @@ export async function acceptInvitation(userId, invitationId) {
   }));
 
   const candidateObj = { ...candidateUser, preferences: candidatePref || {} };
+
+  // Room size validation
+  if (!candidatePref || !candidatePref.completedAt || !candidatePref.roomSize || candidatePref.roomSize !== group.targetSize) {
+    throw new Error("Your preferences are not compatible with this group");
+  }
+
   const joinCheck = canJoinGroup(
     candidateObj,
     currentMembers,
@@ -877,36 +948,128 @@ export async function acceptInvitation(userId, invitationId) {
     throw new Error("Your preferences conflict with one or more members of this group");
   }
 
-  // 5. ATOMIC CONDITIONAL UPDATE:
-  // Adds member ONLY if group is forming, user is not already present,
-  // and current member count is strictly less than targetSize ($expr comparison).
-  const updatedGroup = await RoommateGroup.findOneAndUpdate(
-    {
-      _id: group._id,
-      status: "forming",
-      "members.user": { $ne: userId },
-      $expr: { $lt: [{ $size: "$members" }, "$targetSize"] },
-    },
-    {
-      $push: { members: { user: userId, joinedAt: new Date() } },
-    },
-    { new: true }
-  );
-
-  if (!updatedGroup) {
-    throw new Error("Group is full or another member took the last available seat");
+  // If group already has a room, check candidate eligibility for that specific room
+  if (group.selectedRoom) {
+    const roomDoc = await Room.findById(group.selectedRoom).lean();
+    const hostelDoc = roomDoc ? await Hostel.findById(roomDoc.hostel).lean() : null;
+    if (roomDoc && hostelDoc) {
+      const roomCheck = canJoinRoomedGroup(candidateObj, roomDoc, hostelDoc);
+      if (!roomCheck.ok) {
+        const error = new Error("Your preferences or academic year are not compatible with this group's allocated room");
+        error.statusCode = 409;
+        throw error;
+      }
+    }
   }
 
-  // 6. Mark invitation accepted
-  invitation.status = "accepted";
-  invitation.respondedAt = new Date();
-  await invitation.save();
+  // 5. ATOMIC CONDITIONAL UPDATE / TRANSACTION
+  let updatedGroup = null;
 
-  // 7. Cancel all other pending incoming invitations for this student
-  await GroupInvitation.updateMany(
-    { invitedUser: userId, status: "pending" },
-    { $set: { status: "cancelled", respondedAt: new Date() } }
-  );
+  if (group.selectedRoom) {
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        updatedGroup = await RoommateGroup.findOneAndUpdate(
+          {
+            _id: group._id,
+            status: "forming",
+            "members.user": { $ne: userId },
+            $expr: { $lt: [{ $size: "$members" }, "$targetSize"] },
+          },
+          {
+            $push: { members: { user: userId, joinedAt: new Date() } },
+          },
+          { session, new: true }
+        );
+
+        if (!updatedGroup) {
+          const error = new Error("Group is full or another member took the last available seat");
+          error.statusCode = 409;
+          throw error;
+        }
+
+        // Claim seat in room
+        await joinRoomedGroup(group._id, userId, {
+          session,
+          source: "selection",
+        });
+
+        invitation.status = "accepted";
+        invitation.respondedAt = new Date();
+        await invitation.save({ session });
+
+        await AllocationIntent.findOneAndUpdate(
+          { user: userId },
+          { $set: { mode: "group", preferredRoomSize: group.targetSize } },
+          { session, upsert: true }
+        );
+
+        await GroupInvitation.updateMany(
+          { invitedUser: userId, status: "pending" },
+          { $set: { status: "cancelled", respondedAt: new Date() } },
+          { session }
+        );
+
+        if (updatedGroup.members.length === updatedGroup.targetSize) {
+          updatedGroup.status = "complete";
+          updatedGroup.completedAt = new Date();
+          await GroupInvitation.updateMany(
+            { group: updatedGroup._id, status: "pending" },
+            { $set: { status: "cancelled" } },
+            { session }
+          );
+        }
+
+        await updatedGroup.save({ session });
+      });
+    } finally {
+      await session.endSession();
+    }
+  } else {
+    updatedGroup = await RoommateGroup.findOneAndUpdate(
+      {
+        _id: group._id,
+        status: "forming",
+        "members.user": { $ne: userId },
+        $expr: { $lt: [{ $size: "$members" }, "$targetSize"] },
+      },
+      {
+        $push: { members: { user: userId, joinedAt: new Date() } },
+      },
+      { new: true }
+    );
+
+    if (!updatedGroup) {
+      const error = new Error("Group is full or another member took the last available seat");
+      error.statusCode = 409;
+      throw error;
+    }
+
+    invitation.status = "accepted";
+    invitation.respondedAt = new Date();
+    await invitation.save();
+
+    await AllocationIntent.findOneAndUpdate(
+      { user: userId },
+      { $set: { mode: "group", preferredRoomSize: group.targetSize } },
+      { upsert: true }
+    );
+
+    await GroupInvitation.updateMany(
+      { invitedUser: userId, status: "pending" },
+      { $set: { status: "cancelled", respondedAt: new Date() } }
+    );
+
+    if (updatedGroup.members.length === updatedGroup.targetSize) {
+      updatedGroup.status = "complete";
+      updatedGroup.completedAt = new Date();
+      await GroupInvitation.updateMany(
+        { group: updatedGroup._id, status: "pending" },
+        { $set: { status: "cancelled" } }
+      );
+      await updatedGroup.save();
+    }
+  }
 
   // 8. Recompute group scores with new member
   const allMemberUsers = await User.find({
@@ -1072,52 +1235,92 @@ export async function leaveGroup(userId) {
     throw new Error("Cannot leave a locked group. Room allocation has already been finalized.");
   }
 
-  // If student was the only member, disband
-  if (group.members.length <= 1) {
-    group.status = "disbanded";
-    group.disbandedAt = new Date();
-    await GroupInvitation.updateMany(
-      { group: group._id, status: "pending" },
-      { $set: { status: "cancelled" } }
-    );
-    await group.save();
+  // If group has selectedRoom, selection window must be open to leave/disband
+  if (group.selectedRoom) {
+    const liveWindow = await SelectionWindow.findOne({ isActive: true }).lean();
+    const windowStatus = effectiveWindowStatus(liveWindow);
+    if (windowStatus !== "open") {
+      const error = new Error("Cannot leave a group with a selected room while the selection window is not open.");
+      error.statusCode = 409;
+      throw error;
+    }
+  }
+
+  const session = await mongoose.startSession();
+  let wasComplete = false;
+  let wasLeader = false;
+  let remainingMemberIds = [];
+
+  try {
+    await session.withTransaction(async () => {
+      // If student was the only member, disband and release room
+      if (group.members.length <= 1) {
+        if (group.selectedRoom) {
+          await releaseRoomForDisbandedGroup(group._id, session);
+        }
+
+        group.status = "disbanded";
+        group.disbandedAt = new Date();
+        group.selectedRoom = null;
+        group.roomClaimedAt = null;
+        await GroupInvitation.updateMany(
+          { group: group._id, status: "pending" },
+          { $set: { status: "cancelled" } },
+          { session }
+        );
+        await group.save({ session });
+        return;
+      }
+
+      wasComplete = group.status === "complete";
+      wasLeader = group.leader.toString() === userId.toString();
+
+      // If group has selectedRoom, decrement occupancy & cancel member's allocation
+      if (group.selectedRoom) {
+        await leaveRoomedGroup(group._id, userId, { session, reason: "left_group" });
+      }
+
+      // Remove student from members array
+      group.members = group.members.filter((m) => m.user.toString() !== userId.toString());
+      remainingMemberIds = group.members.map((m) => m.user.toString());
+
+      // If leader is leaving, transfer leadership to earliest joined member
+      if (wasLeader) {
+        group.members.sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt));
+        group.leader = group.members[0].user;
+      }
+
+      // If group was complete, revert to forming
+      if (wasComplete) {
+        group.status = "forming";
+        group.completedAt = null;
+      }
+
+      // Recompute scores for remaining members
+      const settings = await getSettings();
+      const [users, prefs] = await Promise.all([
+        User.find({ _id: { $in: group.members.map((m) => m.user) } }).session(session).lean(),
+        Preference.find({ student: { $in: group.members.map((m) => m.user) } }).session(session).lean(),
+      ]);
+      const pMap = new Map();
+      prefs.forEach((p) => pMap.set(p.student.toString(), p));
+      const remaining = users.map((u) => ({ ...u, preferences: pMap.get(u._id.toString()) || {} }));
+
+      const scores = calculateGroupScore(remaining, settings.weights);
+      group.averageScore = scores.average;
+      group.lowestPairScore = scores.lowest;
+
+      await group.save({ session });
+    });
+  } finally {
+    await session.endSession();
+  }
+
+  if (group.status === "disbanded") {
     return { status: "disbanded" };
   }
 
-  const wasComplete = group.status === "complete";
-  const wasLeader = group.leader.toString() === userId.toString();
-
-  // Remove student from members array
-  group.members = group.members.filter((m) => m.user.toString() !== userId.toString());
-
-  // If leader is leaving, transfer leadership to earliest joined member
-  if (wasLeader) {
-    group.members.sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt));
-    group.leader = group.members[0].user;
-  }
-
-  // If group was complete, revert to forming
-  if (wasComplete) {
-    group.status = "forming";
-    group.completedAt = null;
-  }
-
-  // Recompute scores for remaining members
-  const settings = await getSettings();
-  const [users, prefs] = await Promise.all([
-    User.find({ _id: { $in: group.members.map((m) => m.user) } }).lean(),
-    Preference.find({ student: { $in: group.members.map((m) => m.user) } }).lean(),
-  ]);
-  const pMap = new Map();
-  prefs.forEach((p) => pMap.set(p.student.toString(), p));
-  const remaining = users.map((u) => ({ ...u, preferences: pMap.get(u._id.toString()) || {} }));
-
-  const scores = calculateGroupScore(remaining, settings.weights);
-  group.averageScore = scores.average;
-  group.lowestPairScore = scores.lowest;
-
-  await group.save();
-  await revalidatePreferencesForGroup(group._id);
+  await revalidatePreferencesForGroup(group._id).catch(() => {});
 
   // Post-commit notifications for leaveGroup (best-effort)
   try {
@@ -1197,28 +1400,49 @@ export async function removeMember(leaderId, memberId) {
     .filter((m) => m.user.toString() !== memberId.toString())
     .map((m) => m.user.toString());
 
-  group.members = group.members.filter((m) => m.user.toString() !== memberId.toString());
-
-  if (group.status === "complete") {
-    group.status = "forming";
-    group.completedAt = null;
+  if (group.selectedRoom) {
+    const liveWindow = await SelectionWindow.findOne({ isActive: true }).lean();
+    const windowStatus = effectiveWindowStatus(liveWindow);
+    if (windowStatus !== "open") {
+      const error = new Error("Cannot remove a member from a group with a selected room while the selection window is not open.");
+      error.statusCode = 409;
+      throw error;
+    }
   }
 
-  // Recompute scores
-  const settings = await getSettings();
-  const [users, prefs] = await Promise.all([
-    User.find({ _id: { $in: group.members.map((m) => m.user) } }).lean(),
-    Preference.find({ student: { $in: group.members.map((m) => m.user) } }).lean(),
-  ]);
-  const pMap = new Map();
-  prefs.forEach((p) => pMap.set(p.student.toString(), p));
-  const remaining = users.map((u) => ({ ...u, preferences: pMap.get(u._id.toString()) || {} }));
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      if (group.selectedRoom) {
+        await leaveRoomedGroup(group._id, memberId, { session, reason: "removed_by_leader" });
+      }
 
-  const scores = calculateGroupScore(remaining, settings.weights);
-  group.averageScore = scores.average;
-  group.lowestPairScore = scores.lowest;
+      group.members = group.members.filter((m) => m.user.toString() !== memberId.toString());
 
-  await group.save();
+      if (group.status === "complete") {
+        group.status = "forming";
+        group.completedAt = null;
+      }
+
+      // Recompute scores
+      const settings = await getSettings();
+      const [users, prefs] = await Promise.all([
+        User.find({ _id: { $in: group.members.map((m) => m.user) } }).session(session).lean(),
+        Preference.find({ student: { $in: group.members.map((m) => m.user) } }).session(session).lean(),
+      ]);
+      const pMap = new Map();
+      prefs.forEach((p) => pMap.set(p.student.toString(), p));
+      const remaining = users.map((u) => ({ ...u, preferences: pMap.get(u._id.toString()) || {} }));
+
+      const scores = calculateGroupScore(remaining, settings.weights);
+      group.averageScore = scores.average;
+      group.lowestPairScore = scores.lowest;
+
+      await group.save({ session });
+    });
+  } finally {
+    await session.endSession();
+  }
   await revalidatePreferencesForGroup(group._id);
 
   // Post-commit notifications: group_member_removed to student, group_member_left to others (best-effort)
@@ -1281,15 +1505,39 @@ export async function disbandGroup(leaderId) {
     .map((m) => m.user.toString())
     .filter((id) => id !== leaderId.toString());
 
-  group.status = "disbanded";
-  group.disbandedAt = new Date();
+  if (group.selectedRoom) {
+    const liveWindow = await SelectionWindow.findOne({ isActive: true }).lean();
+    const windowStatus = effectiveWindowStatus(liveWindow);
+    if (windowStatus !== "open") {
+      const error = new Error("Cannot disband a group with a selected room while the selection window is not open.");
+      error.statusCode = 409;
+      throw error;
+    }
+  }
 
-  await GroupInvitation.updateMany(
-    { group: group._id, status: "pending" },
-    { $set: { status: "cancelled" } }
-  );
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      if (group.selectedRoom) {
+        await releaseRoomForDisbandedGroup(group._id, session);
+      }
 
-  await group.save();
+      group.status = "disbanded";
+      group.disbandedAt = new Date();
+      group.selectedRoom = null;
+      group.roomClaimedAt = null;
+
+      await GroupInvitation.updateMany(
+        { group: group._id, status: "pending" },
+        { $set: { status: "cancelled" } },
+        { session }
+      );
+
+      await group.save({ session });
+    });
+  } finally {
+    await session.endSession();
+  }
 
   // Post-commit notification: group_disbanded to other members (best-effort)
   try {
@@ -1348,12 +1596,16 @@ export async function setIntent(userId, data) {
     }
   }
 
+  // preferredRoomSize is always derived from Preference.roomSize if present
+  const pref = await Preference.findOne({ student: userId }).lean();
+  const derivedRoomSize = pref?.roomSize || Number(preferredRoomSize) || 2;
+
   const updatedIntent = await AllocationIntent.findOneAndUpdate(
     { user: userId },
     {
       $set: {
         mode,
-        preferredRoomSize: Number(preferredRoomSize) || 2,
+        preferredRoomSize: derivedRoomSize,
       },
     },
     { upsert: true, new: true }
@@ -1490,15 +1742,39 @@ export async function adminDisbandGroup(groupId) {
 
   const allMemberIds = group.members.map((m) => m.user.toString());
 
-  group.status = "disbanded";
-  group.disbandedAt = new Date();
+  if (group.selectedRoom) {
+    const liveWindow = await SelectionWindow.findOne({ isActive: true }).lean();
+    const windowStatus = effectiveWindowStatus(liveWindow);
+    if (windowStatus !== "open") {
+      const error = new Error("Cannot disband a group with a selected room while the selection window is not open.");
+      error.statusCode = 409;
+      throw error;
+    }
+  }
 
-  await GroupInvitation.updateMany(
-    { group: group._id, status: "pending" },
-    { $set: { status: "cancelled" } }
-  );
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      if (group.selectedRoom) {
+        await releaseRoomForDisbandedGroup(group._id, session);
+      }
 
-  await group.save();
+      group.status = "disbanded";
+      group.disbandedAt = new Date();
+      group.selectedRoom = null;
+      group.roomClaimedAt = null;
+
+      await GroupInvitation.updateMany(
+        { group: group._id, status: "pending" },
+        { $set: { status: "cancelled" } },
+        { session }
+      );
+
+      await group.save({ session });
+    });
+  } finally {
+    await session.endSession();
+  }
 
   // Post-commit notification: group_disbanded to all members (best-effort)
   try {
@@ -1534,6 +1810,7 @@ export async function getGroupStats() {
     activeGroupDocs,
     autoIntentCount,
     totalCompletedPrefs,
+    singleRoomCount,
   ] = await Promise.all([
     RoommateGroup.countDocuments({ status: "forming" }),
     RoommateGroup.countDocuments({ status: "complete" }),
@@ -1542,6 +1819,7 @@ export async function getGroupStats() {
     RoommateGroup.find({ status: { $in: ["forming", "complete", "locked"] } }).select("members.user").lean(),
     AllocationIntent.countDocuments({ mode: "auto" }),
     Preference.countDocuments({ completedAt: { $ne: null } }),
+    Preference.countDocuments({ completedAt: { $ne: null }, roomSize: 1 }),
   ]);
 
   const studentsInGroupsSet = new Set();
@@ -1561,6 +1839,7 @@ export async function getGroupStats() {
     disbanded,
     studentsInGroups,
     studentsInAutoPool: autoIntentCount,
+    singleRoomStudents: singleRoomCount,
     studentsUngrouped,
   };
 }

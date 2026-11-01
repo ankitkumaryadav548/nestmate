@@ -90,6 +90,7 @@ export async function getAllocatedUserIds() {
  */
 export function mapToStudentShape(user, pref = {}, preferredRoomSize = null, roomPreferences = null) {
   const p = pref.preferences || pref;
+  const actualRoomSize = p.roomSize || preferredRoomSize || 2;
   return {
     id: user._id.toString(),
     _id: user._id,
@@ -100,7 +101,8 @@ export function mapToStudentShape(user, pref = {}, preferredRoomSize = null, roo
     department: user.department || "",
     registrationNumber: user.registrationNumber || "",
     isDemo: Boolean(user.isDemo),
-    preferredRoomSize: preferredRoomSize || 2,
+    preferredRoomSize: actualRoomSize,
+    roomSize: actualRoomSize,
     roomPreferences: roomPreferences || null,
     preferences: {
       sleepSchedule: p.sleepSchedule || "normal",
@@ -176,7 +178,9 @@ export async function runAllocation(adminId, rawOptions = {}, { persist = true }
   const rawRooms = await Room.find({
     hostel: { $in: activeHostelIds },
     currentOccupancy: 0,
-    status: { $ne: "maintenance" },
+    status: "available",
+    "claim.group": { $in: [null, undefined] },
+    "claim.student": { $in: [null, undefined] },
   }).lean();
 
   const hostels = rawHostels.map((h) => ({
@@ -246,13 +250,19 @@ export async function runAllocation(adminId, rawOptions = {}, { persist = true }
     .populate("members.user", "name gender year course department registrationNumber isDemo")
     .lean();
 
-  // Exclude locked group members and previously finalized students
+  // Exclude locked group members, groups with selected rooms, and previously finalized students
   const allocatedIds = new Set(await getAllocatedUserIds());
   const lockedGroupMemberIds = new Set();
+  const roomedGroupMemberIds = new Set();
   for (const g of allGroups) {
     if (g.status === "locked") {
       for (const m of g.members || []) {
         if (m.user?._id) lockedGroupMemberIds.add(m.user._id.toString());
+      }
+    }
+    if (g.selectedRoom) {
+      for (const m of g.members || []) {
+        if (m.user?._id) roomedGroupMemberIds.add(m.user._id.toString());
       }
     }
   }
@@ -263,7 +273,7 @@ export async function runAllocation(adminId, rawOptions = {}, { persist = true }
   const validFormingGroups = [];
 
   for (const g of allGroups) {
-    if (g.status === "locked" || g.status === "disbanded") continue;
+    if (g.status === "locked" || g.status === "disbanded" || g.selectedRoom) continue;
 
     const groupMembers = [];
     let hasExcludedMember = false;
@@ -273,7 +283,7 @@ export async function runAllocation(adminId, rawOptions = {}, { persist = true }
       if (!u || !u._id) continue;
       const strId = u._id.toString();
 
-      if (allocatedIds.has(strId) || lockedGroupMemberIds.has(strId)) {
+      if (allocatedIds.has(strId) || lockedGroupMemberIds.has(strId) || roomedGroupMemberIds.has(strId)) {
         hasExcludedMember = true;
         break;
       }
@@ -324,7 +334,7 @@ export async function runAllocation(adminId, rawOptions = {}, { persist = true }
 
   for (const user of allActiveStudents) {
     const strId = user._id.toString();
-    if (allocatedIds.has(strId) || lockedGroupMemberIds.has(strId) || groupMemberStudentIds.has(strId)) {
+    if (allocatedIds.has(strId) || lockedGroupMemberIds.has(strId) || roomedGroupMemberIds.has(strId) || groupMemberStudentIds.has(strId)) {
       continue;
     }
 
@@ -343,7 +353,7 @@ export async function runAllocation(adminId, rawOptions = {}, { persist = true }
     const isUngrouped = !intent || intent.mode === "group";
 
     if (isAutoIntent || (isUngrouped && options.includeUngrouped)) {
-      const preferredRoomSize = intent?.preferredRoomSize || options.defaultRoomSize;
+      const preferredRoomSize = pref.roomSize || intent?.preferredRoomSize || options.defaultRoomSize;
       const roomPrefs = intent?.roomPreferences || null;
       poolStudents.push(mapToStudentShape(user, pref, preferredRoomSize, roomPrefs));
     }

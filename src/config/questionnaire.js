@@ -75,27 +75,35 @@ export const DEAL_BREAKER_OPTIONS = [
   },
 ];
 
+export const QUESTIONNAIRE_VERSION = 2;
+
 export const QUESTIONNAIRE_STEPS = [
   {
     id: 1,
+    title: "Room Type",
+    description: "Choose how many students will share your hostel room.",
+    icon: "🏠",
+  },
+  {
+    id: 2,
     title: "Daily Routine",
     description: "Your sleep pattern, active study hours, and late-night habits.",
     icon: "⏰",
   },
   {
-    id: 2,
+    id: 3,
     title: "Living Habits",
     description: "Tidiness, noise sensitivity, social preferences, and climate control.",
     icon: "🏡",
   },
   {
-    id: 3,
+    id: 4,
     title: "Food & Languages",
     description: "Dietary preferences, food tolerance, and spoken languages.",
     icon: "🍽️",
   },
   {
-    id: 4,
+    id: 5,
     title: "Deal-Breakers & Review",
     description: "Non-negotiable constraints and final submission review.",
     icon: "🛡️",
@@ -103,10 +111,46 @@ export const QUESTIONNAIRE_STEPS = [
 ];
 
 export const QUESTIONS = [
-  // Step 1: Daily Routine
+  // Step 1: Room Type
+  {
+    key: "roomSize",
+    step: 1,
+    label: "Desired Room Size",
+    helpText: "How many students (including you) should live in your hostel room?",
+    type: "integer",
+    required: true,
+    options: [
+      {
+        value: 1,
+        label: "Single room (1 bed)",
+        description: "Just for you — no roommates needed",
+        icon: "🛏️",
+      },
+      {
+        value: 2,
+        label: "Shared by 2",
+        description: "You + 1 roommate",
+        icon: "🛏️🛏️",
+      },
+      {
+        value: 3,
+        label: "Shared by 3",
+        description: "You + 2 roommates",
+        icon: "🛏️🛏️🛏️",
+      },
+      {
+        value: 4,
+        label: "Shared by 4",
+        description: "You + 3 roommates",
+        icon: "🛏️🛏️🛏️🛏️",
+      },
+    ],
+  },
+
+  // Step 2: Daily Routine
   {
     key: "sleepSchedule",
-    step: 1,
+    step: 2,
     label: "Sleep Schedule",
     helpText: "When do you typically sleep on most weekdays and nights?",
     type: "enum",
@@ -134,7 +178,7 @@ export const QUESTIONS = [
   },
   {
     key: "studyTime",
-    step: 1,
+    step: 2,
     label: "Preferred Study Time",
     helpText: "At what time of day are you most productive for focused study?",
     type: "enum",
@@ -168,7 +212,7 @@ export const QUESTIONS = [
   },
   {
     key: "nightCalls",
-    step: 1,
+    step: 2,
     label: "Late-Night Phone / Video Calls",
     helpText: "How frequently do you take calls after 11 PM (e.g. international family, relatives)?",
     type: "enum",
@@ -195,10 +239,10 @@ export const QUESTIONS = [
     ],
   },
 
-  // Step 2: Living Habits
+  // Step 3: Living Habits
   {
     key: "cleanliness",
-    step: 2,
+    step: 3,
     label: "Cleanliness & Tidiness",
     helpText: "How tidy and organized do you keep your room and personal area?",
     type: "scale",
@@ -217,7 +261,7 @@ export const QUESTIONS = [
   },
   {
     key: "noiseTolerance",
-    step: 2,
+    step: 3,
     label: "Noise Tolerance",
     helpText: "How sensitive are you to background noise when resting or concentrating?",
     type: "scale",
@@ -236,7 +280,7 @@ export const QUESTIONS = [
   },
   {
     key: "socialLevel",
-    step: 2,
+    step: 3,
     label: "Social Level & Guests",
     helpText: "How often do you invite classmates or friends into your room for social visits?",
     type: "scale",
@@ -255,7 +299,7 @@ export const QUESTIONS = [
   },
   {
     key: "acPreference",
-    step: 2,
+    step: 3,
     label: "AC Preference",
     helpText: "What type of room cooling do you prefer?",
     type: "enum",
@@ -282,10 +326,10 @@ export const QUESTIONS = [
     ],
   },
 
-  // Step 3: Food & Languages
+  // Step 4: Food & Languages
   {
     key: "foodType",
-    step: 3,
+    step: 4,
     label: "Dietary Lifestyle",
     helpText: "What type of meals do you consume?",
     type: "enum",
@@ -325,7 +369,7 @@ export const QUESTIONS = [
   },
   {
     key: "okWithDifferentFood",
-    step: 3,
+    step: 4,
     label: "Comfort Sharing with Different Diet",
     helpText: "Are you comfortable sharing your room with a student who consumes a different diet?",
     type: "boolean",
@@ -347,7 +391,7 @@ export const QUESTIONS = [
   },
   {
     key: "languages",
-    step: 3,
+    step: 4,
     label: "Languages Spoken / Understood",
     helpText: "Select languages you comfortably converse in (minimum 1, you can also add custom ones).",
     type: "multiselect",
@@ -355,7 +399,7 @@ export const QUESTIONS = [
   },
   {
     key: "culturalComfort",
-    step: 3,
+    step: 4,
     label: "Cultural Background Preference",
     helpText: "Self-declared comfort preference. Optional and given low importance in matching; never used to exclude anyone.",
     type: "enum",

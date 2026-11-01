@@ -1,8 +1,9 @@
 import mongoose from "mongoose";
 import { ALLOCATION_STATUSES } from "../config/allocation.js";
+import { ROOM_SOURCES } from "../config/selection.js";
 
 /**
- * Allocation Model (Phase 6 - Official Published Assignments)
+ * Allocation Model (Official Published Assignments & Live Selections)
  * 
  * The single source of truth for student room residency and the "My Room" portal.
  * Represents an officially finalized assignment of a student to a physical room.
@@ -33,12 +34,18 @@ const AllocationSchema = new mongoose.Schema(
     group: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "RoommateGroup",
-      required: true,
+      default: null, // optional for 1-seater single-room students
     },
     run: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "AllocationRun",
-      required: true,
+      default: null, // optional for selection and auto-fill
+    },
+    source: {
+      type: String,
+      enum: Object.values(ROOM_SOURCES),
+      default: ROOM_SOURCES.ALLOCATION_RUN,
+      index: true,
     },
     status: {
       type: String,

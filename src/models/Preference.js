@@ -110,6 +110,17 @@ const PreferenceSchema = new mongoose.Schema(
       default: [],
     },
 
+    // Room size preference (1: Single, 2: Shared by 2, 3: Shared by 3, 4: Shared by 4)
+    roomSize: {
+      type: Number,
+      enum: {
+        values: [1, 2, 3, 4],
+        message: "{VALUE} is not a valid room size. Must be 1, 2, 3, or 4",
+      },
+      default: null,
+      index: true,
+    },
+
     completedAt: {
       type: Date,
       default: null,

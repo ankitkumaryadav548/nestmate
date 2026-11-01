@@ -578,6 +578,14 @@ export default function AdminMatchingPage() {
                   )}
                 </div>
 
+                {/* Room Size Mismatch Amber Note */}
+                {pairResult.note && (
+                  <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-amber-900 text-xs font-medium flex items-center gap-2">
+                    <span>⚠️</span>
+                    <span>{pairResult.note}</span>
+                  </div>
+                )}
+
                 {/* Exclusions / Deal-Breaker Violations */}
                 {pairResult.violations?.length > 0 && (
                   <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 space-y-2">

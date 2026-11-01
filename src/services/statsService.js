@@ -21,6 +21,20 @@ export async function getAdminStats() {
         totalRooms: { $sum: 1 },
         totalBeds: { $sum: "$capacity" },
         occupiedBeds: { $sum: "$currentOccupancy" },
+        reservedBeds: {
+          $sum: {
+            $cond: [
+              { $eq: ["$status", "claimed"] },
+              { $max: [0, { $subtract: ["$capacity", "$currentOccupancy"] }] },
+              0,
+            ],
+          },
+        },
+        availableBeds: {
+          $sum: {
+            $cond: [{ $eq: ["$status", "available"] }, "$capacity", 0],
+          },
+        },
         roomsInMaintenance: {
           $sum: {
             $cond: [{ $eq: ["$status", "maintenance"] }, 1, 0],
@@ -34,6 +48,8 @@ export async function getAdminStats() {
     totalRooms: 0,
     totalBeds: 0,
     occupiedBeds: 0,
+    reservedBeds: 0,
+    availableBeds: 0,
     roomsInMaintenance: 0,
   };
 
@@ -43,7 +59,8 @@ export async function getAdminStats() {
   const studentsWithPendingPreferences = Math.max(0, studentsRegistered - studentsWithCompletedPreferences);
   const internationalStudents = await StudentProfile.countDocuments({ isInternational: true });
 
-  const availableBeds = Math.max(0, roomTotals.totalBeds - roomTotals.occupiedBeds);
+  const availableBeds = roomTotals.availableBeds || 0;
+  const reservedBeds = roomTotals.reservedBeds || 0;
 
   // Per-hostel breakdown
   const hostelBreakdown = await Hostel.aggregate([
@@ -66,12 +83,35 @@ export async function getAdminStats() {
         totalRooms: { $size: "$roomsList" },
         totalBeds: { $sum: "$roomsList.capacity" },
         occupiedBeds: { $sum: "$roomsList.currentOccupancy" },
-      },
-    },
-    {
-      $addFields: {
+        reservedBeds: {
+          $sum: {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$roomsList",
+                  as: "r",
+                  cond: { $eq: ["$$r.status", "claimed"] },
+                },
+              },
+              as: "cr",
+              in: { $max: [0, { $subtract: ["$$cr.capacity", "$$cr.currentOccupancy"] }] },
+            },
+          },
+        },
         availableBeds: {
-          $max: [0, { $subtract: ["$totalBeds", "$occupiedBeds"] }],
+          $sum: {
+            $map: {
+              input: {
+                $filter: {
+                  input: "$roomsList",
+                  as: "r",
+                  cond: { $eq: ["$$r.status", "available"] },
+                },
+              },
+              as: "ar",
+              in: "$$ar.capacity",
+            },
+          },
         },
       },
     },
@@ -122,6 +162,42 @@ export async function getAdminStats() {
     console.error("[StatsService Allocation Counts Error]:", err);
   }
 
+  // Selection stats
+  let selectionStats = {
+    windowStatus: "none",
+    roomsClaimed: 0,
+    groupsWithRoom: 0,
+    openSeats: 0,
+  };
+  try {
+    const SelectionWindow = (await import("@/models/SelectionWindow")).default;
+    const RoommateGroup = (await import("@/models/RoommateGroup")).default;
+    const { effectiveWindowStatus } = await import("@/services/selection/windowStatus");
+
+    const liveWindow = await SelectionWindow.findOne({ isActive: true }).lean();
+    selectionStats.windowStatus = liveWindow ? effectiveWindowStatus(liveWindow) : "none";
+
+    const [claimedRoomsCount, roomedGroupsList] = await Promise.all([
+      Room.countDocuments({ status: { $in: ["claimed", "full"] } }),
+      RoommateGroup.find({
+        selectedRoom: { $ne: null },
+        status: { $in: ["forming", "complete", "locked"] },
+      })
+        .select("targetSize members")
+        .lean(),
+    ]);
+
+    selectionStats.roomsClaimed = claimedRoomsCount;
+    selectionStats.groupsWithRoom = roomedGroupsList.length;
+    let openSeatsSum = 0;
+    roomedGroupsList.forEach((g) => {
+      openSeatsSum += Math.max(0, (g.targetSize || 0) - (g.members?.length || 0));
+    });
+    selectionStats.openSeats = openSeatsSum;
+  } catch (err) {
+    console.error("[StatsService Selection Stats Error]:", err);
+  }
+
   const studentsUnallocated = Math.max(0, studentsRegistered - studentsAllocated);
   const roomsOccupied = await Room.countDocuments({ currentOccupancy: { $gt: 0 } });
 
@@ -131,6 +207,7 @@ export async function getAdminStats() {
       rooms: roomTotals.totalRooms,
       totalBeds: roomTotals.totalBeds,
       occupiedBeds: roomTotals.occupiedBeds,
+      reservedBeds,
       availableBeds,
       roomsInMaintenance: roomTotals.roomsInMaintenance,
       roomsOccupied,
@@ -139,6 +216,7 @@ export async function getAdminStats() {
       studentsWithPendingPreferences,
       internationalStudents,
       groups: groupStats,
+      selection: selectionStats,
       latestDraftRun,
       publishedAllocationsCount,
       studentsAllocated,

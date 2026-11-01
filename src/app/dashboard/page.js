@@ -481,6 +481,37 @@ export default function StudentDashboard() {
             )}
           </div>
 
+          {/* Card: Choose Room - FCFS Selection */}
+          <Link
+            href="/dashboard/rooms"
+            className="group relative overflow-hidden rounded-2xl border border-indigo-200 bg-white p-6 shadow-sm hover:shadow-md hover:border-indigo-500 transition-all flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 text-lg group-hover:scale-105 transition-transform">
+                    🔑
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                      Choose Room
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      First-come, first-served room selection window. Pick and lock your preferred room in real time.
+                    </p>
+                  </div>
+                </div>
+                <span className="inline-flex items-center rounded-full bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
+                  FCFS Window
+                </span>
+              </div>
+            </div>
+            <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-indigo-600">
+              <span>Browse available rooms</span>
+              <span>Select Room &rarr;</span>
+            </div>
+          </Link>
+
           {/* Card: My Room - LIVE */}
           <Link
             href="/dashboard/room"

@@ -87,6 +87,7 @@ const StudentProfileSchema = new mongoose.Schema(
 const PreferenceSchema = new mongoose.Schema(
   {
     student: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, unique: true },
+    roomSize: { type: Number, default: null },
     sleepSchedule: { type: String, default: null },
     studyTime: { type: String, default: null },
     nightCalls: { type: String, default: null },
@@ -470,8 +471,12 @@ async function runSeed() {
         dealBreakers.push("acType");
       }
 
+      const rSizeRand = Math.random();
+      const roomSize = rSizeRand < 0.10 ? 1 : rSizeRand < 0.45 ? 2 : rSizeRand < 0.70 ? 3 : 4;
+
       await Preference.create({
         student: userDoc._id,
+        roomSize,
         sleepSchedule,
         studyTime,
         nightCalls,
@@ -485,7 +490,7 @@ async function runSeed() {
         culturalComfort,
         dealBreakers,
         completedAt: new Date(),
-        version: 1,
+        version: 2,
       });
     } else {
       // Incomplete questionnaire (partial or null)

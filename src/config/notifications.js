@@ -108,6 +108,30 @@ export const NOTIFICATION_TYPES = {
       severity: "warning",
       category: "allocation",
     },
+    room_selection_open: {
+      label: "Room Selection Window Open",
+      icon: "door-open",
+      severity: "info",
+      category: "allocation",
+    },
+    room_selected: {
+      label: "Room Selected",
+      icon: "check-circle",
+      severity: "success",
+      category: "allocation",
+    },
+    room_released: {
+      label: "Room Released",
+      icon: "x-circle",
+      severity: "warning",
+      category: "allocation",
+    },
+    room_auto_filled: {
+      label: "Room Auto-Placement",
+      icon: "home",
+      severity: "info",
+      category: "allocation",
+    },
   },
   announcements: {
     announcement: {
@@ -181,6 +205,10 @@ export const NOTIFICATION_TYPE_KEYS = [
   "allocation_waitlisted",
   "allocation_unallocated",
   "allocation_rolled_back",
+  "room_selection_open",
+  "room_selected",
+  "room_released",
+  "room_auto_filled",
   // Announcements
   "announcement",
   // Reserved (not sent yet)
@@ -208,6 +236,10 @@ export const ACTIVE_NOTIFICATION_TYPES = [
   "allocation_waitlisted",
   "allocation_unallocated",
   "allocation_rolled_back",
+  "room_selection_open",
+  "room_selected",
+  "room_released",
+  "room_auto_filled",
   "announcement",
 ];
 

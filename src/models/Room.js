@@ -48,11 +48,27 @@ const RoomSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: {
-        values: ["available", "full", "maintenance"],
+        values: ["available", "claimed", "full", "maintenance"],
         message: "{VALUE} is not a valid room status",
       },
       default: "available",
       index: true,
+    },
+    claim: {
+      group: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "RoommateGroup",
+        default: null,
+      },
+      student: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+      at: {
+        type: Date,
+        default: null,
+      },
     },
     notes: {
       type: String,
@@ -64,11 +80,13 @@ const RoomSchema = new mongoose.Schema(
   }
 );
 
-// Pre-save hook: auto-calculate status based on capacity & occupancy
+// Pre-save hook: auto-calculate status based on capacity, occupancy & claim
 RoomSchema.pre("save", function () {
   if (this.status !== "maintenance") {
     if (this.currentOccupancy >= this.capacity) {
       this.status = "full";
+    } else if (this.claim?.group || this.claim?.student) {
+      this.status = "claimed";
     } else {
       this.status = "available";
     }
@@ -76,9 +94,11 @@ RoomSchema.pre("save", function () {
 });
 
 // Helper for query updates or manual checks
-export function computeRoomStatus(capacity, occupancy, currentStatus) {
+export function computeRoomStatus(capacity, occupancy, currentStatus, hasClaim = false) {
   if (currentStatus === "maintenance") return "maintenance";
-  return occupancy >= capacity ? "full" : "available";
+  if (occupancy >= capacity) return "full";
+  if (hasClaim) return "claimed";
+  return "available";
 }
 
 // Unique compound index: roomNumber must be unique within a hostel
@@ -86,6 +106,7 @@ RoomSchema.index({ hostel: 1, roomNumber: 1 }, { unique: true });
 RoomSchema.index({ hostel: 1, floor: 1 });
 RoomSchema.index({ hostel: 1, status: 1 });
 RoomSchema.index({ hostel: 1, roomType: 1 });
+RoomSchema.index({ "claim.group": 1 });
 
 const Room = mongoose.models.Room || mongoose.model("Room", RoomSchema);
 

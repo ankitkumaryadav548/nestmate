@@ -143,9 +143,16 @@ export async function getMyAllocation(userId) {
     });
 
     const groupAverage = activeAllocation.group?.averageScore || 100;
+    const totalOccupants = coAllocations.length + 1;
+    const openSeats = Math.max(0, (activeAllocation.room.capacity || 0) - totalOccupants);
+    const isOpenSeats = openSeats > 0;
+    const source = activeAllocation.source || "allocation_run";
 
     return {
       status: "allocated",
+      source,
+      openSeats,
+      isOpenSeats,
       allocatedAt: activeAllocation.allocatedAt,
       hostel: {
         name: activeAllocation.hostel.name,
@@ -159,6 +166,8 @@ export async function getMyAllocation(userId) {
         floor: activeAllocation.room.floor,
         roomType: activeAllocation.room.roomType,
         capacity: activeAllocation.room.capacity,
+        openSeats,
+        isOpenSeats,
       },
       roommates,
       groupAverage,

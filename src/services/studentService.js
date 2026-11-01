@@ -26,6 +26,7 @@ function arePreferencesComplete(prefData) {
   if (!prefData) return false;
 
   const requiredKeys = [
+    "roomSize",
     "sleepSchedule",
     "studyTime",
     "cleanliness",
@@ -42,6 +43,11 @@ function arePreferencesComplete(prefData) {
     const val = prefData[key];
     if (val === undefined || val === null || val === "") {
       return false;
+    }
+    if (key === "roomSize") {
+      if (![1, 2, 3, 4].includes(Number(val))) {
+        return false;
+      }
     }
     if (key === "languages") {
       if (!Array.isArray(val) || val.length === 0) {
@@ -141,6 +147,12 @@ export async function getPreferences(userId) {
       languages: [],
     });
   }
+
+  // Treat existing documents without roomSize as NOT completed
+  if (preference.completedAt && (!preference.roomSize || ![1, 2, 3, 4].includes(preference.roomSize))) {
+    preference.completedAt = null;
+  }
+
   return preference;
 }
 
@@ -154,6 +166,9 @@ export async function upsertPreferences(userId, data) {
   }
 
   // Update fields
+  if (data.roomSize !== undefined) {
+    preference.roomSize = (data.roomSize === null || data.roomSize === "") ? null : Number(data.roomSize);
+  }
   if (data.sleepSchedule !== undefined) preference.sleepSchedule = data.sleepSchedule;
   if (data.studyTime !== undefined) preference.studyTime = data.studyTime;
   if (data.nightCalls !== undefined) preference.nightCalls = data.nightCalls;
@@ -183,6 +198,20 @@ export async function upsertPreferences(userId, data) {
   }
 
   await preference.save();
+
+  // Sync AllocationIntent.preferredRoomSize when roomSize is set/changed
+  if (preference.roomSize && [1, 2, 3, 4].includes(preference.roomSize)) {
+    try {
+      const AllocationIntent = (await import("@/models/AllocationIntent")).default;
+      await AllocationIntent.updateOne(
+        { user: userId },
+        { $set: { preferredRoomSize: preference.roomSize } }
+      );
+    } catch (_err) {
+      // Non-critical if intent does not exist
+    }
+  }
+
   return preference.toObject();
 }
 
@@ -195,7 +224,12 @@ export async function getCompletionStatus(userId) {
   const preference = await Preference.findOne({ student: userId });
 
   const profileDone = Boolean(user && profile && isProfileComplete(user, profile));
-  const prefDone = Boolean(preference && preference.completedAt !== null && arePreferencesComplete(preference));
+  const prefDone = Boolean(
+    preference &&
+    preference.roomSize &&
+    preference.completedAt !== null &&
+    arePreferencesComplete(preference)
+  );
 
   let percentage = 0;
   if (profileDone && prefDone) {
@@ -295,6 +329,10 @@ export async function listStudents(filters = {}, pagination = {}) {
     matchPost["profileDoc.isInternational"] = filters.isInternational === "true" || filters.isInternational === true;
   }
 
+  if (filters.roomSize !== undefined && filters.roomSize !== "" && filters.roomSize !== "all") {
+    matchPost["prefDoc.roomSize"] = Number(filters.roomSize);
+  }
+
   if (filters.preferencesCompleted !== undefined && filters.preferencesCompleted !== "" && filters.preferencesCompleted !== "all") {
     const isCompleted = filters.preferencesCompleted === "true" || filters.preferencesCompleted === true;
     if (isCompleted) {
@@ -347,6 +385,7 @@ export async function listStudents(filters = {}, pagination = {}) {
                 profileCompletedAt: "$profileDoc.profileCompletedAt",
               },
               preferences: {
+                roomSize: "$prefDoc.roomSize",
                 completedAt: "$prefDoc.completedAt",
                 sleepSchedule: "$prefDoc.sleepSchedule",
                 studyTime: "$prefDoc.studyTime",

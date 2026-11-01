@@ -174,8 +174,8 @@ export default function AdminDemandPage() {
       {/* Room Size Demand vs. Inventory Breakdown */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
         <h2 className="text-base font-bold text-slate-900">Room Capacity Demand vs. Campus Supply</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[2, 3, 4].map((size) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((size) => {
             const req = roomSizeDemand[size] || { groups: 0, autoStudents: 0, totalBedsDemanded: 0 };
             const supply = campusTotals.bySize[size] || { availableRooms: 0, availableBeds: 0, rooms: 0, beds: 0 };
             const diff = supply.availableBeds - req.totalBedsDemanded;
@@ -186,7 +186,9 @@ export default function AdminDemandPage() {
                 className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-slate-900">{size}-Bed Rooms</span>
+                  <span className="text-sm font-bold text-slate-900">
+                    {size === 1 ? "1-Bed Single" : `${size}-Bed Rooms`}
+                  </span>
                   <Badge variant={diff >= 0 ? "success" : "danger"} size="sm">
                     {diff >= 0 ? `+${diff} Beds Available` : `${diff} Bed Deficit`}
                   </Badge>
@@ -194,13 +196,19 @@ export default function AdminDemandPage() {
 
                 <div className="space-y-1.5 text-xs">
                   <div className="flex justify-between text-slate-600">
-                    <span>Groups Requesting:</span>
-                    <strong className="text-slate-900">{req.groups} ({req.groups * size} beds)</strong>
+                    <span>{size === 1 ? "Single-Room Students:" : "Groups Requesting:"}</span>
+                    <strong className="text-slate-900">
+                      {size === 1
+                        ? `${req.autoStudents || 0} students`
+                        : `${req.groups} (${req.groups * size} beds)`}
+                    </strong>
                   </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Auto-Assign Students:</span>
-                    <strong className="text-slate-900">{req.autoStudents} beds</strong>
-                  </div>
+                  {size > 1 && (
+                    <div className="flex justify-between text-slate-600">
+                      <span>Auto-Assign Students:</span>
+                      <strong className="text-slate-900">{req.autoStudents} beds</strong>
+                    </div>
+                  )}
                   <div className="flex justify-between text-slate-700 font-semibold pt-1 border-t border-slate-200">
                     <span>Total Bed Demand:</span>
                     <span className="text-indigo-600 font-black">{req.totalBedsDemanded} beds</span>
@@ -239,6 +247,7 @@ export default function AdminDemandPage() {
                 <th className="py-3 px-4">Hostel / Code</th>
                 <th className="py-3 px-4">Gender</th>
                 <th className="py-3 px-4">1st Choice Demand</th>
+                <th className="py-3 px-4">1-Bed Single</th>
                 <th className="py-3 px-4">Available 2-Bed</th>
                 <th className="py-3 px-4">Available 3-Bed</th>
                 <th className="py-3 px-4">Available 4-Bed</th>
@@ -273,6 +282,13 @@ export default function AdminDemandPage() {
                         </span>
                         <span className="text-[10px] text-slate-400">group(s)</span>
                       </div>
+                    </td>
+
+                    <td className="py-3.5 px-4">
+                      <span className="font-semibold text-slate-800">
+                        {h.inventory.bySizeAvailable[1] || 0}
+                      </span>{" "}
+                      <span className="text-[10px] text-slate-400">rooms</span>
                     </td>
 
                     <td className="py-3.5 px-4">

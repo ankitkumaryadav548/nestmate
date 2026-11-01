@@ -72,6 +72,7 @@ const StudentProfileSchema = new mongoose.Schema(
 const PreferenceSchema = new mongoose.Schema(
   {
     student: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    roomSize: Number,
     sleepSchedule: String,
     studyTime: String,
     nightCalls: String,
@@ -404,8 +405,12 @@ async function main() {
 
     createdGroups.push(newGroup);
 
-    // Also update AllocationIntent for group members
+    // Also update AllocationIntent and Preference.roomSize for group members
     for (const member of currentMembers) {
+      await Preference.updateOne(
+        { student: member._id },
+        { $set: { roomSize: targetSize } }
+      );
       await AllocationIntent.findOneAndUpdate(
         { user: member._id },
         { mode: "group", preferredRoomSize: targetSize, roomPreferences: groupPreferences },
@@ -441,7 +446,8 @@ async function main() {
   const autoPoolStudents = remainingForAuto.slice(0, 30);
 
   for (const student of autoPoolStudents) {
-    const randomSize = targetSizes[Math.floor(Math.random() * targetSizes.length)];
+    const chosenSize = student.preferences?.roomSize || targetSizes[Math.floor(Math.random() * targetSizes.length)];
+    await Preference.updateOne({ student: student._id }, { $set: { roomSize: chosenSize } });
 
     const eligibleHostels = activeHostels.filter((h) => {
       const { eligible } = isHostelEligibleForGroup(h, [student]);
@@ -475,7 +481,7 @@ async function main() {
 
     await AllocationIntent.findOneAndUpdate(
       { user: student._id },
-      { mode: "auto", preferredRoomSize: randomSize, roomPreferences: studentPrefs },
+      { mode: "auto", preferredRoomSize: chosenSize, roomPreferences: studentPrefs },
       { upsert: true }
     );
   }

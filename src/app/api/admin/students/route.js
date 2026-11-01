@@ -29,6 +29,7 @@ export async function GET(request) {
     const preferencesCompleted = searchParams.get("preferencesCompleted") || "";
     const isActive = searchParams.get("isActive") || "";
     const isDemo = searchParams.get("isDemo") || "";
+    const roomSize = searchParams.get("roomSize") || "";
     const page = searchParams.get("page") || 1;
     const limit = searchParams.get("limit") || 10;
 
@@ -43,6 +44,7 @@ export async function GET(request) {
         preferencesCompleted,
         isActive,
         isDemo,
+        roomSize,
       },
       { page, limit }
     );

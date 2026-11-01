@@ -296,6 +296,23 @@ export default function AdminStudentDetailPage({ params }) {
 
             {/* Questions Grid */}
             <div className="space-y-6 text-xs sm:text-sm">
+              {/* Room Size Choice */}
+              <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-700 block">
+                  Desired Room Type
+                </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-700 font-medium">Room Capacity Preference:</span>
+                  <span className="font-bold text-indigo-900">
+                    {preferences.roomSize
+                      ? preferences.roomSize === 1
+                        ? "Single Room (1 bed) — No roommates"
+                        : `Shared by ${preferences.roomSize} (${preferences.roomSize}-seater room)`
+                      : "Not selected"}
+                  </span>
+                </div>
+              </div>
+
               {/* Daily routine */}
               <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 space-y-3">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 block">

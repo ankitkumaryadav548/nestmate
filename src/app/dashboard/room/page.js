@@ -74,6 +74,11 @@ export default function MyRoomPage() {
               <Badge variant="emerald" size="md">
                 ✓ ALLOCATED &amp; ACTIVE
               </Badge>
+              {allocation.source && (
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 border border-indigo-200">
+                  {allocation.source === "selection" ? "FCFS Room Selection" : "Allocation Run"}
+                </span>
+              )}
               {allocatedAt && (
                 <span className="text-xs text-slate-400 font-mono">
                   Since {new Date(allocatedAt).toLocaleDateString()}
@@ -126,6 +131,11 @@ export default function MyRoomPage() {
                 <span className="rounded-lg bg-white/15 px-2.5 py-1 text-xs font-semibold text-white">
                   {room.capacity} Bed Capacity
                 </span>
+                {allocation.openSeats > 0 && (
+                  <span className="rounded-lg bg-amber-500/30 px-2.5 py-1 text-xs font-semibold text-amber-200 border border-amber-400/30">
+                    {allocation.openSeats} Open Seat{allocation.openSeats > 1 ? "s" : ""} Reserved
+                  </span>
+                )}
                 <span className="rounded-lg bg-indigo-500/30 px-2.5 py-1 text-xs font-semibold text-indigo-200 border border-indigo-400/30">
                   {groupAverage}% Room Compatibility
                 </span>

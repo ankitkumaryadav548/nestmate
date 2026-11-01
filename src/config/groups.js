@@ -8,8 +8,10 @@
  * 4. Group members and invitees can only see safe public fields (name, course, department, year, shared languages, scores).
  */
 
-// Available room sizes supported by the college campus (single-bed rooms need no group)
-export const GROUP_SIZE_OPTIONS = [2, 3, 4];
+// Available room sizes supported by the college campus.
+// Size 1 means a single room; no group is created by the student for size 1
+// (the selection feature in a later prompt will create a one-person group automatically when needed).
+export const GROUP_SIZE_OPTIONS = [1, 2, 3, 4];
 
 // Invitation validity window before automatic lazy expiration
 export const INVITE_EXPIRY_DAYS = 7;

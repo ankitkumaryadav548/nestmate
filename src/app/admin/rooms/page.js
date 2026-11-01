@@ -105,6 +105,9 @@ export default function AdminRoomsPage() {
     if (status === "maintenance") {
       return <Badge variant="warning" size="sm">Maintenance</Badge>;
     }
+    if (status === "claimed") {
+      return <Badge variant="indigo" size="sm">Claimed</Badge>;
+    }
     if (currentOccupancy >= capacity) {
       return <Badge variant="danger" size="sm">Full</Badge>;
     }
@@ -223,6 +226,7 @@ export default function AdminRoomsPage() {
           >
             <option value="">All Statuses</option>
             <option value="available">Available</option>
+            <option value="claimed">Claimed</option>
             <option value="full">Full</option>
             <option value="maintenance">Maintenance</option>
           </select>

@@ -8,16 +8,16 @@ import Button from "@/components/ui/Button";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Alert from "@/components/ui/Alert";
 import EmptyState from "@/components/ui/EmptyState";
-import { GROUP_SIZE_OPTIONS } from "@/config/groups";
 
 export default function StudentGroupPage() {
   const [loading, setLoading] = useState(true);
   const [group, setGroup] = useState(null);
   const [intent, setIntent] = useState({ mode: "group", preferredRoomSize: 2 });
   const [preferencesIncomplete, setPreferencesIncomplete] = useState(false);
+  const [userRoomSize, setUserRoomSize] = useState(null);
 
   // Group creation state
-  const [creatingSize, setCreatingSize] = useState(null);
+  const [creating, setCreating] = useState(false);
   const [alertMessage, setAlertMessage] = useState(null);
 
   // Candidates for leader
@@ -42,16 +42,22 @@ export default function StudentGroupPage() {
   const fetchGroupData = useCallback(async () => {
     setLoading(true);
     try {
-      const [groupRes, intentRes, statusRes] = await Promise.all([
+      const [groupRes, intentRes, statusRes, prefRes] = await Promise.all([
         api.get("/groups/me").catch(() => ({ data: { data: null } })),
         api.get("/students/me/intent").catch(() => ({ data: { data: null } })),
         api.get("/students/me/status").catch(() => ({ data: { data: null } })),
+        api.get("/students/me/preferences").catch(() => ({ data: { data: null } })),
       ]);
 
       if (statusRes.data?.data && !statusRes.data.data.preferencesCompleted) {
         setPreferencesIncomplete(true);
       } else {
         setPreferencesIncomplete(false);
+      }
+
+      const pref = prefRes.data?.data;
+      if (pref?.roomSize) {
+        setUserRoomSize(pref.roomSize);
       }
 
       setGroup(groupRes.data?.data || null);
@@ -97,13 +103,13 @@ export default function StudentGroupPage() {
   }, [group, fetchCandidates]);
 
   // Actions
-  const handleCreateGroup = async (size) => {
-    setCreatingSize(size);
+  const handleCreateGroup = async () => {
+    setCreating(true);
     setAlertMessage(null);
     try {
-      const res = await api.post("/groups", { targetSize: size });
+      const res = await api.post("/groups");
       if (res.data?.success) {
-        setAlertMessage({ type: "success", message: `Formed a ${size}-bed roommate group!` });
+        setAlertMessage({ type: "success", message: `Formed a ${userRoomSize || ""}-bed roommate group!` });
         await fetchGroupData();
       }
     } catch (err) {
@@ -112,22 +118,7 @@ export default function StudentGroupPage() {
         message: err.response?.data?.message || "Failed to create group",
       });
     } finally {
-      setCreatingSize(null);
-    }
-  };
-
-  const handleUpdateTargetSize = async (newSize) => {
-    try {
-      const res = await api.patch("/groups/me", { targetSize: newSize });
-      if (res.data?.success) {
-        setAlertMessage({ type: "success", message: `Updated target room size to ${newSize} beds` });
-        await fetchGroupData();
-      }
-    } catch (err) {
-      setAlertMessage({
-        type: "error",
-        message: err.response?.data?.message || "Failed to update room size",
-      });
+      setCreating(false);
     }
   };
 
@@ -293,71 +284,63 @@ export default function StudentGroupPage() {
           <Alert type={alertMessage.type} message={alertMessage.message} onClose={() => setAlertMessage(null)} />
         )}
 
-        {/* 3 Room Option Cards */}
-        <div className="space-y-4">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-600">
-            Option 1: Create a Group & Choose Roommates
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {[
-              {
-                size: 2,
-                title: "2-Bed Room (Double)",
-                badge: "Double Sharing",
-                subtitle: "You + 1 Roommate",
-                desc: "Ideal for pairs seeking quiet focus and shared accountability with one trusted peer.",
-                icon: "👥",
-              },
-              {
-                size: 3,
-                title: "3-Bed Room (Triple)",
-                badge: "Triple Sharing",
-                subtitle: "You + 2 Roommates",
-                desc: "A balanced social environment with two compatible peers sharing study and living space.",
-                icon: "🧑‍🤝‍🧑",
-              },
-              {
-                size: 4,
-                title: "4-Bed Room (Quad)",
-                badge: "Quad Sharing",
-                subtitle: "You + 3 Roommates",
-                desc: "Vibrant and collaborative living suite. Fill 4 seats with peers of matching lifestyle habits.",
-                icon: "🏠",
-              },
-            ].map((opt) => (
-              <div
-                key={opt.size}
-                className="group relative flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md hover:border-indigo-400 transition-all"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-3xl">{opt.icon}</span>
-                    <Badge variant="indigo" size="sm">
-                      {opt.badge}
-                    </Badge>
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
-                    {opt.title}
-                  </h3>
-                  <p className="text-xs font-semibold text-indigo-600 mt-0.5">{opt.subtitle}</p>
-                  <p className="text-xs text-slate-500 mt-3 leading-relaxed">{opt.desc}</p>
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-slate-100">
-                  <Button
-                    variant="primary"
-                    size="md"
-                    className="w-full"
-                    loading={creatingSize === opt.size}
-                    onClick={() => handleCreateGroup(opt.size)}
+        {/* Option 1: Group Formation or Single Room Notice */}
+        {userRoomSize === 1 ? (
+          <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/70 via-white to-blue-50/50 p-6 sm:p-8 space-y-4 shadow-sm">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600 text-white text-2xl shrink-0">
+                🛏️
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-lg font-bold text-slate-900">
+                  Single-Room Selection (No Roommates Needed)
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  You chose a single room (1 bed) in your lifestyle questionnaire. Single-room students live independently and do not need roommates or a roommate group. You will be placed into a single room directly during the hostel allocation process.
+                </p>
+                <div className="pt-2">
+                  <Link
+                    href="/dashboard/preferences"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800"
                   >
-                    Create {opt.size}-Bed Group &rarr;
-                  </Button>
+                    Change room size in preferences &rarr;
+                  </Link>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900">
+                  Option 1: Form a Roommate Group
+                </h2>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold text-slate-600">Your room type:</span>
+                  <Badge variant="indigo" size="md">
+                    {userRoomSize ? `${userRoomSize}-seater (${userRoomSize}-Bed Room)` : "Shared Room"}
+                  </Badge>
+                </div>
+                <p className="text-xs text-slate-400 mt-1">
+                  Change it in your preferences (only possible when you are not in a group)
+                </p>
+              </div>
+
+              <Button
+                variant="primary"
+                size="md"
+                loading={creating}
+                onClick={handleCreateGroup}
+              >
+                Create My Group &rarr;
+              </Button>
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Create a {userRoomSize || "shared"}-seater roommate group. As leader, you will be able to search and invite compatible candidates who also chose a {userRoomSize || "matching"}-bed room.
+            </p>
+          </div>
+        )}
 
         {/* Option 2: Auto-Assign Option Card */}
         <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-6 sm:p-8 space-y-4">
@@ -372,31 +355,20 @@ export default function StudentGroupPage() {
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
-              <select
-                aria-label="Preferred room size for auto-assignment"
-                value={intent.preferredRoomSize}
-                onChange={(e) => handleSaveIntent("auto", Number(e.target.value))}
-                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-800"
-              >
-                {GROUP_SIZE_OPTIONS.map((sz) => (
-                  <option key={sz} value={sz}>
-                    Prefer {sz}-Bed Room
-                  </option>
-                ))}
-              </select>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <span className="text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-3.5 py-2 shadow-xs">
+                Room Size: {userRoomSize || intent.preferredRoomSize || 2}-Bed Room
+              </span>
 
               <Button
                 variant={intent.mode === "auto" ? "secondary" : "outline"}
                 size="sm"
-                onClick={() => handleSaveIntent("auto", intent.preferredRoomSize)}
+                onClick={() => handleSaveIntent("auto", userRoomSize || intent.preferredRoomSize || 2)}
               >
                 {intent.mode === "auto" ? "✓ Auto-Assign Selected" : "Choose Auto-Assign"}
               </Button>
             </div>
           </div>
-
-
         </div>
       </div>
     );
@@ -483,6 +455,57 @@ export default function StudentGroupPage() {
         <Alert type={alertMessage.type} message={alertMessage.message} onClose={() => setAlertMessage(null)} />
       )}
 
+      {/* Selected Room Banner (FCFS claimed) */}
+      {group.selectedRoom && (
+        <div className="rounded-2xl border border-indigo-200 bg-indigo-50/80 p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in">
+          <div className="flex items-start gap-4">
+            <span className="text-3xl">🔑</span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-indigo-950">
+                  Reserved For Your Group: Room #{group.selectedRoom.roomNumber}
+                </h3>
+                <span className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5">
+                  CLAIMED
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-indigo-800 mt-1 leading-relaxed">
+                {group.selectedRoom.hostelName} ({group.selectedRoom.hostelCode}) • Floor {group.selectedRoom.floor} • {group.selectedRoom.roomType} ({group.selectedRoom.capacity}-seater)
+              </p>
+              <p className="text-[11px] text-indigo-600 mt-0.5">
+                Remaining seats stay reserved for your group and can be filled via invitations or finalization auto-fill.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/dashboard/rooms"
+            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 transition-colors"
+          >
+            Room Details &rarr;
+          </Link>
+        </div>
+      )}
+
+      {!group.selectedRoom && group.myRole === "leader" && group.status !== "locked" && (
+        <div className="rounded-2xl border border-blue-200 bg-blue-50/80 p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-start gap-4">
+            <span className="text-3xl">🚪</span>
+            <div>
+              <h3 className="text-base font-bold text-blue-950">Room Selection Window</h3>
+              <p className="text-xs sm:text-sm text-blue-800 mt-1 leading-relaxed">
+                As the leader, you can pick a free room directly during the open selection window on a first-come, first-served basis.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/dashboard/rooms"
+            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-colors"
+          >
+            Choose a Room &rarr;
+          </Link>
+        </div>
+      )}
+
       {/* State 3: Complete Group Banner */}
       {group.status === "complete" && (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-5 sm:p-6 flex items-start gap-4 shadow-sm animate-in fade-in">
@@ -533,26 +556,16 @@ export default function StudentGroupPage() {
             </p>
           </div>
 
-          {/* Leader change size dropdown */}
-          {group.myRole === "leader" && group.status !== "locked" && (
-            <div className="flex items-center gap-2">
-              <label htmlFor="changeGroupSizeSelect" className="text-xs font-semibold text-slate-600">
-                Change Room Size:
-              </label>
-              <select
-                id="changeGroupSizeSelect"
-                value={group.targetSize}
-                onChange={(e) => handleUpdateTargetSize(Number(e.target.value))}
-                className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-800"
-              >
-                {GROUP_SIZE_OPTIONS.map((sz) => (
-                  <option key={sz} value={sz} disabled={sz < group.seatsFilled}>
-                    {sz} Beds {sz < group.seatsFilled ? `(Has ${group.seatsFilled} members)` : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
+          {/* Room size indicator */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 text-xs">
+            <span className="font-semibold text-slate-500">Room Type:</span>
+            <span className="font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg">
+              {group.targetSize}-Bed Room ({group.targetSize}-seater)
+            </span>
+            <span className="text-[11px] text-slate-400">
+              (Change it in your preferences — only possible when not in a group)
+            </span>
+          </div>
         </div>
 
         {/* Seat Cards Grid */}

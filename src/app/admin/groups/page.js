@@ -20,6 +20,7 @@ export default function AdminGroupsPage() {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [stats, setStats] = useState(null);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -61,6 +62,17 @@ export default function AdminGroupsPage() {
   useEffect(() => {
     fetchGroups(1);
   }, [fetchGroups]);
+
+  useEffect(() => {
+    axios
+      .get("/api/admin/stats")
+      .then((res) => {
+        if (res.data?.success) {
+          setStats(res.data.data.totals?.groups || null);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handlePageChange = (newPage) => {
     fetchGroups(newPage);
@@ -116,10 +128,23 @@ export default function AdminGroupsPage() {
             Monitor, inspect compatibility diagnostics, and manage student roommate clusters.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
             Total Groups: {pagination.total}
           </span>
+          {stats && (
+            <>
+              <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-200">
+                In Groups: {stats.studentsInGroups}
+              </span>
+              <span className="text-xs font-semibold text-slate-700 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+                Auto Pool: {stats.studentsInAutoPool}
+              </span>
+              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
+                Single-Room Students: {stats.singleRoomStudents || 0}
+              </span>
+            </>
+          )}
         </div>
       </div>
 
@@ -157,6 +182,7 @@ export default function AdminGroupsPage() {
               onChange={(e) => setTargetSize(e.target.value)}
               options={[
                 { value: "", label: "All Sizes" },
+                { value: "1", label: "1-bed (Single)" },
                 { value: "2", label: "2-bed Room" },
                 { value: "3", label: "3-bed Room" },
                 { value: "4", label: "4-bed Room" },

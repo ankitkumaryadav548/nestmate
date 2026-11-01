@@ -251,6 +251,10 @@ async function main() {
 
     const chosenFloor = FLOOR_OPTIONS[Math.floor(Math.random() * FLOOR_OPTIONS.length)];
 
+    if (studentPref && studentPref.roomSize) {
+      intent.preferredRoomSize = studentPref.roomSize;
+    }
+
     intent.roomPreferences = {
       preferredHostels: pickedHostels,
       acType: chosenAc,

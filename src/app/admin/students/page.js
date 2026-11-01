@@ -30,6 +30,7 @@ export default function AdminStudentsPage() {
   const [preferencesCompleted, setPreferencesCompleted] = useState("");
   const [isActive, setIsActive] = useState("");
   const [isDemo, setIsDemo] = useState("");
+  const [roomSize, setRoomSize] = useState("");
 
   // Confirmation modal state for status toggle
   const [targetStudent, setTargetStudent] = useState(null);
@@ -51,6 +52,7 @@ export default function AdminStudentsPage() {
       if (preferencesCompleted) params.set("preferencesCompleted", preferencesCompleted);
       if (isActive) params.set("isActive", isActive);
       if (isDemo) params.set("isDemo", isDemo);
+      if (roomSize) params.set("roomSize", roomSize);
 
       const res = await axios.get(`/api/admin/students?${params.toString()}`);
       if (res.data?.success) {
@@ -63,7 +65,7 @@ export default function AdminStudentsPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, gender, year, isInternational, preferencesCompleted, isActive, isDemo]);
+  }, [search, gender, year, isInternational, preferencesCompleted, isActive, isDemo, roomSize]);
 
   useEffect(() => {
     fetchStudents(1);
@@ -110,6 +112,7 @@ export default function AdminStudentsPage() {
     setPreferencesCompleted("");
     setIsActive("");
     setIsDemo("");
+    setRoomSize("");
   };
 
   return (
@@ -234,10 +237,24 @@ export default function AdminStudentsPage() {
               { value: "true", label: "Demo Students Only" },
             ]}
           />
+
+          {/* Room Size */}
+          <Select
+            label="Room Size"
+            value={roomSize}
+            onChange={(e) => setRoomSize(e.target.value)}
+            placeholder="All Sizes"
+            options={[
+              { value: "1", label: "Single (1 bed)" },
+              { value: "2", label: "Shared by 2" },
+              { value: "3", label: "Shared by 3" },
+              { value: "4", label: "Shared by 4" },
+            ]}
+          />
         </div>
 
         {/* Clear Filters Row */}
-        {(search || gender || year || isInternational || preferencesCompleted || isActive || isDemo) && (
+        {(search || gender || year || isInternational || preferencesCompleted || isActive || isDemo || roomSize) && (
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
             <span className="text-slate-500">Active filters applied</span>
             <button
@@ -267,6 +284,7 @@ export default function AdminStudentsPage() {
                 <th className="py-3.5 px-4">Student</th>
                 <th className="py-3.5 px-4">Course & Year</th>
                 <th className="py-3.5 px-4">Origin / Country</th>
+                <th className="py-3.5 px-4">Room Size</th>
                 <th className="py-3.5 px-4">Preferences</th>
                 <th className="py-3.5 px-4">Status</th>
                 <th className="py-3.5 px-4 text-right">Actions</th>
@@ -275,7 +293,7 @@ export default function AdminStudentsPage() {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="py-12 text-center text-slate-400">
+                  <td colSpan="7" className="py-12 text-center text-slate-400">
                     <div className="inline-flex items-center gap-2">
                       <svg className="h-5 w-5 animate-spin text-indigo-600" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -360,6 +378,19 @@ export default function AdminStudentsPage() {
                             </span>
                           )}
                         </div>
+                      </td>
+
+                      {/* Room Size */}
+                      <td className="py-3.5 px-4">
+                        {st.preferences?.roomSize ? (
+                          <span className="inline-flex items-center rounded-md bg-blue-50 border border-blue-200 px-2 py-0.5 text-xs font-semibold text-blue-800">
+                            {st.preferences.roomSize === 1
+                              ? "Single (1)"
+                              : `${st.preferences.roomSize}-seater`}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 text-xs">—</span>
+                        )}
                       </td>
 
                       {/* Preferences */}

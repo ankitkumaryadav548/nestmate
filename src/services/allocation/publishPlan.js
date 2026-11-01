@@ -122,6 +122,14 @@ export function buildPublishPlan({
       });
     }
 
+    if (liveRoom.status === "claimed" || liveRoom.status === "full" || liveRoom.claim?.group || liveRoom.claim?.student) {
+      conflicts.push({
+        code: "room_claimed",
+        message: `Room "${liveRoom.roomNumber}" has been claimed or selected.`,
+        unitId,
+      });
+    }
+
     if ((liveRoom.currentOccupancy || 0) > 0) {
       conflicts.push({
         code: "room_not_empty",

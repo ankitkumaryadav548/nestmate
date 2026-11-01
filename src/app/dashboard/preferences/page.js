@@ -23,6 +23,7 @@ export default function StudentPreferencesPage() {
 
   // Questionnaire form state
   const [answers, setAnswers] = useState({
+    roomSize: null,
     sleepSchedule: null,
     studyTime: null,
     nightCalls: null,
@@ -47,6 +48,7 @@ export default function StudentPreferencesPage() {
       if (res.data?.success && res.data.data) {
         const pref = res.data.data;
         setAnswers({
+          roomSize: pref.roomSize || null,
           sleepSchedule: pref.sleepSchedule || null,
           studyTime: pref.studyTime || null,
           nightCalls: pref.nightCalls || null,
@@ -141,15 +143,17 @@ export default function StudentPreferencesPage() {
   const validateStep = (stepNumber) => {
     const errors = {};
     if (stepNumber === 1) {
+      if (!answers.roomSize) errors.roomSize = "Please select your desired room size";
+    } else if (stepNumber === 2) {
       if (!answers.sleepSchedule) errors.sleepSchedule = "Please choose your sleep schedule";
       if (!answers.studyTime) errors.studyTime = "Please choose your primary study time";
       if (!answers.nightCalls) errors.nightCalls = "Please choose your late-night call frequency";
-    } else if (stepNumber === 2) {
+    } else if (stepNumber === 3) {
       if (!answers.cleanliness) errors.cleanliness = "Please rate your cleanliness preference";
       if (!answers.noiseTolerance) errors.noiseTolerance = "Please rate your noise tolerance";
       if (!answers.socialLevel) errors.socialLevel = "Please rate your social visitor preference";
       if (!answers.acPreference) errors.acPreference = "Please select your AC preference";
-    } else if (stepNumber === 3) {
+    } else if (stepNumber === 4) {
       if (!answers.foodType) errors.foodType = "Please select your dietary lifestyle";
       if (answers.okWithDifferentFood === null || answers.okWithDifferentFood === undefined) {
         errors.okWithDifferentFood = "Please specify dietary sharing tolerance";
@@ -164,7 +168,7 @@ export default function StudentPreferencesPage() {
 
   const handleNext = () => {
     if (validateStep(currentStep)) {
-      setCurrentStep((prev) => Math.min(prev + 1, 4));
+      setCurrentStep((prev) => Math.min(prev + 1, 5));
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
@@ -175,8 +179,8 @@ export default function StudentPreferencesPage() {
   };
 
   const handleSubmit = async () => {
-    // Validate all 3 core steps
-    if (!validateStep(1) || !validateStep(2) || !validateStep(3)) {
+    // Validate all 4 core steps
+    if (!validateStep(1) || !validateStep(2) || !validateStep(3) || !validateStep(4)) {
       setErrorMsg("Please complete all required questions across earlier steps.");
       return;
     }
@@ -214,7 +218,7 @@ export default function StudentPreferencesPage() {
   }
 
   const currentStepDef = QUESTIONNAIRE_STEPS.find((s) => s.id === currentStep);
-  const progressPercent = (currentStep / 4) * 100;
+  const progressPercent = (currentStep / 5) * 100;
 
   return (
     <div className="flex-1 py-10 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full">
@@ -281,7 +285,7 @@ export default function StudentPreferencesPage() {
       <div className="mb-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">
-            Step {currentStep} of 4: {currentStepDef?.title}
+            Step {currentStep} of 5: {currentStepDef?.title}
           </span>
           <span className="text-xs font-semibold text-slate-500">{progressPercent}% Completed</span>
         </div>
@@ -295,7 +299,7 @@ export default function StudentPreferencesPage() {
         </div>
 
         {/* Step Tabs */}
-        <div className="mt-4 grid grid-cols-4 gap-2">
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-5 gap-2">
           {QUESTIONNAIRE_STEPS.map((s) => {
             const isDone = s.id < currentStep;
             const isCurrent = s.id === currentStep;
@@ -318,7 +322,7 @@ export default function StudentPreferencesPage() {
               >
                 <div className="flex items-center gap-1.5">
                   <span>{s.icon}</span>
-                  <span className="hidden sm:inline truncate">{s.title}</span>
+                  <span className="truncate">{s.title}</span>
                 </div>
               </button>
             );
@@ -328,8 +332,95 @@ export default function StudentPreferencesPage() {
 
       {/* Step Content Container */}
       <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm mb-8">
-        {/* STEP 1: DAILY ROUTINE */}
+        {/* STEP 1: ROOM TYPE */}
         {currentStep === 1 && (
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                <span>🏠</span> Desired Room Type
+              </h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Choose how many students will share your hostel room. Roommate matching and groups only work between students with the same room size choice.
+              </p>
+            </div>
+
+            {/* roomSize */}
+            <div className="space-y-3">
+              <label className="block text-sm font-bold text-slate-800">
+                1. Desired Room Size <span className="text-rose-500">*</span>
+              </label>
+              <p className="text-xs text-slate-500">
+                Select your preferred room size. Note: A single room (1 bed) means you live alone and do not need roommates or a group.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  {
+                    value: 1,
+                    label: "Single room (1 bed)",
+                    desc: "Just for you — no roommates needed",
+                    sub: "1-seater • Independent",
+                    icon: "🛏️",
+                  },
+                  {
+                    value: 2,
+                    label: "Shared by 2",
+                    desc: "You + 1 roommate",
+                    sub: "2-seater • Double sharing",
+                    icon: "👥",
+                  },
+                  {
+                    value: 3,
+                    label: "Shared by 3",
+                    desc: "You + 2 roommates",
+                    sub: "3-seater • Triple sharing",
+                    icon: "👨‍👩‍👦",
+                  },
+                  {
+                    value: 4,
+                    label: "Shared by 4",
+                    desc: "You + 3 roommates",
+                    sub: "4-seater • Quad sharing",
+                    icon: "🏘️",
+                  },
+                ].map((opt) => {
+                  const isSelected = answers.roomSize === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => handleSelectOption("roomSize", opt.value)}
+                      className={`flex flex-col items-start p-5 rounded-2xl border text-left transition-all ${
+                        isSelected
+                          ? "border-indigo-600 bg-indigo-50/70 shadow-sm ring-2 ring-indigo-500/20"
+                          : "border-slate-200 hover:border-slate-300 bg-white"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full mb-3">
+                        <span className="text-3xl">{opt.icon}</span>
+                        <div
+                          className={`h-5 w-5 rounded-full border flex items-center justify-center ${
+                            isSelected ? "border-indigo-600 bg-indigo-600" : "border-slate-300"
+                          }`}
+                        >
+                          {isSelected && <div className="h-2 w-2 rounded-full bg-white" />}
+                        </div>
+                      </div>
+                      <span className="text-base font-bold text-slate-900">{opt.label}</span>
+                      <span className="text-xs font-semibold text-indigo-600 mt-0.5">{opt.sub}</span>
+                      <span className="text-xs text-slate-500 mt-1">{opt.desc}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {stepErrors.roomSize && (
+                <p className="text-xs text-rose-600 font-medium">{stepErrors.roomSize}</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* STEP 2: DAILY ROUTINE */}
+        {currentStep === 2 && (
           <div className="space-y-8">
             <div>
               <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -462,8 +553,8 @@ export default function StudentPreferencesPage() {
           </div>
         )}
 
-        {/* STEP 2: LIVING HABITS */}
-        {currentStep === 2 && (
+        {/* STEP 3: LIVING HABITS */}
+        {currentStep === 3 && (
           <div className="space-y-8">
             <div>
               <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -611,8 +702,8 @@ export default function StudentPreferencesPage() {
           </div>
         )}
 
-        {/* STEP 3: FOOD & LANGUAGE */}
-        {currentStep === 3 && (
+        {/* STEP 4: FOOD & LANGUAGE */}
+        {currentStep === 4 && (
           <div className="space-y-8">
             <div>
               <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -833,8 +924,8 @@ export default function StudentPreferencesPage() {
           </div>
         )}
 
-        {/* STEP 4: DEAL-BREAKERS & REVIEW */}
-        {currentStep === 4 && (
+        {/* STEP 5: DEAL-BREAKERS & REVIEW */}
+        {currentStep === 5 && (
           <div className="space-y-8">
             <div>
               <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
@@ -895,6 +986,16 @@ export default function StudentPreferencesPage() {
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div className="col-span-1 sm:col-span-2 pb-2 border-b border-slate-200">
+                  <span className="font-semibold text-slate-500">Desired Room Size:</span>
+                  <p className="font-bold text-indigo-600 mt-0.5 text-sm">
+                    {answers.roomSize === 1
+                      ? "1-Bed Single Room (No roommates / independent)"
+                      : answers.roomSize
+                      ? `${answers.roomSize}-Bed Room (Shared by ${answers.roomSize})`
+                      : "Not answered"}
+                  </p>
+                </div>
                 <div>
                   <span className="font-semibold text-slate-500">Sleep Schedule:</span>
                   <p className="font-bold text-slate-900 capitalize mt-0.5">{answers.sleepSchedule || "Not answered"}</p>
@@ -968,7 +1069,7 @@ export default function StudentPreferencesPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {currentStep < 4 ? (
+            {currentStep < 5 ? (
               <Button type="button" variant="primary" onClick={handleNext}>
                 Continue &rarr;
               </Button>

@@ -25,6 +25,9 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
   const [isDisbandOpen, setIsDisbandOpen] = useState(false);
   const [disbanding, setDisbanding] = useState(false);
 
+  const [isReleaseRoomOpen, setIsReleaseRoomOpen] = useState(false);
+  const [releasingRoom, setReleasingRoom] = useState(false);
+
   const fetchGroup = useCallback(async () => {
     try {
       setLoading(true);
@@ -74,6 +77,20 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
       alert(err.response?.data?.message || "Could not disband group");
     } finally {
       setDisbanding(false);
+    }
+  };
+
+  const handleConfirmReleaseRoom = async () => {
+    try {
+      setReleasingRoom(true);
+      await axios.post(`/api/admin/groups/${groupId}/release-room`);
+      setIsReleaseRoomOpen(false);
+      await fetchGroup();
+    } catch (err) {
+      console.error("Failed to release room:", err);
+      alert(err.response?.data?.message || "Could not release room");
+    } finally {
+      setReleasingRoom(false);
     }
   };
 
@@ -193,6 +210,35 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
               This group was disbanded on {new Date(group.disbandedAt || group.updatedAt).toLocaleDateString()}. Its seats are no longer active.
             </p>
           </div>
+        </div>
+      )}
+
+      {/* Selected Room Banner (FCFS claim) */}
+      {group.selectedRoom && (
+        <div className="mb-6 rounded-2xl border border-indigo-200 bg-indigo-50/80 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">🔑</span>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-indigo-900 bg-indigo-200/80 px-2 py-0.5 rounded-md">
+                  FCFS Selected Room
+                </span>
+                <h3 className="text-sm font-bold text-indigo-950">
+                  Room #{group.selectedRoom?.roomNumber || group.selectedRoom}
+                </h3>
+              </div>
+              <p className="text-xs text-indigo-800 mt-0.5">
+                Claimed on {group.roomClaimedAt ? new Date(group.roomClaimedAt).toLocaleString() : "During Selection Window"}
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => setIsReleaseRoomOpen(true)}
+          >
+            Release Room (Admin Override)
+          </Button>
         </div>
       )}
 
@@ -461,6 +507,18 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
         confirmText="Disband Group"
         confirmVariant="danger"
         loading={disbanding}
+      />
+
+      {/* Release Room Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={isReleaseRoomOpen}
+        onClose={() => setIsReleaseRoomOpen(false)}
+        onConfirm={handleConfirmReleaseRoom}
+        title="Release Selected Room"
+        message="Are you sure you want to release this group's selected room? Active student allocations for this room will be deleted, and the room will immediately become available again for selection or auto-allocation."
+        confirmText="Release Room"
+        confirmVariant="danger"
+        loading={releasingRoom}
       />
     </div>
   );

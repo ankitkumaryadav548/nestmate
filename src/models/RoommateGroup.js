@@ -119,6 +119,15 @@ const RoommateGroupSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    selectedRoom: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Room",
+      default: null,
+    },
+    roomClaimedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -145,6 +154,19 @@ RoommateGroupSchema.index(
     unique: true,
     partialFilterExpression: {
       status: { $in: ["forming", "complete", "locked"] },
+    },
+  }
+);
+
+// CONCURRENCY & INTEGRITY: Partial unique index guarantees a room can be owned by
+// at most ONE active group across the entire system.
+RoommateGroupSchema.index(
+  { selectedRoom: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      status: { $in: ["forming", "complete", "locked"] },
+      selectedRoom: { $type: "objectId" },
     },
   }
 );

@@ -1,14 +1,15 @@
-import connectDB from "@/lib/db";
-import User from "@/models/User";
-import Preference from "@/models/Preference";
-import MatchingSettings from "@/models/MatchingSettings";
-import RoommateGroup from "@/models/RoommateGroup";
+import connectDB from "../lib/db.js";
+import User from "../models/User.js";
+import Preference from "../models/Preference.js";
+import MatchingSettings from "../models/MatchingSettings.js";
+import RoommateGroup from "../models/RoommateGroup.js";
+import Allocation from "../models/Allocation.js";
 import {
   DEFAULT_WEIGHTS,
   YEAR_BONUS,
   ENGINE_VERSION,
-} from "@/config/matching";
-import { calculateCompatibility } from "./matching/scoreEngine";
+} from "../config/matching.js";
+import { calculateCompatibility } from "./matching/scoreEngine.js";
 
 /**
  * FAIRNESS & NON-DISCRIMINATION POLICY:
@@ -149,22 +150,30 @@ export async function resetSettings(adminId) {
 
 /**
  * Hook function for unavailable student IDs.
- * 
- * Excludes all students who already belong to an active roommate group
- * (status: "forming", "complete", or "locked") from the general match discovery pool.
- * 
+ *
+ * Excludes students who are in a COMPLETE or LOCKED group — their group is
+ * already full / room-assigned and they are no longer looking for a roommate.
+ *
+ * Students in a FORMING group are still actively seeking roommates (the
+ * leader may still invite others) and must remain visible in the discovery
+ * pool so that other leaders can find and invite them.
+ *
+ * Additionally excludes any student who already has an active published
+ * room allocation.
+ *
  * @returns {Promise<string[]>}
  */
 export async function getUnavailableStudentIds() {
   await connectDB();
-  const activeGroups = await RoommateGroup.find({
-    status: { $in: ["forming", "complete", "locked"] },
+  // Only exclude complete / locked groups — forming groups are still open
+  const closedGroups = await RoommateGroup.find({
+    status: { $in: ["complete", "locked"] },
   })
     .select("members.user")
     .lean();
 
   const userIds = new Set();
-  for (const group of activeGroups) {
+  for (const group of closedGroups) {
     for (const m of group.members || []) {
       if (m.user) {
         userIds.add(m.user.toString());
@@ -173,7 +182,7 @@ export async function getUnavailableStudentIds() {
   }
 
   // Also exclude students with an active published room allocation
-  const Allocation = (await import("@/models/Allocation")).default;
+
   const activeAllocations = await Allocation.find({ status: "active" })
     .select("student")
     .lean();
@@ -211,13 +220,18 @@ export async function getEligibleCandidates(studentId) {
   }
 
   const studentPref = await Preference.findOne({ student: studentId }).lean();
-  if (!studentPref || !studentPref.completedAt) {
+  if (!studentPref || !studentPref.completedAt || !studentPref.roomSize) {
     const error = new Error("Complete your preferences first");
     error.code = "PREFERENCES_INCOMPLETE";
     throw error;
   }
 
   student.preferences = studentPref;
+
+  // Single room student needs no roommates
+  if (studentPref.roomSize === 1) {
+    return { student, candidates: [], singleRoom: true };
+  }
 
   // 2. Fetch unavailable student IDs (hook)
   const unavailableIds = await getUnavailableStudentIds();
@@ -239,10 +253,11 @@ export async function getEligibleCandidates(studentId) {
 
   const candidateUserIds = candidateUsers.map((u) => u._id);
 
-  // 4. Query only candidates with completed preferences
+  // 4. Query only candidates with completed preferences and matching roomSize
   const candidatePrefs = await Preference.find({
     student: { $in: candidateUserIds },
     completedAt: { $ne: null },
+    roomSize: studentPref.roomSize,
   }).lean();
 
   const prefMap = new Map();
@@ -254,7 +269,7 @@ export async function getEligibleCandidates(studentId) {
   const eligibleCandidates = [];
   for (const user of candidateUsers) {
     const pref = prefMap.get(user._id.toString());
-    if (pref) {
+    if (pref && pref.roomSize === studentPref.roomSize) {
       eligibleCandidates.push({
         ...user,
         preferences: pref,
@@ -355,7 +370,25 @@ export async function getTopMatches(studentId, filters = {}) {
   }
 
   const settings = await getSettings();
-  const { student, candidates } = await getEligibleCandidates(studentId);
+  const eligibleResult = await getEligibleCandidates(studentId);
+  if (eligibleResult.singleRoom) {
+    return {
+      matches: [],
+      total: 0,
+      page: parsedPage,
+      limit: parsedLimit,
+      totalPages: 1,
+      studentGender: eligibleResult.student?.gender || null,
+      singleRoom: true,
+      leaderGroup: null,
+      settingsUsed: {
+        engineVersion: ENGINE_VERSION,
+        weights: settings.weights,
+      },
+    };
+  }
+
+  const { student, candidates } = eligibleResult;
 
   const matches = [];
 
@@ -474,18 +507,28 @@ export async function getPairResult(studentIdA, studentIdB, options = {}) {
   }
 
   // Questionnaire completion check
-  if (!prefA?.completedAt || !prefB?.completedAt) {
+  if (!prefA?.completedAt || !prefB?.completedAt || !prefA?.roomSize || !prefB?.roomSize) {
     if (forAdmin) {
       return {
         eligible: false,
         reason: "INCOMPLETE_PREFERENCES",
         message: "One or both students have not completed their lifestyle questionnaire",
-        studentACompleted: Boolean(prefA?.completedAt),
-        studentBCompleted: Boolean(prefB?.completedAt),
+        studentACompleted: Boolean(prefA?.completedAt && prefA?.roomSize),
+        studentBCompleted: Boolean(prefB?.completedAt && prefB?.roomSize),
         studentA: formatAdminStudent(studentA),
         studentB: formatAdminStudent(studentB),
       };
     }
+    return { eligible: false, message: "Not available" };
+  }
+
+  // Room size compatibility check
+  const hasDiffRoomSize =
+    prefA.roomSize !== prefB.roomSize ||
+    prefA.roomSize === 1 ||
+    prefB.roomSize === 1;
+
+  if (hasDiffRoomSize && !forAdmin) {
     return { eligible: false, message: "Not available" };
   }
 
@@ -508,6 +551,12 @@ export async function getPairResult(studentIdA, studentIdB, options = {}) {
         studentB: formatAdminStudent(studentB),
         breakdown: result.breakdown,
         sharedLanguages: result.sharedLanguages,
+        ...(hasDiffRoomSize
+          ? {
+              roomSizeMismatch: true,
+              note: "Different room size, these two would not be matched in practice",
+            }
+          : {}),
       };
     }
     return { eligible: false, message: "Not available" };
@@ -519,6 +568,12 @@ export async function getPairResult(studentIdA, studentIdB, options = {}) {
       ...result,
       studentA: formatAdminStudent(studentA),
       studentB: formatAdminStudent(studentB),
+      ...(hasDiffRoomSize
+        ? {
+            roomSizeMismatch: true,
+            note: "Different room size, these two would not be matched in practice",
+          }
+        : {}),
     };
   }
 

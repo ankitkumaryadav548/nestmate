@@ -147,4 +147,94 @@ describe("Pool Clustering & Forming Groups Pure Engine", () => {
     assert.equal(finalSum >= initialSum, true);
     assert.equal(finalSum, 200); // 100 + 100
   });
+
+  test("6. clusterPool treats size-1 students as trivial single-person units without pairing", () => {
+    const singleStudent = createStudent("single1", "male", { roomSize: 1 });
+    singleStudent.roomSize = 1;
+
+    const normalStudent1 = createStudent("norm1", "male", { roomSize: 2 });
+    normalStudent1.roomSize = 2;
+    const normalStudent2 = createStudent("norm2", "male", { roomSize: 2 });
+    normalStudent2.roomSize = 2;
+
+    const { groups, unallocated } = clusterPool(
+      [singleStudent, normalStudent1, normalStudent2],
+      {},
+      mockScoreFn,
+      { defaultRoomSize: 2 }
+    );
+
+    // Single student forms a unit of size 1 with score 100
+    const singleUnit = groups.find((g) => g.size === 1);
+    assert.ok(singleUnit);
+    assert.equal(singleUnit.members.length, 1);
+    assert.equal(singleUnit.members[0].id, "single1");
+    assert.equal(singleUnit.average, 100);
+    assert.equal(singleUnit.lowest, 100);
+
+    // Normal students form a group of 2
+    const doubleUnit = groups.find((g) => g.size === 2);
+    assert.ok(doubleUnit);
+    assert.equal(doubleUnit.members.length, 2);
+    assert.equal(unallocated.length, 0);
+  });
+
+  test("7. clusterPool keeps students of different room sizes apart", () => {
+    // 2 students wanting size 2, 3 students wanting size 3
+    const s2a = createStudent("s2a", "female");
+    s2a.roomSize = 2;
+    const s2b = createStudent("s2b", "female");
+    s2b.roomSize = 2;
+
+    const s3a = createStudent("s3a", "female");
+    s3a.roomSize = 3;
+    const s3b = createStudent("s3b", "female");
+    s3b.roomSize = 3;
+    const s3c = createStudent("s3c", "female");
+    s3c.roomSize = 3;
+
+    const { groups } = clusterPool([s2a, s2b, s3a, s3b, s3c], {}, mockScoreFn, { defaultRoomSize: 2 });
+
+    assert.equal(groups.length, 2);
+    const size2Group = groups.find((g) => g.size === 2);
+    const size3Group = groups.find((g) => g.size === 3);
+
+    assert.ok(size2Group);
+    assert.ok(size3Group);
+    assert.deepEqual(size2Group.members.map((m) => m.id).sort(), ["s2a", "s2b"]);
+    assert.deepEqual(size3Group.members.map((m) => m.id).sort(), ["s3a", "s3b", "s3c"]);
+  });
+
+  test("8. fillFormingGroups only matches pool candidates with matching roomSize", () => {
+    const leader = createStudent("lead1", "male");
+    const group3 = {
+      id: "g3",
+      targetSize: 3,
+      gender: "male",
+      members: [leader],
+    };
+
+    const candWrongSize = createStudent("c_size2", "male");
+    candWrongSize.roomSize = 2;
+
+    const candRightSize1 = createStudent("c_size3_a", "male");
+    candRightSize1.roomSize = 3;
+
+    const candRightSize2 = createStudent("c_size3_b", "male");
+    candRightSize2.roomSize = 3;
+
+    const result = fillFormingGroups(
+      [group3],
+      [candWrongSize, candRightSize1, candRightSize2],
+      {},
+      mockScoreFn
+    );
+
+    assert.equal(result.filledUnits.length, 1);
+    assert.equal(result.filledUnits[0].members.length, 3);
+    const memberIds = result.filledUnits[0].members.map((m) => m.id);
+    assert.ok(!memberIds.includes("c_size2"), "Should not include candidate with roomSize 2");
+    assert.ok(memberIds.includes("c_size3_a"));
+    assert.ok(memberIds.includes("c_size3_b"));
+  });
 });
