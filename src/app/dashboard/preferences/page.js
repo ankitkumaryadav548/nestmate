@@ -2,9 +2,27 @@
 
 import { useState, useEffect, useCallback } from "react";
 import axios from "@/lib/axios";
-import Button from "@/components/ui/Button";
-import Badge from "@/components/ui/Badge";
-import Alert from "@/components/ui/Alert";
+import { useToast } from "@/context/ToastContext";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardBody,
+  Button,
+  Badge,
+  Alert,
+  Stepper,
+  ProgressBar,
+  OptionCard,
+  PageTransition,
+  Reveal,
+  IconShield,
+  IconCheck,
+  IconBed,
+  IconUsers,
+  IconSparkles,
+} from "@/components/ui";
 import {
   QUESTIONS,
   DEAL_BREAKER_OPTIONS,
@@ -13,6 +31,7 @@ import {
 } from "@/config/questionnaire";
 
 export default function StudentPreferencesPage() {
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
@@ -179,9 +198,10 @@ export default function StudentPreferencesPage() {
   };
 
   const handleSubmit = async () => {
-    // Validate all 4 core steps
     if (!validateStep(1) || !validateStep(2) || !validateStep(3) || !validateStep(4)) {
-      setErrorMsg("Please complete all required questions across earlier steps.");
+      const msg = "Please complete all required questions across earlier steps.";
+      setErrorMsg(msg);
+      showToast(msg, "warning");
       return;
     }
 
@@ -193,13 +213,17 @@ export default function StudentPreferencesPage() {
       const res = await axios.put("/api/students/me/preferences", answers);
       if (res.data?.success) {
         setCompletedAt(res.data.data.completedAt);
-        setSuccessMsg("Your lifestyle preferences and deal-breakers have been saved successfully!");
+        const successText = "Your lifestyle preferences and deal-breakers have been saved successfully!";
+        setSuccessMsg(successText);
+        showToast(successText, "success");
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } catch (err) {
       console.error("Save preferences error:", err);
       const data = err.response?.data;
-      setErrorMsg(data?.message || "Failed to save preferences. Please check your answers.");
+      const errorText = data?.message || "Failed to save preferences. Please check your answers.";
+      setErrorMsg(errorText);
+      showToast(errorText, "error");
       window.scrollTo({ top: 0, behavior: "smooth" });
     } finally {
       setSaving(false);
@@ -208,885 +232,806 @@ export default function StudentPreferencesPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 py-12 px-4 max-w-4xl mx-auto w-full animate-pulse space-y-6">
-        <div className="h-8 bg-slate-200 rounded-lg w-1/3"></div>
-        <div className="h-4 bg-slate-100 rounded w-1/2"></div>
-        <div className="h-24 bg-slate-100 rounded-2xl"></div>
-        <div className="h-96 bg-slate-100 rounded-2xl"></div>
+      <div className="flex-1 py-10 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full animate-pulse space-y-6">
+        <div className="h-8 bg-slate-200 dark:bg-slate-800 rounded-xl w-1/3" />
+        <div className="h-4 bg-slate-100 dark:bg-slate-800/60 rounded w-1/2" />
+        <div className="h-24 bg-slate-100 dark:bg-slate-800/60 rounded-2xl" />
+        <div className="h-96 bg-slate-100 dark:bg-slate-800/60 rounded-2xl" />
       </div>
     );
   }
 
-  const currentStepDef = QUESTIONNAIRE_STEPS.find((s) => s.id === currentStep);
-  const progressPercent = (currentStep / 5) * 100;
+  const stepTitles = [
+    "Room Type",
+    "Daily Routine",
+    "Living Habits",
+    "Diet & Language",
+    "Review & Constraints",
+  ];
+
+  const progressPercent = Math.round((currentStep / 5) * 100);
 
   return (
-    <div className="flex-1 py-10 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full">
-      {/* Header */}
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              Lifestyle Questionnaire
-            </h1>
-            {completedAt ? (
-              <Badge variant="success" size="sm">
-                ✓ Questionnaire Completed
-              </Badge>
-            ) : (
-              <Badge variant="warning" size="sm">
-                Pending Submission
-              </Badge>
+    <PageTransition>
+      <div className="flex-1 py-6 sm:py-8 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full space-y-6">
+        
+        {/* Header */}
+        <Reveal direction="down">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight font-heading">
+                  Lifestyle Questionnaire
+                </h1>
+                {completedAt ? (
+                  <Badge variant="success" size="sm" dot>
+                    ✓ Questionnaire Completed
+                  </Badge>
+                ) : (
+                  <Badge variant="warning" size="sm" dot pulse>
+                    Pending Submission
+                  </Badge>
+                )}
+              </div>
+              <p className="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                Tell us about your daily routines, living habits, and deal-breakers to find compatible roommates.
+              </p>
+            </div>
+
+            {completedAt && (
+              <div className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 shrink-0">
+                <span className="font-semibold text-slate-700 dark:text-slate-300">Last confirmed:</span>{" "}
+                {new Date(completedAt).toLocaleDateString()}
+              </div>
             )}
           </div>
-          <p className="mt-1 text-sm text-slate-500">
-            Tell us about your daily routines, living habits, and deal-breakers to find compatible roommates.
-          </p>
-        </div>
+        </Reveal>
 
-        {completedAt && (
-          <div className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 shrink-0">
-            <span className="font-semibold text-slate-700">Last confirmed:</span>{" "}
-            {new Date(completedAt).toLocaleDateString()}
-          </div>
-        )}
-      </div>
-
-      {/* Privacy Guarantee Banner */}
-      <div className="mb-6 rounded-2xl border border-indigo-100 bg-indigo-50/60 p-4 text-xs text-indigo-900 flex items-start gap-3">
-        <span className="text-xl">🔒</span>
-        <div className="space-y-1">
-          <p className="font-bold text-indigo-950">100% Confidential & Private</p>
-          <p className="text-indigo-800 leading-relaxed">
-            Your responses are strictly confidential. <strong>No other student can see your profile or answers.</strong>{" "}
-            This data is used solely by the allocation algorithm to compute anonymous compatibility scores and ensure
-            peaceful, harmonious hostel living.
-          </p>
-        </div>
-      </div>
-
-      {/* Success / Error Messages */}
-      {successMsg && (
-        <div className="mb-6">
-          <Alert variant="success" title="Preferences Saved" onClose={() => setSuccessMsg("")}>
-            {successMsg}
-          </Alert>
-        </div>
-      )}
-      {errorMsg && (
-        <div className="mb-6">
-          <Alert variant="danger" title="Error" onClose={() => setErrorMsg("")}>
-            {errorMsg}
-          </Alert>
-        </div>
-      )}
-
-      {/* Multi-Step Wizard Progress Bar */}
-      <div className="mb-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">
-            Step {currentStep} of 5: {currentStepDef?.title}
-          </span>
-          <span className="text-xs font-semibold text-slate-500">{progressPercent}% Completed</span>
-        </div>
-
-        {/* Progress track */}
-        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-indigo-600 transition-all duration-300 rounded-full"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-
-        {/* Step Tabs */}
-        <div className="mt-4 grid grid-cols-2 sm:grid-cols-5 gap-2">
-          {QUESTIONNAIRE_STEPS.map((s) => {
-            const isDone = s.id < currentStep;
-            const isCurrent = s.id === currentStep;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => {
-                  if (s.id < currentStep || validateStep(currentStep)) {
-                    setCurrentStep(s.id);
-                  }
-                }}
-                className={`text-left p-2.5 rounded-xl border text-xs transition-all ${
-                  isCurrent
-                    ? "border-indigo-600 bg-indigo-50/70 text-indigo-900 font-bold"
-                    : isDone
-                    ? "border-emerald-200 bg-emerald-50/50 text-emerald-800 font-medium"
-                    : "border-slate-200 bg-slate-50/50 text-slate-400 hover:border-slate-300"
-                }`}
-              >
-                <div className="flex items-center gap-1.5">
-                  <span>{s.icon}</span>
-                  <span className="truncate">{s.title}</span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Step Content Container */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm mb-8">
-        {/* STEP 1: ROOM TYPE */}
-        {currentStep === 1 && (
-          <div className="space-y-8">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <span>🏠</span> Desired Room Type
-              </h2>
-              <p className="text-xs text-slate-500 mt-1">
-                Choose how many students will share your hostel room. Roommate matching and groups only work between students with the same room size choice.
+        {/* Privacy Guarantee Note Card */}
+        <Reveal direction="up" delay={50}>
+          <div className="rounded-2xl border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50/60 dark:bg-indigo-950/20 p-4 text-xs text-indigo-950 dark:text-indigo-200 flex items-start gap-3">
+            <IconShield className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <p className="font-bold text-indigo-950 dark:text-indigo-200">100% Confidential & Private</p>
+              <p className="text-indigo-800 dark:text-indigo-300/90 leading-relaxed">
+                Your responses are strictly confidential. <strong>No other student can see your answers.</strong>{" "}
+                This data is used solely by the allocation algorithm to compute anonymous compatibility scores and ensure
+                peaceful, harmonious hostel living.
               </p>
-            </div>
-
-            {/* roomSize */}
-            <div className="space-y-3">
-              <label className="block text-sm font-bold text-slate-800">
-                1. Desired Room Size <span className="text-rose-500">*</span>
-              </label>
-              <p className="text-xs text-slate-500">
-                Select your preferred room size. Note: A single room (1 bed) means you live alone and do not need roommates or a group.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[
-                  {
-                    value: 1,
-                    label: "Single room (1 bed)",
-                    desc: "Just for you — no roommates needed",
-                    sub: "1-seater • Independent",
-                    icon: "🛏️",
-                  },
-                  {
-                    value: 2,
-                    label: "Shared by 2",
-                    desc: "You + 1 roommate",
-                    sub: "2-seater • Double sharing",
-                    icon: "👥",
-                  },
-                  {
-                    value: 3,
-                    label: "Shared by 3",
-                    desc: "You + 2 roommates",
-                    sub: "3-seater • Triple sharing",
-                    icon: "👨‍👩‍👦",
-                  },
-                  {
-                    value: 4,
-                    label: "Shared by 4",
-                    desc: "You + 3 roommates",
-                    sub: "4-seater • Quad sharing",
-                    icon: "🏘️",
-                  },
-                ].map((opt) => {
-                  const isSelected = answers.roomSize === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => handleSelectOption("roomSize", opt.value)}
-                      className={`flex flex-col items-start p-5 rounded-2xl border text-left transition-all ${
-                        isSelected
-                          ? "border-indigo-600 bg-indigo-50/70 shadow-sm ring-2 ring-indigo-500/20"
-                          : "border-slate-200 hover:border-slate-300 bg-white"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full mb-3">
-                        <span className="text-3xl">{opt.icon}</span>
-                        <div
-                          className={`h-5 w-5 rounded-full border flex items-center justify-center ${
-                            isSelected ? "border-indigo-600 bg-indigo-600" : "border-slate-300"
-                          }`}
-                        >
-                          {isSelected && <div className="h-2 w-2 rounded-full bg-white" />}
-                        </div>
-                      </div>
-                      <span className="text-base font-bold text-slate-900">{opt.label}</span>
-                      <span className="text-xs font-semibold text-indigo-600 mt-0.5">{opt.sub}</span>
-                      <span className="text-xs text-slate-500 mt-1">{opt.desc}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              {stepErrors.roomSize && (
-                <p className="text-xs text-rose-600 font-medium">{stepErrors.roomSize}</p>
-              )}
             </div>
           </div>
+        </Reveal>
+
+        {/* Alerts */}
+        {successMsg && (
+          <Reveal direction="down">
+            <Alert variant="success" title="Preferences Saved" onClose={() => setSuccessMsg("")}>
+              {successMsg}
+            </Alert>
+          </Reveal>
+        )}
+        {errorMsg && (
+          <Reveal direction="down">
+            <Alert variant="danger" title="Error" onClose={() => setErrorMsg("")}>
+              {errorMsg}
+            </Alert>
+          </Reveal>
         )}
 
-        {/* STEP 2: DAILY ROUTINE */}
-        {currentStep === 2 && (
-          <div className="space-y-8">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <span>⏰</span> Daily Routine & Sleep Habits
-              </h2>
-              <p className="text-xs text-slate-500 mt-1">
-                Aligning wake and rest schedules prevents common roommate friction and study interruptions.
-              </p>
+        {/* Stepper with Step Names */}
+        <Reveal direction="up" delay={100}>
+          <Card variant="default" className="p-5">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 font-heading">
+                Step {currentStep} of 5: {stepTitles[currentStep - 1]}
+              </span>
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                {progressPercent}% Complete
+              </span>
             </div>
 
-            {/* sleepSchedule */}
-            <div className="space-y-3">
-              <label className="block text-sm font-bold text-slate-800">
-                1. Sleep Schedule <span className="text-rose-500">*</span>
-              </label>
-              <p className="text-xs text-slate-500">When do you typically sleep on most weekdays and nights?</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {[
-                  { value: "early", label: "Early to Bed", desc: "Sleeps before 10:00 PM", icon: "🌅" },
-                  { value: "normal", label: "Normal Hours", desc: "10:00 PM - 12:00 AM", icon: "🌙" },
-                  { value: "late", label: "Night Owl", desc: "After 12:00 AM (midnight)", icon: "🦉" },
-                ].map((opt) => {
-                  const isSelected = answers.sleepSchedule === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => handleSelectOption("sleepSchedule", opt.value)}
-                      className={`flex flex-col items-start p-4 rounded-xl border text-left transition-all ${
-                        isSelected
-                          ? "border-indigo-600 bg-indigo-50/70 shadow-sm ring-2 ring-indigo-500/20"
-                          : "border-slate-200 hover:border-slate-300 bg-white"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between w-full mb-2">
-                        <span className="text-2xl">{opt.icon}</span>
-                        <div
-                          className={`h-4 w-4 rounded-full border flex items-center justify-center ${
-                            isSelected ? "border-indigo-600 bg-indigo-600" : "border-slate-300"
-                          }`}
-                        >
-                          {isSelected && <div className="h-1.5 w-1.5 rounded-full bg-white" />}
-                        </div>
-                      </div>
-                      <span className="text-sm font-bold text-slate-900">{opt.label}</span>
-                      <span className="text-xs text-slate-500 mt-0.5">{opt.desc}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              {stepErrors.sleepSchedule && (
-                <p className="text-xs text-rose-600 font-medium">{stepErrors.sleepSchedule}</p>
-              )}
+            <ProgressBar value={progressPercent} max={100} color="brand" animated />
+
+            <div className="mt-4">
+              <Stepper
+                steps={stepTitles}
+                currentStep={currentStep - 1}
+                className="hidden sm:flex"
+              />
             </div>
+          </Card>
+        </Reveal>
 
-            {/* studyTime */}
-            <div className="space-y-3 pt-4 border-t border-slate-100">
-              <label className="block text-sm font-bold text-slate-800">
-                2. Preferred Study Time <span className="text-rose-500">*</span>
-              </label>
-              <p className="text-xs text-slate-500">At what time of day are you most productive for focused study?</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {[
-                  { value: "morning", label: "Morning Person", desc: "Dawn to midday focus", icon: "☕" },
-                  { value: "daytime", label: "Daytime", desc: "Afternoon & early evening", icon: "☀️" },
-                  { value: "night", label: "Late Night", desc: "Quiet midnight hours", icon: "🌌" },
-                  { value: "flexible", label: "Flexible", desc: "Adapts easily to schedule", icon: "🔄" },
-                ].map((opt) => {
-                  const isSelected = answers.studyTime === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => handleSelectOption("studyTime", opt.value)}
-                      className={`flex flex-col items-start p-4 rounded-xl border text-left transition-all ${
-                        isSelected
-                          ? "border-indigo-600 bg-indigo-50/70 shadow-sm ring-2 ring-indigo-500/20"
-                          : "border-slate-200 hover:border-slate-300 bg-white"
-                      }`}
-                    >
-                      <span className="text-xl mb-1">{opt.icon}</span>
-                      <span className="text-sm font-bold text-slate-900">{opt.label}</span>
-                      <span className="text-xs text-slate-500 mt-0.5">{opt.desc}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              {stepErrors.studyTime && (
-                <p className="text-xs text-rose-600 font-medium">{stepErrors.studyTime}</p>
-              )}
-            </div>
-
-            {/* nightCalls */}
-            <div className="space-y-3 pt-4 border-t border-slate-100">
-              <label className="block text-sm font-bold text-slate-800">
-                3. Late-Night Phone / Video Calls <span className="text-rose-500">*</span>
-              </label>
-              <p className="text-xs text-slate-500">
-                How often do you make or receive calls after 11 PM (e.g. family or friends in other time zones)?
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {[
-                  { value: "never", label: "Rarely or Never", desc: "No late calls in room", icon: "🔕" },
-                  { value: "sometimes", label: "Occasionally", desc: "Brief calls or weekends", icon: "📱" },
-                  { value: "often", label: "Frequently", desc: "Regular late-night calls", icon: "🌐" },
-                ].map((opt) => {
-                  const isSelected = answers.nightCalls === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => handleSelectOption("nightCalls", opt.value)}
-                      className={`flex flex-col items-start p-4 rounded-xl border text-left transition-all ${
-                        isSelected
-                          ? "border-indigo-600 bg-indigo-50/70 shadow-sm ring-2 ring-indigo-500/20"
-                          : "border-slate-200 hover:border-slate-300 bg-white"
-                      }`}
-                    >
-                      <span className="text-xl mb-1">{opt.icon}</span>
-                      <span className="text-sm font-bold text-slate-900">{opt.label}</span>
-                      <span className="text-xs text-slate-500 mt-0.5">{opt.desc}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              {stepErrors.nightCalls && (
-                <p className="text-xs text-rose-600 font-medium">{stepErrors.nightCalls}</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* STEP 3: LIVING HABITS */}
-        {currentStep === 3 && (
-          <div className="space-y-8">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <span>🏡</span> Living Habits & Space Sharing
-              </h2>
-              <p className="text-xs text-slate-500 mt-1">
-                Scale ratings (1 to 5) allow the matching system to pair students with harmonious living standards.
-              </p>
-            </div>
-
-            {/* Cleanliness */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="block text-sm font-bold text-slate-800">
-                  1. Cleanliness & Organization <span className="text-rose-500">*</span>
-                </label>
-                <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-md">
-                  Rating: {answers.cleanliness} / 5
-                </span>
-              </div>
-              <p className="text-xs text-slate-500">How tidy do you keep your room and personal space?</p>
-              <div className="grid grid-cols-5 gap-2">
-                {[1, 2, 3, 4, 5].map((num) => (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => handleScaleSelect("cleanliness", num)}
-                    className={`py-3 rounded-xl border text-sm font-bold transition-all ${
-                      answers.cleanliness === num
-                        ? "border-indigo-600 bg-indigo-600 text-white shadow"
-                        : "border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700"
-                    }`}
-                  >
-                    {num}
-                  </button>
-                ))}
-              </div>
-              <div className="flex justify-between text-[11px] text-slate-400">
-                <span>1 - Relaxed / Easygoing</span>
-                <span>3 - Moderate / Tidy</span>
-                <span>5 - Spotless / Pristine</span>
-              </div>
-            </div>
-
-            {/* Noise Tolerance */}
-            <div className="space-y-3 pt-4 border-t border-slate-100">
-              <div className="flex items-center justify-between">
-                <label className="block text-sm font-bold text-slate-800">
-                  2. Noise Tolerance <span className="text-rose-500">*</span>
-                </label>
-                <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-md">
-                  Rating: {answers.noiseTolerance} / 5
-                </span>
-              </div>
-              <p className="text-xs text-slate-500">How sensitive are you to room ambient noise while sleeping or concentrating?</p>
-              <div className="grid grid-cols-5 gap-2">
-                {[1, 2, 3, 4, 5].map((num) => (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => handleScaleSelect("noiseTolerance", num)}
-                    className={`py-3 rounded-xl border text-sm font-bold transition-all ${
-                      answers.noiseTolerance === num
-                        ? "border-indigo-600 bg-indigo-600 text-white shadow"
-                        : "border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700"
-                    }`}
-                  >
-                    {num}
-                  </button>
-                ))}
-              </div>
-              <div className="flex justify-between text-[11px] text-slate-400">
-                <span>1 - Needs Pin-Drop Silence</span>
-                <span>3 - Average Ambience</span>
-                <span>5 - Fine with Activity & Chatter</span>
-              </div>
-            </div>
-
-            {/* Social Level */}
-            <div className="space-y-3 pt-4 border-t border-slate-100">
-              <div className="flex items-center justify-between">
-                <label className="block text-sm font-bold text-slate-800">
-                  3. Social Level & Visitors in Room <span className="text-rose-500">*</span>
-                </label>
-                <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-md">
-                  Rating: {answers.socialLevel} / 5
-                </span>
-              </div>
-              <p className="text-xs text-slate-500">How frequently do you invite classmates or friends into your room?</p>
-              <div className="grid grid-cols-5 gap-2">
-                {[1, 2, 3, 4, 5].map((num) => (
-                  <button
-                    key={num}
-                    type="button"
-                    onClick={() => handleScaleSelect("socialLevel", num)}
-                    className={`py-3 rounded-xl border text-sm font-bold transition-all ${
-                      answers.socialLevel === num
-                        ? "border-indigo-600 bg-indigo-600 text-white shadow"
-                        : "border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700"
-                    }`}
-                  >
-                    {num}
-                  </button>
-                ))}
-              </div>
-              <div className="flex justify-between text-[11px] text-slate-400">
-                <span>1 - Quiet Sanctuary / Few Visitors</span>
-                <span>3 - Occasional Hangouts</span>
-                <span>5 - Social Hub / Frequent Friends Over</span>
-              </div>
-            </div>
-
-            {/* AC Preference */}
-            <div className="space-y-3 pt-4 border-t border-slate-100">
-              <label className="block text-sm font-bold text-slate-800">
-                4. AC Preference <span className="text-rose-500">*</span>
-              </label>
-              <p className="text-xs text-slate-500">What cooling climate do you prefer for your room?</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {[
-                  { value: "ac", label: "Air Conditioned (AC)", desc: "Cooling room required", icon: "❄️" },
-                  { value: "non-ac", label: "Non-AC (Ventilated)", desc: "Fan and breeze fine", icon: "🍃" },
-                  { value: "no-preference", label: "No Preference", desc: "Either AC or Non-AC works", icon: "⚖️" },
-                ].map((opt) => {
-                  const isSelected = answers.acPreference === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => handleSelectOption("acPreference", opt.value)}
-                      className={`flex flex-col items-start p-4 rounded-xl border text-left transition-all ${
-                        isSelected
-                          ? "border-indigo-600 bg-indigo-50/70 shadow-sm ring-2 ring-indigo-500/20"
-                          : "border-slate-200 hover:border-slate-300 bg-white"
-                      }`}
-                    >
-                      <span className="text-xl mb-1">{opt.icon}</span>
-                      <span className="text-sm font-bold text-slate-900">{opt.label}</span>
-                      <span className="text-xs text-slate-500 mt-0.5">{opt.desc}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 4: FOOD & LANGUAGE */}
-        {currentStep === 4 && (
-          <div className="space-y-8">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <span>🍽️</span> Dietary Preferences & Communication
-              </h2>
-              <p className="text-xs text-slate-500 mt-1">
-                Accommodation respects all personal dietary traditions and multilingual campus environments.
-              </p>
-            </div>
-
-            {/* foodType */}
-            <div className="space-y-3">
-              <label className="block text-sm font-bold text-slate-800">
-                1. Dietary Lifestyle <span className="text-rose-500">*</span>
-              </label>
-              <p className="text-xs text-slate-500">What type of meals do you consume?</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {[
-                  { value: "veg", label: "Vegetarian", desc: "Plant-based, dairy permitted", icon: "🥗" },
-                  { value: "non-veg", label: "Non-Vegetarian", desc: "Includes meat & seafood", icon: "🍗" },
-                  { value: "eggetarian", label: "Eggetarian", desc: "Vegetarian plus eggs", icon: "🍳" },
-                  { value: "halal", label: "Halal Non-Veg", desc: "Strictly Halal non-vegetarian", icon: "🥩" },
-                  { value: "jain", label: "Jain Vegetarian", desc: "Pure veg without root vegetables", icon: "🌱" },
-                ].map((opt) => {
-                  const isSelected = answers.foodType === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => handleSelectOption("foodType", opt.value)}
-                      className={`flex flex-col items-start p-4 rounded-xl border text-left transition-all ${
-                        isSelected
-                          ? "border-indigo-600 bg-indigo-50/70 shadow-sm ring-2 ring-indigo-500/20"
-                          : "border-slate-200 hover:border-slate-300 bg-white"
-                      }`}
-                    >
-                      <span className="text-xl mb-1">{opt.icon}</span>
-                      <span className="text-sm font-bold text-slate-900">{opt.label}</span>
-                      <span className="text-xs text-slate-500 mt-0.5">{opt.desc}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              {stepErrors.foodType && (
-                <p className="text-xs text-rose-600 font-medium">{stepErrors.foodType}</p>
-              )}
-            </div>
-
-            {/* okWithDifferentFood */}
-            <div className="space-y-3 pt-4 border-t border-slate-100">
-              <label className="block text-sm font-bold text-slate-800">
-                2. Dietary Sharing Tolerance <span className="text-rose-500">*</span>
-              </label>
-              <p className="text-xs text-slate-500">
-                Are you comfortable sharing your room with a student who consumes a different diet?
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  {
-                    value: true,
-                    label: "Comfortable with Any Diet",
-                    desc: "I don't mind what my roommate eats",
-                    icon: "🤝",
-                  },
-                  {
-                    value: false,
-                    label: "Prefer Same Diet Only",
-                    desc: "I strongly prefer a roommate with a matching diet",
-                    icon: "🔒",
-                  },
-                ].map((opt) => {
-                  const isSelected = answers.okWithDifferentFood === opt.value;
-                  return (
-                    <button
-                      key={String(opt.value)}
-                      type="button"
-                      onClick={() => handleSelectOption("okWithDifferentFood", opt.value)}
-                      className={`flex flex-col items-start p-4 rounded-xl border text-left transition-all ${
-                        isSelected
-                          ? "border-indigo-600 bg-indigo-50/70 shadow-sm ring-2 ring-indigo-500/20"
-                          : "border-slate-200 hover:border-slate-300 bg-white"
-                      }`}
-                    >
-                      <span className="text-xl mb-1">{opt.icon}</span>
-                      <span className="text-sm font-bold text-slate-900">{opt.label}</span>
-                      <span className="text-xs text-slate-500 mt-0.5">{opt.desc}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              {stepErrors.okWithDifferentFood && (
-                <p className="text-xs text-rose-600 font-medium">{stepErrors.okWithDifferentFood}</p>
-              )}
-            </div>
-
-            {/* languages */}
-            <div className="space-y-3 pt-4 border-t border-slate-100">
-              <label className="block text-sm font-bold text-slate-800">
-                3. Languages Spoken / Understood <span className="text-rose-500">*</span>
-              </label>
-              <p className="text-xs text-slate-500">
-                Select all languages you comfortably speak or understand. You can also add custom languages below.
-              </p>
-
-              {/* Pills grid */}
-              <div className="flex flex-wrap gap-2">
-                {LANGUAGE_OPTIONS.filter((l) => l !== "Other").map((lang) => {
-                  const isSelected = answers.languages.includes(lang);
-                  return (
-                    <button
-                      key={lang}
-                      type="button"
-                      onClick={() => handleToggleLanguage(lang)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                        isSelected
-                          ? "border-indigo-600 bg-indigo-600 text-white shadow-xs"
-                          : "border-slate-300 bg-white text-slate-700 hover:border-slate-400"
-                      }`}
-                    >
-                      {isSelected ? "✓ " : "+ "}
-                      {lang}
-                    </button>
-                  );
-                })}
-
-                {/* Custom languages not in standard list */}
-                {answers.languages
-                  .filter((l) => !LANGUAGE_OPTIONS.includes(l))
-                  .map((custom) => (
-                    <button
-                      key={custom}
-                      type="button"
-                      onClick={() => handleToggleLanguage(custom)}
-                      className="px-3 py-1.5 rounded-full text-xs font-semibold border border-indigo-600 bg-indigo-600 text-white shadow-xs"
-                    >
-                      ✓ {custom} (Custom) ✕
-                    </button>
-                  ))}
-              </div>
-
-              {/* Add custom language input */}
-              <div className="pt-2 flex items-center gap-2 max-w-sm">
-                <input
-                  type="text"
-                  value={customLanguage}
-                  onChange={(e) => setCustomLanguage(e.target.value)}
-                  placeholder="Add another language..."
-                  className="rounded-xl border border-slate-300 px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-indigo-600"
-                />
-                <button
-                  type="button"
-                  onClick={handleAddCustomLanguage}
-                  className="rounded-xl bg-slate-100 border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
-                >
-                  + Add
-                </button>
-              </div>
-
-              {stepErrors.languages && (
-                <p className="text-xs text-rose-600 font-medium">{stepErrors.languages}</p>
-              )}
-            </div>
-
-            {/* culturalComfort */}
-            <div className="space-y-3 pt-4 border-t border-slate-100">
-              <div className="flex items-center justify-between">
-                <label className="block text-sm font-bold text-slate-800">
-                  4. Cultural Background Comfort
-                </label>
-                <span className="text-[11px] font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
-                  Optional / Low Weight
-                </span>
-              </div>
-              <p className="text-xs text-slate-500">
-                Self-declared comfort inclination. Never used to rank or exclude anyone.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {[
-                  {
-                    value: "open-to-all",
-                    label: "Open to All",
-                    desc: "Excited to live with anyone from any region or nation",
-                    icon: "🌍",
-                  },
-                  {
-                    value: "prefer-similar-background",
-                    label: "Prefer Similar Background",
-                    desc: "Feel slightly more at home with someone of familiar background",
-                    icon: "🏡",
-                  },
-                  {
-                    value: "no-preference",
-                    label: "No Preference",
-                    desc: "No specific inclination",
-                    icon: "🤝",
-                  },
-                ].map((opt) => {
-                  const isSelected = answers.culturalComfort === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => handleSelectOption("culturalComfort", opt.value)}
-                      className={`flex flex-col items-start p-4 rounded-xl border text-left transition-all ${
-                        isSelected
-                          ? "border-indigo-600 bg-indigo-50/70 shadow-sm ring-2 ring-indigo-500/20"
-                          : "border-slate-200 hover:border-slate-300 bg-white"
-                      }`}
-                    >
-                      <span className="text-xl mb-1">{opt.icon}</span>
-                      <span className="text-sm font-bold text-slate-900">{opt.label}</span>
-                      <span className="text-xs text-slate-500 mt-0.5">{opt.desc}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 5: DEAL-BREAKERS & REVIEW */}
-        {currentStep === 5 && (
-          <div className="space-y-8">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <span>🛡️</span> Non-Negotiable Deal-Breakers & Review
-              </h2>
-              <p className="text-xs text-slate-500 mt-1">
-                Deal-breakers act as strict binary filters. Any roommate candidate who violates a deal-breaker
-                will never be paired with you.
-              </p>
-            </div>
-
-            {/* Deal Breakers List */}
-            <div className="space-y-3">
-              <label className="block text-sm font-bold text-slate-800">
-                Select Your Strict Deal-Breakers (Optional)
-              </label>
-              <div className="grid grid-cols-1 gap-3">
-                {DEAL_BREAKER_OPTIONS.map((db) => {
-                  const isChecked = answers.dealBreakers.includes(db.key);
-                  return (
-                    <button
-                      key={db.key}
-                      type="button"
-                      onClick={() => handleToggleDealBreaker(db.key)}
-                      className={`flex items-start gap-4 p-4 rounded-2xl border text-left transition-all ${
-                        isChecked
-                          ? "border-rose-300 bg-rose-50/40 shadow-xs ring-1 ring-rose-400"
-                          : "border-slate-200 hover:border-slate-300 bg-white"
-                      }`}
-                    >
-                      <div className="text-2xl shrink-0 mt-0.5">{db.icon}</div>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-bold text-slate-900">{db.label}</span>
-                          <span
-                            className={`text-xs font-semibold px-2 py-0.5 rounded-md ${
-                              isChecked
-                                ? "bg-rose-100 text-rose-800 border border-rose-200"
-                                : "bg-slate-100 text-slate-500"
-                            }`}
-                          >
-                            {isChecked ? "Active Constraint" : "Not Active"}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1">{db.description}</p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Comprehensive Review Summary */}
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-6 space-y-4">
-              <h3 className="text-sm font-bold text-slate-900 border-b border-slate-200 pb-2 flex items-center justify-between">
-                <span>Response Summary Review</span>
-                <span className="text-xs text-indigo-600 font-semibold">Ready to Confirm</span>
-              </h3>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                <div className="col-span-1 sm:col-span-2 pb-2 border-b border-slate-200">
-                  <span className="font-semibold text-slate-500">Desired Room Size:</span>
-                  <p className="font-bold text-indigo-600 mt-0.5 text-sm">
-                    {answers.roomSize === 1
-                      ? "1-Bed Single Room (No roommates / independent)"
-                      : answers.roomSize
-                      ? `${answers.roomSize}-Bed Room (Shared by ${answers.roomSize})`
-                      : "Not answered"}
+        {/* Questionnaire Step Content */}
+        <Reveal direction="up" delay={150}>
+          <Card variant="elevated" className="p-6 sm:p-8">
+            
+            {/* STEP 1: ROOM TYPE */}
+            {currentStep === 1 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 font-heading">
+                    <IconBed className="w-5 h-5 text-indigo-600 dark:text-indigo-400" /> Desired Room Size
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    Choose how many students will share your hostel room. Roommate matching and groups only work between students with the same room size choice.
                   </p>
                 </div>
-                <div>
-                  <span className="font-semibold text-slate-500">Sleep Schedule:</span>
-                  <p className="font-bold text-slate-900 capitalize mt-0.5">{answers.sleepSchedule || "Not answered"}</p>
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-500">Preferred Study Time:</span>
-                  <p className="font-bold text-slate-900 capitalize mt-0.5">{answers.studyTime || "Not answered"}</p>
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-500">Late-Night Calls:</span>
-                  <p className="font-bold text-slate-900 capitalize mt-0.5">{answers.nightCalls || "Not answered"}</p>
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-500">AC Preference:</span>
-                  <p className="font-bold text-slate-900 uppercase mt-0.5">{answers.acPreference || "No preference"}</p>
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-500">Dietary Type:</span>
-                  <p className="font-bold text-slate-900 capitalize mt-0.5">{answers.foodType || "Not answered"}</p>
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-500">Dietary Sharing Comfort:</span>
-                  <p className="font-bold text-slate-900 mt-0.5">
-                    {answers.okWithDifferentFood ? "Comfortable with any diet" : "Prefers same diet only"}
-                  </p>
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-500">Cleanliness & Noise:</span>
-                  <p className="font-bold text-slate-900 mt-0.5">
-                    Cleanliness: {answers.cleanliness}/5 · Noise: {answers.noiseTolerance}/5 · Social: {answers.socialLevel}/5
-                  </p>
-                </div>
-                <div>
-                  <span className="font-semibold text-slate-500">Languages:</span>
-                  <p className="font-bold text-slate-900 mt-0.5">
-                    {answers.languages.length > 0 ? answers.languages.join(", ") : "None selected"}
-                  </p>
+
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {[
+                      {
+                        value: 1,
+                        label: "Single room (1 bed)",
+                        desc: "Just for you — no roommates needed",
+                        badge: <Badge variant="neutral" size="sm">Single Seater</Badge>,
+                        icon: (
+                          <div className="flex items-center gap-1">
+                            <IconBed className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                          </div>
+                        ),
+                      },
+                      {
+                        value: 2,
+                        label: "Shared by 2",
+                        desc: "You + 1 roommate",
+                        badge: <Badge variant="brand" size="sm">Double Sharing</Badge>,
+                        icon: (
+                          <div className="flex items-center -space-x-1">
+                            <IconBed className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                            <IconBed className="w-4 h-4 text-indigo-400 dark:text-indigo-500" />
+                          </div>
+                        ),
+                      },
+                      {
+                        value: 3,
+                        label: "Shared by 3",
+                        desc: "You + 2 roommates",
+                        badge: <Badge variant="brand" size="sm">Triple Sharing</Badge>,
+                        icon: (
+                          <div className="flex items-center -space-x-1">
+                            <IconBed className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                            <IconBed className="w-4 h-4 text-indigo-500 dark:text-indigo-500" />
+                            <IconBed className="w-4 h-4 text-indigo-400 dark:text-indigo-600" />
+                          </div>
+                        ),
+                      },
+                      {
+                        value: 4,
+                        label: "Shared by 4",
+                        desc: "You + 3 roommates",
+                        badge: <Badge variant="brand" size="sm">Quad Sharing</Badge>,
+                        icon: (
+                          <div className="grid grid-cols-2 gap-0.5">
+                            <IconBed className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                            <IconBed className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-500" />
+                            <IconBed className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-500" />
+                            <IconBed className="w-3.5 h-3.5 text-indigo-400 dark:text-indigo-600" />
+                          </div>
+                        ),
+                      },
+                    ].map((opt) => (
+                      <OptionCard
+                        key={opt.value}
+                        title={opt.label}
+                        description={opt.desc}
+                        badge={opt.badge}
+                        icon={opt.icon}
+                        selected={answers.roomSize === opt.value}
+                        onClick={() => handleSelectOption("roomSize", opt.value)}
+                      />
+                    ))}
+                  </div>
+
+                  {stepErrors.roomSize && (
+                    <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold">{stepErrors.roomSize}</p>
+                  )}
                 </div>
               </div>
+            )}
 
-              {answers.dealBreakers.length > 0 && (
-                <div className="pt-2 border-t border-slate-200">
-                  <span className="font-semibold text-slate-500 text-xs">Active Deal-Breakers:</span>
-                  <div className="flex flex-wrap gap-1.5 mt-1">
-                    {answers.dealBreakers.map((key) => {
-                      const db = DEAL_BREAKER_OPTIONS.find((d) => d.key === key);
+            {/* STEP 2: DAILY ROUTINE */}
+            {currentStep === 2 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 font-heading">
+                    <span>⏰</span> Daily Routine & Sleep Habits
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    Aligning wake and rest schedules prevents common roommate friction and study interruptions.
+                  </p>
+                </div>
+
+                {/* sleepSchedule */}
+                <div className="space-y-3">
+                  <label className="block text-sm font-bold text-slate-800 dark:text-slate-200">
+                    1. Sleep Schedule <span className="text-rose-500">*</span>
+                  </label>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">When do you typically sleep on most weekdays and nights?</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {[
+                      { value: "early", label: "Early to Bed", desc: "Sleeps before 10:00 PM" },
+                      { value: "normal", label: "Normal Hours", desc: "10:00 PM - 12:00 AM" },
+                      { value: "late", label: "Night Owl", desc: "After 12:00 AM (midnight)" },
+                    ].map((opt) => (
+                      <OptionCard
+                        key={opt.value}
+                        title={opt.label}
+                        description={opt.desc}
+                        selected={answers.sleepSchedule === opt.value}
+                        onClick={() => handleSelectOption("sleepSchedule", opt.value)}
+                      />
+                    ))}
+                  </div>
+                  {stepErrors.sleepSchedule && (
+                    <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold">{stepErrors.sleepSchedule}</p>
+                  )}
+                </div>
+
+                {/* studyTime */}
+                <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <label className="block text-sm font-bold text-slate-800 dark:text-slate-200">
+                    2. Preferred Study Time <span className="text-rose-500">*</span>
+                  </label>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">At what time of day are you most productive for focused study?</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    {[
+                      { value: "morning", label: "Morning Person", desc: "Dawn to midday focus" },
+                      { value: "daytime", label: "Daytime", desc: "Afternoon & early evening" },
+                      { value: "night", label: "Late Night", desc: "Quiet midnight hours" },
+                      { value: "flexible", label: "Flexible", desc: "Adapts easily to schedule" },
+                    ].map((opt) => (
+                      <OptionCard
+                        key={opt.value}
+                        title={opt.label}
+                        description={opt.desc}
+                        selected={answers.studyTime === opt.value}
+                        onClick={() => handleSelectOption("studyTime", opt.value)}
+                      />
+                    ))}
+                  </div>
+                  {stepErrors.studyTime && (
+                    <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold">{stepErrors.studyTime}</p>
+                  )}
+                </div>
+
+                {/* nightCalls */}
+                <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <label className="block text-sm font-bold text-slate-800 dark:text-slate-200">
+                    3. Late-Night Phone / Video Calls <span className="text-rose-500">*</span>
+                  </label>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    How often do you make or receive calls after 11 PM (e.g. family or friends in other time zones)?
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {[
+                      { value: "never", label: "Rarely or Never", desc: "No late calls in room" },
+                      { value: "sometimes", label: "Occasionally", desc: "Brief calls or weekends" },
+                      { value: "often", label: "Frequently", desc: "Regular late-night calls" },
+                    ].map((opt) => (
+                      <OptionCard
+                        key={opt.value}
+                        title={opt.label}
+                        description={opt.desc}
+                        selected={answers.nightCalls === opt.value}
+                        onClick={() => handleSelectOption("nightCalls", opt.value)}
+                      />
+                    ))}
+                  </div>
+                  {stepErrors.nightCalls && (
+                    <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold">{stepErrors.nightCalls}</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: LIVING HABITS */}
+            {currentStep === 3 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 font-heading">
+                    <span>🏡</span> Living Habits & Space Sharing
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    Scale ratings (1 to 5) allow the matching system to pair students with harmonious living standards.
+                  </p>
+                </div>
+
+                {/* Cleanliness */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-bold text-slate-800 dark:text-slate-200">
+                      1. Cleanliness & Organization <span className="text-rose-500">*</span>
+                    </label>
+                    <Badge variant="brand" size="sm">
+                      Rating: {answers.cleanliness} / 5
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">How tidy do you keep your room and personal space?</p>
+                  <div className="grid grid-cols-5 gap-2">
+                    {[1, 2, 3, 4, 5].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => handleScaleSelect("cleanliness", num)}
+                        className={`py-3 rounded-xl border text-sm font-bold transition-all ${
+                          answers.cleanliness === num
+                            ? "border-indigo-600 bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-500/20"
+                            : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                    <span>1 - Relaxed / Easygoing</span>
+                    <span>3 - Moderate / Tidy</span>
+                    <span>5 - Spotless / Pristine</span>
+                  </div>
+                </div>
+
+                {/* Noise Tolerance */}
+                <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-bold text-slate-800 dark:text-slate-200">
+                      2. Noise Tolerance <span className="text-rose-500">*</span>
+                    </label>
+                    <Badge variant="brand" size="sm">
+                      Rating: {answers.noiseTolerance} / 5
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">How sensitive are you to room ambient noise while sleeping or concentrating?</p>
+                  <div className="grid grid-cols-5 gap-2">
+                    {[1, 2, 3, 4, 5].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => handleScaleSelect("noiseTolerance", num)}
+                        className={`py-3 rounded-xl border text-sm font-bold transition-all ${
+                          answers.noiseTolerance === num
+                            ? "border-indigo-600 bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-500/20"
+                            : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                    <span>1 - Needs Pin-Drop Silence</span>
+                    <span>3 - Average Ambience</span>
+                    <span>5 - Fine with Activity & Chatter</span>
+                  </div>
+                </div>
+
+                {/* Social Level */}
+                <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-bold text-slate-800 dark:text-slate-200">
+                      3. Social Level & Visitors in Room <span className="text-rose-500">*</span>
+                    </label>
+                    <Badge variant="brand" size="sm">
+                      Rating: {answers.socialLevel} / 5
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">How frequently do you invite classmates or friends into your room?</p>
+                  <div className="grid grid-cols-5 gap-2">
+                    {[1, 2, 3, 4, 5].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => handleScaleSelect("socialLevel", num)}
+                        className={`py-3 rounded-xl border text-sm font-bold transition-all ${
+                          answers.socialLevel === num
+                            ? "border-indigo-600 bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-500/20"
+                            : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                        }`}
+                      >
+                        {num}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                    <span>1 - Quiet Sanctuary / Few Visitors</span>
+                    <span>3 - Occasional Hangouts</span>
+                    <span>5 - Social Hub / Frequent Friends Over</span>
+                  </div>
+                </div>
+
+                {/* AC Preference */}
+                <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <label className="block text-sm font-bold text-slate-800 dark:text-slate-200">
+                    4. AC Preference <span className="text-rose-500">*</span>
+                  </label>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">What cooling climate do you prefer for your room?</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {[
+                      { value: "ac", label: "Air Conditioned (AC)", desc: "Cooling room required" },
+                      { value: "non-ac", label: "Non-AC (Ventilated)", desc: "Fan and breeze fine" },
+                      { value: "no-preference", label: "No Preference", desc: "Either AC or Non-AC works" },
+                    ].map((opt) => (
+                      <OptionCard
+                        key={opt.value}
+                        title={opt.label}
+                        description={opt.desc}
+                        selected={answers.acPreference === opt.value}
+                        onClick={() => handleSelectOption("acPreference", opt.value)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 4: FOOD & LANGUAGE */}
+            {currentStep === 4 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 font-heading">
+                    <span>🍽️</span> Dietary Preferences & Communication
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    Accommodation respects all personal dietary traditions and multilingual campus environments.
+                  </p>
+                </div>
+
+                {/* foodType */}
+                <div className="space-y-3">
+                  <label className="block text-sm font-bold text-slate-800 dark:text-slate-200">
+                    1. Dietary Lifestyle <span className="text-rose-500">*</span>
+                  </label>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">What type of meals do you consume?</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {[
+                      { value: "veg", label: "Vegetarian", desc: "Plant-based, dairy permitted" },
+                      { value: "non-veg", label: "Non-Vegetarian", desc: "Includes meat & seafood" },
+                      { value: "eggetarian", label: "Eggetarian", desc: "Vegetarian plus eggs" },
+                      { value: "halal", label: "Halal Non-Veg", desc: "Strictly Halal non-vegetarian" },
+                      { value: "jain", label: "Jain Vegetarian", desc: "Pure veg without root vegetables" },
+                    ].map((opt) => (
+                      <OptionCard
+                        key={opt.value}
+                        title={opt.label}
+                        description={opt.desc}
+                        selected={answers.foodType === opt.value}
+                        onClick={() => handleSelectOption("foodType", opt.value)}
+                      />
+                    ))}
+                  </div>
+                  {stepErrors.foodType && (
+                    <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold">{stepErrors.foodType}</p>
+                  )}
+                </div>
+
+                {/* okWithDifferentFood */}
+                <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <label className="block text-sm font-bold text-slate-800 dark:text-slate-200">
+                    2. Dietary Sharing Tolerance <span className="text-rose-500">*</span>
+                  </label>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Are you comfortable sharing your room with a student who consumes a different diet?
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[
+                      {
+                        value: true,
+                        label: "Comfortable with Any Diet",
+                        desc: "I don't mind what my roommate eats",
+                      },
+                      {
+                        value: false,
+                        label: "Prefer Same Diet Only",
+                        desc: "I strongly prefer a roommate with a matching diet",
+                      },
+                    ].map((opt) => (
+                      <OptionCard
+                        key={String(opt.value)}
+                        title={opt.label}
+                        description={opt.desc}
+                        selected={answers.okWithDifferentFood === opt.value}
+                        onClick={() => handleSelectOption("okWithDifferentFood", opt.value)}
+                      />
+                    ))}
+                  </div>
+                  {stepErrors.okWithDifferentFood && (
+                    <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold">{stepErrors.okWithDifferentFood}</p>
+                  )}
+                </div>
+
+                {/* languages */}
+                <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <label className="block text-sm font-bold text-slate-800 dark:text-slate-200">
+                    3. Languages Spoken / Understood <span className="text-rose-500">*</span>
+                  </label>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Select all languages you comfortably speak or understand.
+                  </p>
+
+                  <div className="flex flex-wrap gap-2">
+                    {LANGUAGE_OPTIONS.filter((l) => l !== "Other").map((lang) => {
+                      const isSelected = answers.languages.includes(lang);
                       return (
-                        <span
-                          key={key}
-                          className="inline-flex items-center gap-1 rounded-md bg-rose-100 border border-rose-200 px-2 py-0.5 text-[11px] font-bold text-rose-800"
+                        <button
+                          key={lang}
+                          type="button"
+                          onClick={() => handleToggleLanguage(lang)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                            isSelected
+                              ? "border-indigo-600 bg-indigo-600 text-white shadow-xs"
+                              : "border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-400"
+                          }`}
                         >
-                          🛡️ {db?.label || key}
-                        </span>
+                          {isSelected ? "✓ " : "+ "}
+                          {lang}
+                        </button>
+                      );
+                    })}
+
+                    {answers.languages
+                      .filter((l) => !LANGUAGE_OPTIONS.includes(l))
+                      .map((custom) => (
+                        <button
+                          key={custom}
+                          type="button"
+                          onClick={() => handleToggleLanguage(custom)}
+                          className="px-3 py-1.5 rounded-full text-xs font-semibold border border-indigo-600 bg-indigo-600 text-white shadow-xs"
+                        >
+                          ✓ {custom} (Custom) ✕
+                        </button>
+                      ))}
+                  </div>
+
+                  <div className="pt-2 flex items-center gap-2 max-w-sm">
+                    <input
+                      type="text"
+                      value={customLanguage}
+                      onChange={(e) => setCustomLanguage(e.target.value)}
+                      placeholder="Add another language..."
+                      className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-indigo-600"
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleAddCustomLanguage}
+                    >
+                      + Add
+                    </Button>
+                  </div>
+
+                  {stepErrors.languages && (
+                    <p className="text-xs text-rose-600 dark:text-rose-400 font-semibold">{stepErrors.languages}</p>
+                  )}
+                </div>
+
+                {/* culturalComfort */}
+                <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-sm font-bold text-slate-800 dark:text-slate-200">
+                      4. Cultural Background Comfort
+                    </label>
+                    <Badge variant="neutral" size="sm">Optional / Low Weight</Badge>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Self-declared comfort inclination. Never used to rank or exclude anyone.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {[
+                      {
+                        value: "open-to-all",
+                        label: "Open to All",
+                        desc: "Excited to live with anyone from any region or nation",
+                      },
+                      {
+                        value: "prefer-similar-background",
+                        label: "Prefer Similar Background",
+                        desc: "Feel slightly more at home with someone of familiar background",
+                      },
+                      {
+                        value: "no-preference",
+                        label: "No Preference",
+                        desc: "No specific inclination",
+                      },
+                    ].map((opt) => (
+                      <OptionCard
+                        key={opt.value}
+                        title={opt.label}
+                        description={opt.desc}
+                        selected={answers.culturalComfort === opt.value}
+                        onClick={() => handleSelectOption("culturalComfort", opt.value)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 5: DEAL-BREAKERS & REVIEW */}
+            {currentStep === 5 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2 font-heading">
+                    <IconShield className="w-5 h-5 text-rose-600 dark:text-rose-400" /> Non-Negotiable Deal-Breakers & Review
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    Deal-breakers act as strict binary filters. Any roommate candidate who violates a deal-breaker
+                    will never be paired with you.
+                  </p>
+                </div>
+
+                {/* Deal Breakers List */}
+                <div className="space-y-3">
+                  <label className="block text-sm font-bold text-slate-800 dark:text-slate-200">
+                    Select Your Strict Deal-Breakers (Optional)
+                  </label>
+                  <div className="grid grid-cols-1 gap-3">
+                    {DEAL_BREAKER_OPTIONS.map((db) => {
+                      const isChecked = answers.dealBreakers.includes(db.key);
+                      return (
+                        <div
+                          key={db.key}
+                          onClick={() => handleToggleDealBreaker(db.key)}
+                          className={`flex items-start gap-4 p-4 rounded-xl border text-left cursor-pointer transition-all ${
+                            isChecked
+                              ? "border-rose-300 dark:border-rose-800/80 bg-rose-50/50 dark:bg-rose-950/20 shadow-xs ring-1 ring-rose-400"
+                              : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-white dark:bg-slate-900"
+                          }`}
+                        >
+                          <div className="text-2xl shrink-0 mt-0.5">{db.icon}</div>
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-bold text-slate-900 dark:text-slate-100 font-heading">
+                                {db.label}
+                              </span>
+                              <Badge variant={isChecked ? "danger" : "neutral"} size="sm">
+                                {isChecked ? "Active Constraint" : "Not Active"}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{db.description}</p>
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
                 </div>
-              )}
+
+                {/* Grouped Summary Review Cards with Edit Links */}
+                <div className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 p-5 sm:p-6 space-y-4">
+                  <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 font-heading">
+                      Response Summary Review
+                    </h3>
+                    <Badge variant="brand" size="sm">Ready to Confirm</Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div className="col-span-1 sm:col-span-2 pb-2 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                      <div>
+                        <span className="font-semibold text-slate-500 dark:text-slate-400">Desired Room Size:</span>
+                        <p className="font-bold text-indigo-600 dark:text-indigo-400 mt-0.5 text-sm">
+                          {answers.roomSize === 1
+                            ? "1-Bed Single Room (No roommates / independent)"
+                            : answers.roomSize
+                            ? `${answers.roomSize}-Bed Room (Shared by ${answers.roomSize})`
+                            : "Not answered"}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentStep(1)}
+                        className="text-xs text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
+                      >
+                        Edit &rarr;
+                      </button>
+                    </div>
+
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="font-semibold text-slate-500 dark:text-slate-400">Sleep Schedule:</span>
+                        <p className="font-bold text-slate-900 dark:text-slate-100 capitalize mt-0.5">{answers.sleepSchedule || "—"}</p>
+                      </div>
+                      <button type="button" onClick={() => setCurrentStep(2)} className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline">Edit</button>
+                    </div>
+
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="font-semibold text-slate-500 dark:text-slate-400">Study Time:</span>
+                        <p className="font-bold text-slate-900 dark:text-slate-100 capitalize mt-0.5">{answers.studyTime || "—"}</p>
+                      </div>
+                      <button type="button" onClick={() => setCurrentStep(2)} className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline">Edit</button>
+                    </div>
+
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="font-semibold text-slate-500 dark:text-slate-400">Cleanliness / Noise / Social:</span>
+                        <p className="font-bold text-slate-900 dark:text-slate-100 mt-0.5">
+                          {answers.cleanliness}/5 · {answers.noiseTolerance}/5 · {answers.socialLevel}/5
+                        </p>
+                      </div>
+                      <button type="button" onClick={() => setCurrentStep(3)} className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline">Edit</button>
+                    </div>
+
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="font-semibold text-slate-500 dark:text-slate-400">AC Preference:</span>
+                        <p className="font-bold text-slate-900 dark:text-slate-100 uppercase mt-0.5">{answers.acPreference || "No preference"}</p>
+                      </div>
+                      <button type="button" onClick={() => setCurrentStep(3)} className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline">Edit</button>
+                    </div>
+
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="font-semibold text-slate-500 dark:text-slate-400">Diet & Sharing:</span>
+                        <p className="font-bold text-slate-900 dark:text-slate-100 capitalize mt-0.5">
+                          {answers.foodType || "—"} ({answers.okWithDifferentFood ? "Any diet ok" : "Same diet only"})
+                        </p>
+                      </div>
+                      <button type="button" onClick={() => setCurrentStep(4)} className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline">Edit</button>
+                    </div>
+
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="font-semibold text-slate-500 dark:text-slate-400">Languages:</span>
+                        <p className="font-bold text-slate-900 dark:text-slate-100 mt-0.5">
+                          {answers.languages.length > 0 ? answers.languages.join(", ") : "None"}
+                        </p>
+                      </div>
+                      <button type="button" onClick={() => setCurrentStep(4)} className="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline">Edit</button>
+                    </div>
+                  </div>
+
+                  {answers.dealBreakers.length > 0 && (
+                    <div className="pt-3 border-t border-slate-200 dark:border-slate-800">
+                      <span className="font-semibold text-slate-500 dark:text-slate-400 text-xs">Active Deal-Breakers:</span>
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        {answers.dealBreakers.map((key) => {
+                          const db = DEAL_BREAKER_OPTIONS.find((d) => d.key === key);
+                          return (
+                            <Badge key={key} variant="danger" size="sm">
+                              🛡️ {db?.label || key}
+                            </Badge>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Wizard Controls */}
+            <div className="flex items-center justify-between pt-6 border-t border-slate-100 dark:border-slate-800">
+              <div>
+                {currentStep > 1 && (
+                  <Button type="button" variant="outline" onClick={handleBack}>
+                    &larr; Back
+                  </Button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                {currentStep < 5 ? (
+                  <Button type="button" variant="primary" onClick={handleNext}>
+                    Continue &rarr;
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={handleSubmit}
+                    loading={saving}
+                    disabled={saving}
+                  >
+                    {saving ? "Submitting Answers..." : "✓ Submit Questionnaire"}
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Wizard Controls */}
-        <div className="flex items-center justify-between pt-6 border-t border-slate-100">
-          <div>
-            {currentStep > 1 && (
-              <Button type="button" variant="outline" onClick={handleBack}>
-                &larr; Back
-              </Button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3">
-            {currentStep < 5 ? (
-              <Button type="button" variant="primary" onClick={handleNext}>
-                Continue &rarr;
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="primary"
-                onClick={handleSubmit}
-                loading={saving}
-                disabled={saving}
-              >
-                {saving ? "Submitting Answers..." : "✓ Submit Questionnaire"}
-              </Button>
-            )}
-          </div>
-        </div>
+          </Card>
+        </Reveal>
       </div>
-    </div>
+    </PageTransition>
   );
 }

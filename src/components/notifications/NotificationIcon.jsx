@@ -8,12 +8,15 @@ export default function NotificationIcon({ name, severity = "info", className = 
   const getColors = () => {
     switch (severity) {
       case "success":
-        return "text-emerald-600 bg-emerald-50 border-emerald-200";
+        return "text-teal-600 bg-teal-50 border-teal-200 dark:text-teal-400 dark:bg-teal-950/40 dark:border-teal-800";
       case "warning":
-        return "text-amber-600 bg-amber-50 border-amber-200";
+        return "text-amber-600 bg-amber-50 border-amber-200 dark:text-amber-400 dark:bg-amber-950/40 dark:border-amber-800";
+      case "danger":
+      case "error":
+        return "text-rose-600 bg-rose-50 border-rose-200 dark:text-rose-400 dark:bg-rose-950/40 dark:border-rose-800";
       case "info":
       default:
-        return "text-indigo-600 bg-indigo-50 border-indigo-200";
+        return "text-indigo-600 bg-indigo-50 border-indigo-200 dark:text-indigo-400 dark:bg-indigo-950/40 dark:border-indigo-800";
     }
   };
 

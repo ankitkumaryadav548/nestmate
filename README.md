@@ -897,6 +897,84 @@ http://localhost:3000/design-system
 ```
 This interactive gallery provides live previews of all typography tokens, color swatches, button variants, inputs, badges, score gauges, modals, tabs, and toast triggers. In production environments, this route returns an automatic 404.
 
+---
+
+## 🎨 Phase UI-2: Student Experience Visual Redesign
+
+Phase UI-2 elevates every student page under `/dashboard` to adhere strictly to the UI-1 design system tokens, Tailwind CSS utility rules, accessibility standards (WCAG AA), and dark mode theming.
+
+### 1. Match Score Semantic Mapping (`ScoreTone.js`)
+
+All compatibility match scores across student views follow a unified 4-tier semantic palette:
+
+| Score Range | Tone | Color Token | Light Classes | Dark Classes |
+| :--- | :--- | :--- | :--- | :--- |
+| **85% - 100%** | `success` | Teal (`--accent-teal`) | `text-teal-700 bg-teal-50 border-teal-200` | `dark:text-teal-300 dark:bg-teal-950/40 dark:border-teal-800` |
+| **70% - 84%** | `brand` | Indigo (`--brand-600`) | `text-indigo-700 bg-indigo-50 border-indigo-200` | `dark:text-indigo-300 dark:bg-indigo-950/40 dark:border-indigo-800` |
+| **50% - 69%** | `warning` | Amber (`--accent-amber`) | `text-amber-800 bg-amber-50 border-amber-200` | `dark:text-amber-300 dark:bg-amber-950/40 dark:border-amber-800` |
+| **< 50%** | `neutral` | Slate (`--text-muted`) | `text-slate-700 bg-slate-100 border-slate-200` | `dark:text-slate-300 dark:bg-slate-800 dark:border-slate-700` |
+
+### 2. Specialized Shared Components Added (`src/components/ui/`)
+
+All new shared components are barrel-exported from `src/components/ui/index.js`:
+
+- **`ScoreRing`**: Circular SVG progress gauge embedding `getScoreTone(score)` color semantics with animated stroke transitions and central score percentage.
+- **`SeatTile`**: Visual group seat representation (filled with avatar, name, and leader crown pop-in; empty with dashed border and pulse animation; reserved with lock indicator).
+- **`OptionCard`**: High-contrast selectable option card with hover lift, active scale, border ring, tinted background, and pop-in checkmark badge.
+- **`CountdownBadge`**: Real-time ticker badge for invitation expirations and selection windows with automatic shift to amber/rose when nearing deadline.
+- **`InfoRow`**: Structured key/value data row with high-contrast text, optional left icon, and inline copy/action button.
+- **`DayGroupHeader`**: Chronological date grouping divider ("Today", "Yesterday", "Earlier this week", "Older") with badge count and horizontal rule.
+
+### 3. Restyled Student Pages Under `/dashboard`
+
+1. **Dashboard Overview (`/dashboard`)**:
+   - Personalized welcome hero with student first name, academic year, and branch.
+   - Interactive 5-step "Your Journey" stepper tracking application status from preferences through to key collection.
+   - Readiness progress meter with direct CTA links for remaining onboarding tasks.
+   - Quick portal modules for preferences, roommate matching, groups, room selection, and eligible hostels.
+2. **Student Profile (`/dashboard/profile`)**:
+   - Desktop 2-column layout: Sticky student identity summary card with avatar, year badge, and verification status on left; categorized form sections on right.
+   - High-contrast form controls for academic info, hometown/state, international flags, emergency contacts, and phone number privacy visibility toggle.
+   - Sticky bottom save bar with subtle blur and unsaved changes indicator.
+3. **Lifestyle Questionnaire (`/dashboard/preferences`)**:
+   - Wizard header with named step indicators and animated progress bar.
+   - Visual `OptionCard` tiles for target room sizes (1, 2, 3, 4 beds) with SVG bed illustrations.
+   - Interactive 1-5 scale buttons with selected-state glow for cleanliness, noise, and social habits.
+   - Tag selector for spoken languages and strict deal-breaker toggle cards with warning callouts.
+   - Review step with quick jump edit links.
+4. **Roommate & Group Matches (`/dashboard/matches`)**:
+   - Underline tabs separating "Individual Students" and "Open Groups With Seats".
+   - Collapsible filter bar with minimum compatibility score slider and real-time count bubble.
+   - Student cards with `ScoreRing`, shared language badges, and one-click "Invite to Group".
+   - Group match cards featuring stacked member avatars, seat dots, and join impact preview modal.
+5. **My Roommate Group (`/dashboard/group`)**:
+   - `SeatTile` hero grid dynamically rendering 1 to 4 member slots with leader crown.
+   - Group compatibility breakdown with pairwise score matrix and common interests.
+   - Leader command tools: Review incoming join requests with compatibility preview, send invitations with `CountdownBadge`, and candidate discovery.
+6. **Invitations & Requests (`/dashboard/invitations`)**:
+   - Tabs for "Received Invitations" and "My Sent Join Requests".
+   - Invitation cards with sender avatar, room size, compatibility ring, countdown badge, and two-tier action buttons (Accept = Brand/Success, Decline = Outline).
+   - Confirm dialog safeguards for declining or canceling invitations.
+7. **Room Selection Browser (`/dashboard/rooms`)**:
+   - Live selection window banner with real-time countdown timer and pulsing status dot.
+   - Sticky filter card with hostel, floor band, and AC type selectors.
+   - Room cards displaying room number, bed capacity, amenities, and instant "Select Room" button.
+   - Claimed room banner with 1-click room release dialog for group leaders.
+8. **My Room & Allocation (`/dashboard/room`)**:
+   - Hero allocated room card with room number, floor, wing, and hostel badge.
+   - Roommate cards with avatars, branch, shared languages, and safe phone number revelation button.
+   - Empty/waitlisted state with next steps guidance.
+9. **Hostel Directory (`/dashboard/hostels`)**:
+   - High-contrast hostel cards with gender badge, facility chips, and real-time bed occupancy meter.
+   - Expandable room types breakdown with vacancy counts and hostel policy guidelines.
+10. **Notification Center (`/dashboard/notifications`)**:
+    - Category tabs (All, Invitations, Groups, Allocation, Announcements).
+    - "Unread only" slide toggle switch.
+    - Chronological date grouping with `DayGroupHeader` ("Today", "Yesterday", "Earlier this week", "Older").
+    - Severity-tinted icon circles, pulsing unread indicator dot, relative timestamps, and hover actions (Mark as read, Delete).
+    - Bulk action toolbar with `ConfirmDialog` protection for clearing read items.
+
+
 
 
 

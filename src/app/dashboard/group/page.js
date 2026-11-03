@@ -3,14 +3,37 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import api from "@/lib/axios";
-import Badge from "@/components/ui/Badge";
-import Button from "@/components/ui/Button";
-import Modal from "@/components/ui/Modal";
-import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import Alert from "@/components/ui/Alert";
-import EmptyState from "@/components/ui/EmptyState";
+import { useToast } from "@/context/ToastContext";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardBody,
+  Badge,
+  Button,
+  Modal,
+  ConfirmDialog,
+  Alert,
+  EmptyState,
+  SeatTile,
+  ScoreRing,
+  Avatar,
+  ProgressBar,
+  PageTransition,
+  Reveal,
+  CountdownBadge,
+  IconUsers,
+  IconBed,
+  IconShield,
+  IconSparkles,
+  IconCheck,
+} from "@/components/ui";
+import { getScoreTone, getScoreClasses } from "@/components/ui/ScoreTone";
+import RoomPreferencesCard from "@/components/groups/RoomPreferencesCard";
 
 export default function StudentGroupPage() {
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [group, setGroup] = useState(null);
   const [intent, setIntent] = useState({ mode: "group", preferredRoomSize: 2 });
@@ -139,10 +162,7 @@ export default function StudentGroupPage() {
       }
     } catch (err) {
       console.error("Failed to load request review:", err);
-      setAlertMessage({
-        type: "error",
-        message: err.response?.data?.message || "Failed to load request review",
-      });
+      showToast(err.response?.data?.message || "Failed to load request review", "error");
       setIsReviewOpen(false);
     } finally {
       setReviewLoading(false);
@@ -155,17 +175,14 @@ export default function StudentGroupPage() {
     try {
       const res = await api.post(`/groups/me/join-requests/${selectedRequestId}/approve`);
       if (res.data?.success) {
-        setAlertMessage({ type: "success", message: "Student admitted to group successfully!" });
+        showToast("Student admitted to group successfully!", "success");
         setIsReviewOpen(false);
         setSelectedRequestId(null);
         setReviewData(null);
         await fetchGroupData();
       }
     } catch (err) {
-      setAlertMessage({
-        type: "error",
-        message: err.response?.data?.message || "Failed to approve join request",
-      });
+      showToast(err.response?.data?.message || "Failed to approve join request", "error");
     } finally {
       setActingRequestId(null);
     }
@@ -177,37 +194,29 @@ export default function StudentGroupPage() {
     try {
       const res = await api.post(`/groups/me/join-requests/${selectedRequestId}/reject`);
       if (res.data?.success) {
-        setAlertMessage({ type: "info", message: "Join request declined." });
+        showToast("Join request declined.", "info");
         setIsReviewOpen(false);
         setSelectedRequestId(null);
         setReviewData(null);
         fetchIncomingRequests();
       }
     } catch (err) {
-      setAlertMessage({
-        type: "error",
-        message: err.response?.data?.message || "Failed to decline join request",
-      });
+      showToast(err.response?.data?.message || "Failed to decline join request", "error");
     } finally {
       setActingRequestId(null);
     }
   };
 
-  // Actions
   const handleCreateGroup = async () => {
     setCreating(true);
-    setAlertMessage(null);
     try {
       const res = await api.post("/groups");
       if (res.data?.success) {
-        setAlertMessage({ type: "success", message: `Formed a ${userRoomSize || ""}-bed roommate group!` });
+        showToast(`Formed a ${userRoomSize || ""}-bed roommate group!`, "success");
         await fetchGroupData();
       }
     } catch (err) {
-      setAlertMessage({
-        type: "error",
-        message: err.response?.data?.message || "Failed to create group",
-      });
+      showToast(err.response?.data?.message || "Failed to create group", "error");
     } finally {
       setCreating(false);
     }
@@ -215,19 +224,15 @@ export default function StudentGroupPage() {
 
   const handleSendInvite = async (userId) => {
     setInvitingId(userId);
-    setAlertMessage(null);
     try {
       const res = await api.post("/groups/me/invitations", { userId });
       if (res.data?.success) {
-        setAlertMessage({ type: "success", message: "Invitation sent successfully!" });
+        showToast("Invitation sent successfully!", "success");
         await fetchGroupData();
         await fetchCandidates();
       }
     } catch (err) {
-      setAlertMessage({
-        type: "error",
-        message: err.response?.data?.message || "Failed to send invitation",
-      });
+      showToast(err.response?.data?.message || "Failed to send invitation", "error");
     } finally {
       setInvitingId(null);
     }
@@ -237,15 +242,12 @@ export default function StudentGroupPage() {
     try {
       const res = await api.delete(`/groups/me/invitations/${invitationId}`);
       if (res.data?.success) {
-        setAlertMessage({ type: "info", message: "Invitation cancelled" });
+        showToast("Invitation cancelled", "info");
         await fetchGroupData();
         await fetchCandidates();
       }
     } catch (err) {
-      setAlertMessage({
-        type: "error",
-        message: err.response?.data?.message || "Failed to cancel invitation",
-      });
+      showToast(err.response?.data?.message || "Failed to cancel invitation", "error");
     }
   };
 
@@ -254,14 +256,11 @@ export default function StudentGroupPage() {
     try {
       const res = await api.post("/groups/me/leave");
       if (res.data?.success) {
-        setAlertMessage({ type: "info", message: "You have left the roommate group" });
+        showToast("You have left the roommate group", "info");
         await fetchGroupData();
       }
     } catch (err) {
-      setAlertMessage({
-        type: "error",
-        message: err.response?.data?.message || "Failed to leave group",
-      });
+      showToast(err.response?.data?.message || "Failed to leave group", "error");
     }
   };
 
@@ -270,15 +269,12 @@ export default function StudentGroupPage() {
     try {
       const res = await api.post(`/groups/me/members/${memberId}/remove`);
       if (res.data?.success) {
-        setAlertMessage({ type: "info", message: "Member removed from group" });
+        showToast("Member removed from group", "info");
         await fetchGroupData();
         await fetchCandidates();
       }
     } catch (err) {
-      setAlertMessage({
-        type: "error",
-        message: err.response?.data?.message || "Failed to remove member",
-      });
+      showToast(err.response?.data?.message || "Failed to remove member", "error");
     }
   };
 
@@ -287,14 +283,11 @@ export default function StudentGroupPage() {
     try {
       const res = await api.delete("/groups/me");
       if (res.data?.success) {
-        setAlertMessage({ type: "info", message: "Group disbanded" });
+        showToast("Group disbanded", "info");
         await fetchGroupData();
       }
     } catch (err) {
-      setAlertMessage({
-        type: "error",
-        message: err.response?.data?.message || "Failed to disband group",
-      });
+      showToast(err.response?.data?.message || "Failed to disband group", "error");
     }
   };
 
@@ -303,857 +296,707 @@ export default function StudentGroupPage() {
       const res = await api.put("/students/me/intent", { mode, preferredRoomSize });
       if (res.data?.success) {
         setIntent(res.data.data);
-        setAlertMessage({ type: "success", message: "Allocation preferences saved!" });
+        showToast("Allocation preferences saved!", "success");
       }
     } catch (err) {
-      setAlertMessage({
-        type: "error",
-        message: err.response?.data?.message || "Failed to update allocation preference",
-      });
+      showToast(err.response?.data?.message || "Failed to update allocation preference", "error");
     }
-  };
-
-  const getScoreTheme = (score) => {
-    if (score >= 85) return { badge: "emerald", text: "text-emerald-700", bg: "bg-emerald-50", border: "border-emerald-200" };
-    if (score >= 70) return { badge: "indigo", text: "text-indigo-700", bg: "bg-indigo-50", border: "border-indigo-200" };
-    if (score >= 50) return { badge: "amber", text: "text-amber-800", bg: "bg-amber-50", border: "border-amber-200" };
-    return { badge: "default", text: "text-slate-700", bg: "bg-slate-50", border: "border-slate-200" };
   };
 
   // State: Preferences incomplete
   if (preferencesIncomplete) {
     return (
-      <div className="mx-auto max-w-4xl py-8 px-4 sm:px-6 lg:px-8">
-        <div className="rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50/80 via-white to-blue-50/60 p-8 sm:p-12 text-center shadow-sm">
-          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl bg-indigo-600 text-white shadow-xl shadow-indigo-500/25 text-3xl mb-6">
-            📋
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
-            Complete Questionnaire to Access Groups
-          </h1>
-          <p className="mx-auto mt-4 max-w-xl text-sm sm:text-base text-slate-600 leading-relaxed">
-            Roommate groups require completed lifestyle answers to evaluate mutual compatibility and prevent room conflicts.
-          </p>
-          <div className="mt-8">
-            <Link
-              href="/dashboard/preferences"
-              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3.5 text-sm font-bold text-white shadow hover:bg-indigo-700 transition-all"
-            >
-              Start 4-Step Questionnaire &rarr;
-            </Link>
-          </div>
+      <PageTransition>
+        <div className="mx-auto max-w-4xl py-12 px-4 sm:px-6 lg:px-8">
+          <EmptyState
+            icon="📋"
+            title="Complete Questionnaire to Access Groups"
+            description="Roommate groups require completed lifestyle answers to evaluate mutual compatibility and prevent room conflicts."
+            action={
+              <Link href="/dashboard/preferences">
+                <Button variant="primary" size="md">
+                  Start 5-Step Questionnaire &rarr;
+                </Button>
+              </Link>
+            }
+          />
         </div>
-      </div>
+      </PageTransition>
     );
   }
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-7xl py-12 px-4 sm:px-6 lg:px-8 space-y-6">
-        <div className="h-8 w-48 bg-slate-200 rounded animate-pulse" />
-        <div className="h-64 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm animate-pulse" />
+      <div className="mx-auto max-w-7xl py-10 px-4 sm:px-6 lg:px-8 space-y-6 animate-pulse">
+        <div className="h-8 w-48 bg-slate-200 dark:bg-slate-800 rounded-xl" />
+        <div className="h-64 rounded-2xl bg-slate-100 dark:bg-slate-800/60" />
       </div>
     );
   }
 
-  // --------------------------------------------------------------------------
   // STATE 1: NO ACTIVE GROUP
-  // --------------------------------------------------------------------------
   if (!group) {
     return (
-      <div className="mx-auto max-w-7xl py-8 px-4 sm:px-6 lg:px-8 space-y-8">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
-            Roommate Group Formation
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Form a residential group to reserve a room with your preferred roommates, or choose automatic placement.
-          </p>
-        </div>
-
-        {alertMessage && (
-          <Alert type={alertMessage.type} message={alertMessage.message} onClose={() => setAlertMessage(null)} />
-        )}
-
-        {/* Option 1: Group Formation or Single Room Notice */}
-        {userRoomSize === 1 ? (
-          <div className="rounded-2xl border border-indigo-100 bg-gradient-to-br from-indigo-50/70 via-white to-blue-50/50 p-6 sm:p-8 space-y-4 shadow-sm">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-600 text-white text-2xl shrink-0">
-                🛏️
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-lg font-bold text-slate-900">
-                  Single-Room Selection (No Roommates Needed)
-                </h2>
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                  You chose a single room (1 bed) in your lifestyle questionnaire. Single-room students live independently and do not need roommates or a roommate group. You will be placed into a single room directly during the hostel allocation process.
-                </p>
-                <div className="pt-2">
-                  <Link
-                    href="/dashboard/preferences"
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-800"
-                  >
-                    Change room size in preferences &rarr;
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900">
-                  Option 1: Form a Roommate Group
-                </h2>
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-semibold text-slate-600">Your room type:</span>
-                  <Badge variant="indigo" size="md">
-                    {userRoomSize ? `${userRoomSize}-seater (${userRoomSize}-Bed Room)` : "Shared Room"}
-                  </Badge>
-                </div>
-                <p className="text-xs text-slate-400 mt-1">
-                  Change it in your preferences (only possible when you are not in a group)
-                </p>
-              </div>
-
-              <Button
-                variant="primary"
-                size="md"
-                loading={creating}
-                onClick={handleCreateGroup}
-              >
-                Create My Group &rarr;
-              </Button>
-            </div>
-            <p className="text-xs text-slate-500 leading-relaxed">
-              Create a {userRoomSize || "shared"}-seater roommate group. As leader, you will be able to search and invite compatible candidates who also chose a {userRoomSize || "matching"}-bed room.
-            </p>
-          </div>
-        )}
-
-        {/* Option 2: Auto-Assign Option Card */}
-        <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-6 sm:p-8 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <PageTransition>
+        <div className="mx-auto max-w-7xl py-6 sm:py-8 px-4 sm:px-6 lg:px-8 space-y-8">
+          <Reveal direction="down">
             <div>
-              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <span>🤖</span> Option 2: Prefer Automatic Placement?
-              </h2>
-              <p className="text-xs text-slate-600 mt-1 max-w-xl leading-relaxed">
-                If you do not wish to build a custom roommate group, you can opt into the institutional
-                auto-placement pool. Our automated allocation solver will place you with compatible peers based on your questionnaire answers.
+              <div className="flex items-center gap-2.5">
+                <IconUsers className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight font-heading">
+                  Roommate Group Formation
+                </h1>
+              </div>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Form a residential group to reserve a room with your preferred roommates, or choose automatic placement.
               </p>
             </div>
+          </Reveal>
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-              <span className="text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-3.5 py-2 shadow-xs">
-                Room Size: {userRoomSize || intent.preferredRoomSize || 2}-Bed Room
-              </span>
+          {/* Single Room Notice or Option 1 */}
+          {userRoomSize === 1 ? (
+            <Reveal direction="up" delay={50}>
+              <EmptyState
+                icon="🛏️"
+                title="Single-Room Selection (No Roommates Needed)"
+                description="You chose a single room (1 bed) in your lifestyle questionnaire. Single-room students live independently and do not need roommates or a roommate group. You will be placed into a single room directly during the hostel allocation process."
+                action={
+                  <Link href="/dashboard/preferences">
+                    <Button variant="secondary" size="sm">
+                      Change Room Size in Preferences &rarr;
+                    </Button>
+                  </Link>
+                }
+              />
+            </Reveal>
+          ) : (
+            <Reveal direction="up" delay={50}>
+              <Card variant="interactive" className="p-6 sm:p-8 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 font-heading">
+                      Option 1: Form a Roommate Group
+                    </h2>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">Your room type:</span>
+                      <Badge variant="brand" size="md">
+                        {userRoomSize ? `${userRoomSize}-seater (${userRoomSize}-Bed Room)` : "Shared Room"}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                      Change it in your preferences (only possible when you are not in a group)
+                    </p>
+                  </div>
 
-              <Button
-                variant={intent.mode === "auto" ? "secondary" : "outline"}
-                size="sm"
-                onClick={() => handleSaveIntent("auto", userRoomSize || intent.preferredRoomSize || 2)}
-              >
-                {intent.mode === "auto" ? "✓ Auto-Assign Selected" : "Choose Auto-Assign"}
-              </Button>
-            </div>
-          </div>
+                  <Button
+                    variant="primary"
+                    size="md"
+                    loading={creating}
+                    onClick={handleCreateGroup}
+                  >
+                    Create My Group &rarr;
+                  </Button>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                  Create a {userRoomSize || "shared"}-seater roommate group. As leader, you will be able to search and invite compatible candidates who also chose a {userRoomSize || "matching"}-bed room.
+                </p>
+              </Card>
+            </Reveal>
+          )}
+
+          {/* Option 2: Prefer Auto-Placement */}
+          <Reveal direction="up" delay={100}>
+            <Card variant="default" className="p-6 sm:p-8 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading flex items-center gap-2">
+                    <span>🤖</span> Option 2: Prefer Automatic Placement?
+                  </h2>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 max-w-xl leading-relaxed">
+                    If you do not wish to build a custom roommate group, you can opt into the institutional
+                    auto-placement pool. Our automated allocation solver will place you with compatible peers based on your questionnaire answers.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                  <Badge variant="neutral" size="md">
+                    Room Size: {userRoomSize || intent.preferredRoomSize || 2}-Bed Room
+                  </Badge>
+
+                  <Button
+                    variant={intent.mode === "auto" ? "secondary" : "outline"}
+                    size="sm"
+                    onClick={() => handleSaveIntent("auto", userRoomSize || intent.preferredRoomSize || 2)}
+                  >
+                    {intent.mode === "auto" ? "✓ Auto-Assign Selected" : "Choose Auto-Assign"}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </Reveal>
         </div>
-      </div>
+      </PageTransition>
     );
   }
 
-  // --------------------------------------------------------------------------
-  // ACTIVE GROUP VIEW (Forming, Complete, or Locked)
-  // --------------------------------------------------------------------------
-  const avgTheme = getScoreTheme(group.averageScore);
-  const lowTheme = getScoreTheme(group.lowestPairScore);
+  // ACTIVE GROUP VIEW
+  const avgTone = getScoreTone(group.averageScore);
+  const lowTone = getScoreTone(group.lowestPairScore);
 
   return (
-    <div className="mx-auto max-w-7xl py-8 px-4 sm:px-6 lg:px-8 space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
-              My Roommate Group
-            </h1>
-            <Badge
-              variant={
-                group.status === "complete"
-                  ? "emerald"
-                  : group.status === "locked"
-                  ? "purple"
-                  : "indigo"
-              }
-              size="md"
-            >
-              {group.status.toUpperCase()}
-            </Badge>
-          </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Targeting a <strong>{group.targetSize}-Bed Room</strong> ({group.gender.toUpperCase()} pool)
-          </p>
-        </div>
-
-        {/* Action Controls */}
-        <div className="flex items-center gap-2">
-          {group.status !== "locked" && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setConfirmDialog({
-                  isOpen: true,
-                  title: "Leave Group",
-                  message:
-                    group.myRole === "leader"
-                      ? "As leader, leaving this group will transfer leadership to the next earliest joined member, or disband if you are the sole member. Confirm leave?"
-                      : "Are you sure you want to leave this roommate group?",
-                  action: handleLeaveGroup,
-                  variant: "warning",
-                })
-              }
-            >
-              Leave Group
-            </Button>
-          )}
-
-          {group.myRole === "leader" && group.status !== "locked" && (
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={() =>
-                setConfirmDialog({
-                  isOpen: true,
-                  title: "Disband Group",
-                  message:
-                    "Are you sure you want to dissolve this roommate group? All members will be removed and pending invitations will be cancelled.",
-                  action: handleDisbandGroup,
-                  variant: "danger",
-                })
-              }
-            >
-              Disband Group
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {alertMessage && (
-        <Alert type={alertMessage.type} message={alertMessage.message} onClose={() => setAlertMessage(null)} />
-      )}
-
-      {/* Selected Room Banner (FCFS claimed) */}
-      {group.selectedRoom && (
-        <div className="rounded-2xl border border-indigo-200 bg-indigo-50/80 p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in">
-          <div className="flex items-start gap-4">
-            <span className="text-3xl">🔑</span>
+    <PageTransition>
+      <div className="mx-auto max-w-7xl py-6 sm:py-8 px-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-8">
+        
+        {/* Header */}
+        <Reveal direction="down">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-indigo-950">
-                  Reserved For Your Group: Room #{group.selectedRoom.roomNumber}
-                </h3>
-                <span className="inline-flex items-center rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5">
-                  CLAIMED
-                </span>
-              </div>
-              <p className="text-xs sm:text-sm text-indigo-800 mt-1 leading-relaxed">
-                {group.selectedRoom.hostelName} ({group.selectedRoom.hostelCode}) • Floor {group.selectedRoom.floor} • {group.selectedRoom.roomType} ({group.selectedRoom.capacity}-seater)
-              </p>
-              <p className="text-[11px] text-indigo-600 mt-0.5">
-                Remaining seats stay reserved for your group and can be filled via invitations or finalization auto-fill.
-              </p>
-            </div>
-          </div>
-          <Link
-            href="/dashboard/rooms"
-            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 transition-colors"
-          >
-            Room Details &rarr;
-          </Link>
-        </div>
-      )}
-
-      {!group.selectedRoom && group.myRole === "leader" && group.status !== "locked" && (
-        <div className="rounded-2xl border border-blue-200 bg-blue-50/80 p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
-          <div className="flex items-start gap-4">
-            <span className="text-3xl">🚪</span>
-            <div>
-              <h3 className="text-base font-bold text-blue-950">Room Selection Window</h3>
-              <p className="text-xs sm:text-sm text-blue-800 mt-1 leading-relaxed">
-                As the leader, you can pick a free room directly during the open selection window on a first-come, first-served basis.
-              </p>
-            </div>
-          </div>
-          <Link
-            href="/dashboard/rooms"
-            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-blue-700 transition-colors"
-          >
-            Choose a Room &rarr;
-          </Link>
-        </div>
-      )}
-
-      {/* State 3: Complete Group Banner */}
-      {group.status === "complete" && (
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 p-5 sm:p-6 flex items-start gap-4 shadow-sm animate-in fade-in">
-          <span className="text-3xl">🎉</span>
-          <div className="flex-1">
-            <h3 className="text-base font-bold text-emerald-900">Your Group is Complete!</h3>
-            <p className="text-xs sm:text-sm text-emerald-800 mt-1 leading-relaxed">
-              All {group.targetSize} seats have been filled with compatible roommates. Your group is ready and waiting for the residential warden to allocate an accommodation block.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* State 4: Locked Group Banner */}
-      {group.status === "locked" && (
-        <div className="rounded-2xl border border-purple-200 bg-purple-50/90 p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in">
-          <div className="flex items-start gap-4">
-            <span className="text-3xl">🏠</span>
-            <div>
-              <h3 className="text-base font-bold text-purple-950">Room Allocation Finalized</h3>
-              {group.allocatedRoom ? (
-                <p className="text-xs sm:text-sm text-purple-800 mt-1 leading-relaxed">
-                  Allocated to <strong className="font-semibold">{group.allocatedRoom.hostelName} ({group.allocatedRoom.hostelCode})</strong> — Room <strong className="font-semibold">{group.allocatedRoom.roomNumber}</strong> (Floor {group.allocatedRoom.floor}). Group membership is locked.
-                </p>
-              ) : (
-                <p className="text-xs sm:text-sm text-purple-800 mt-1 leading-relaxed">
-                  Your room allocation has been confirmed and locked.
-                </p>
-              )}
-            </div>
-          </div>
-          <Link
-            href="/dashboard/room"
-            className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-xl bg-purple-600 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-purple-700 transition-colors"
-          >
-            View My Room & Roommates &rarr;
-          </Link>
-        </div>
-      )}
-
-      {/* Seat Visualization & Compatibility Card */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-4">
-          <div>
-            <h3 className="text-base font-bold text-slate-900">Room Seats & Members</h3>
-            <p className="text-xs text-slate-500 mt-0.5">
-              {group.seatsFilled} of {group.targetSize} seats reserved ({group.seatsRemaining} remaining)
-            </p>
-          </div>
-
-          {/* Room size indicator */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 text-xs">
-            <span className="font-semibold text-slate-500">Room Type:</span>
-            <span className="font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg">
-              {group.targetSize}-Bed Room ({group.targetSize}-seater)
-            </span>
-            <span className="text-[11px] text-slate-400">
-              (Change it in your preferences — only possible when not in a group)
-            </span>
-          </div>
-        </div>
-
-        {/* Seat Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: group.targetSize }).map((_, index) => {
-            const member = group.members[index];
-            if (member) {
-              return (
-                <div
-                  key={member.id}
-                  className="rounded-xl border border-indigo-200 bg-gradient-to-br from-indigo-50/40 to-white p-4 flex flex-col justify-between shadow-xs"
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight font-heading">
+                  My Roommate Group
+                </h1>
+                <Badge
+                  variant={
+                    group.status === "complete"
+                      ? "success"
+                      : group.status === "locked"
+                      ? "brand"
+                      : "info"
+                  }
+                  size="md"
                 >
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-xs font-extrabold text-white">
-                        {member.name.charAt(0).toUpperCase()}
-                      </div>
-                      {member.isLeader ? (
-                        <Badge variant="indigo" size="sm">
-                          Leader 👑
-                        </Badge>
-                      ) : (
-                        <Badge variant="default" size="sm">
-                          Member
-                        </Badge>
-                      )}
-                    </div>
-                    <h4 className="text-sm font-bold text-slate-900 truncate">{member.name}</h4>
-                    <p className="text-xs text-slate-500 mt-0.5 truncate">
-                      {member.course} • Year {member.year}
-                    </p>
-                  </div>
-
-                  {/* Leader remove button */}
-                  {group.myRole === "leader" && !member.isLeader && group.status !== "locked" && (
-                    <div className="mt-4 pt-3 border-t border-indigo-100 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setConfirmDialog({
-                            isOpen: true,
-                            title: "Remove Group Member",
-                            message: `Are you sure you want to remove ${member.name} from the group?`,
-                            action: () => handleRemoveMember(member.id),
-                            variant: "warning",
-                          })
-                        }
-                        className="text-xs font-semibold text-rose-600 hover:text-rose-800"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            }
-
-            return (
-              <div
-                key={`empty-${index}`}
-                className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/40 p-4 flex flex-col items-center justify-center text-center min-h-[140px]"
-              >
-                <span className="text-2xl text-slate-300">🛏️</span>
-                <span className="text-xs font-bold text-slate-400 mt-2">Available Seat</span>
-                <span className="text-[10px] text-slate-400">Waiting for roommate</span>
+                  {group.status.toUpperCase()}
+                </Badge>
               </div>
-            );
-          })}
-        </div>
-
-        {/* Group Scores Metrics */}
-        {group.members.length > 1 && (
-          <div className="pt-6 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className={`p-4 rounded-xl border ${avgTheme.border} ${avgTheme.bg} flex items-center justify-between`}>
-              <div>
-                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider block">
-                  Group Average Compatibility
-                </span>
-                <span className="text-xs text-slate-500">Calculated across all member pairs</span>
-              </div>
-              <span className={`text-2xl font-black ${avgTheme.text}`}>
-                {group.averageScore}%
-              </span>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                Targeting a <strong>{group.targetSize}-Bed Room</strong> ({group.gender.toUpperCase()} pool)
+              </p>
             </div>
 
-            <div className={`p-4 rounded-xl border ${lowTheme.border} ${lowTheme.bg} flex items-center justify-between`}>
-              <div>
-                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider block">
-                  Lowest Pair Score
-                </span>
-                <span className="text-xs text-slate-500">Weakest link compatibility</span>
-              </div>
-              <span className={`text-2xl font-black ${lowTheme.text}`}>
-                {group.lowestPairScore}%
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* Per-Pair Breakdown Table */}
-        {group.pairScores?.length > 0 && (
-          <div className="pt-4 border-t border-slate-100 space-y-2">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              Pairwise Match Ratings
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {group.pairScores.map((pair, idx) => (
-                <div
-                  key={idx}
-                  className="rounded-lg border border-slate-200 bg-slate-50/50 p-2.5 flex items-center justify-between text-xs"
-                >
-                  <span className="font-semibold text-slate-800 truncate mr-2">
-                    {pair.memberA} ↔ {pair.memberB}
-                  </span>
-                  <Badge variant={getScoreTheme(pair.score).badge} size="sm">
-                    {pair.score}% {pair.label}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Incoming Join Requests (Leader Review) */}
-      {group.myRole === "leader" && group.status === "forming" && (
-        <div className="rounded-2xl border border-indigo-200 bg-white p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
+            {/* Action Controls */}
             <div className="flex items-center gap-2">
-              <h3 className="text-base font-bold text-slate-900">
-                Incoming Join Requests
-              </h3>
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                incomingRequests.length > 0
-                  ? "bg-amber-100 text-amber-800 border border-amber-200"
-                  : "bg-slate-100 text-slate-600"
-              }`}>
-                {incomingRequests.length} pending
-              </span>
-            </div>
-          </div>
-
-          {requestsLoading ? (
-            <div className="h-24 rounded-xl border border-slate-100 bg-slate-50 animate-pulse" />
-          ) : incomingRequests.length === 0 ? (
-            <p className="text-xs text-slate-500 italic py-2">
-              No students have requested to join your group yet. Compatible students browsing open groups will appear here.
-            </p>
-          ) : (
-            <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden bg-white">
-              {incomingRequests.map((req) => (
-                <div
-                  key={req.id}
-                  className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <h4 className="text-sm font-bold text-slate-900">{req.requester?.name}</h4>
-                      <Badge variant="indigo" size="sm">
-                        {req.scoreSnapshot?.average}% Match
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-slate-500">
-                      {req.requester?.course} {req.requester?.year ? `• Year ${req.requester.year}` : ""}
-                    </p>
-                    {req.message && (
-                      <p className="text-xs text-slate-700 italic bg-slate-50 p-2 rounded-lg border border-slate-100 mt-1 max-w-xl">
-                        &ldquo;{req.message}&rdquo;
-                      </p>
-                    )}
-                    <span className="text-[11px] text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 inline-block mt-1">
-                      ⏳ Expires in {req.daysLeft} day{req.daysLeft === 1 ? "" : "s"}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => handleOpenReview(req.id)}
-                    >
-                      Review &amp; Decide &rarr;
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Pending Invitations Sent by Leader */}
-      {group.myRole === "leader" && group.pendingInvitations?.length > 0 && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-          <h3 className="text-base font-bold text-slate-900">
-            Pending Sent Invitations ({group.pendingInvitations.length})
-          </h3>
-          <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden bg-white">
-            {group.pendingInvitations.map((inv) => (
-              <div
-                key={inv.id}
-                className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/60 transition-colors"
-              >
-                <div>
-                  <h4 className="text-sm font-bold text-slate-900">{inv.invitedUser?.name}</h4>
-                  <p className="text-xs text-slate-500">
-                    {inv.invitedUser?.course} • Year {inv.invitedUser?.year}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[11px] text-slate-600">
-                      Fit: Avg <strong>{inv.scoreSnapshot?.average}%</strong>
-                    </span>
-                    <span className="text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md">
-                      Expires in {inv.daysLeft} day{inv.daysLeft === 1 ? "" : "s"}
-                    </span>
-                  </div>
-                </div>
-
+              {group.status !== "locked" && (
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleCancelInvite(inv.id)}
+                  onClick={() =>
+                    setConfirmDialog({
+                      isOpen: true,
+                      title: "Leave Group",
+                      message:
+                        group.myRole === "leader"
+                          ? "As leader, leaving this group will transfer leadership to the next earliest joined member, or disband if you are the sole member. Confirm leave?"
+                          : "Are you sure you want to leave this roommate group?",
+                      action: handleLeaveGroup,
+                      variant: "warning",
+                    })
+                  }
                 >
-                  Cancel Invitation
+                  Leave Group
                 </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+              )}
 
-      {/* Leader's Candidate Discovery Section */}
-      {group.myRole === "leader" && group.status === "forming" && group.seatsRemaining > 0 && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 className="text-base font-bold text-slate-900">
-                Recommended Candidates ({candidates.length})
-              </h3>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Students compatible with all existing group members, ranked by overall group fit.
-              </p>
-            </div>
-
-            {/* Candidate Filters */}
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() =>
-                  setCandidateFilters((prev) => ({ ...prev, sameYearOnly: !prev.sameYearOnly }))
-                }
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold border transition-all ${
-                  candidateFilters.sameYearOnly
-                    ? "bg-indigo-600 text-white border-indigo-600"
-                    : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
-                }`}
-              >
-                🎓 Same Year Only
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setCandidateFilters((prev) => ({
-                    ...prev,
-                    sharedLanguageOnly: !prev.sharedLanguageOnly,
-                  }))
-                }
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold border transition-all ${
-                  candidateFilters.sharedLanguageOnly
-                    ? "bg-indigo-600 text-white border-indigo-600"
-                    : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
-                }`}
-              >
-                🗣️ Shares Language
-              </button>
-            </div>
-          </div>
-
-          {candidatesLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-44 rounded-xl border border-slate-200 bg-slate-50 p-4 animate-pulse" />
-              ))}
-            </div>
-          ) : candidates.length === 0 ? (
-            <EmptyState
-              icon="🔍"
-              title="No Candidates Found"
-              description="No students currently match your group criteria or filter settings."
-            />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {candidates.map((c) => (
-                <div
-                  key={c.candidate.id}
-                  className="rounded-xl border border-slate-200/90 bg-white p-5 flex flex-col justify-between shadow-xs hover:border-indigo-300 transition-all"
+              {group.myRole === "leader" && group.status !== "locked" && (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() =>
+                    setConfirmDialog({
+                      isOpen: true,
+                      title: "Disband Group",
+                      message:
+                        "Are you sure you want to dissolve this roommate group? All members will be removed and pending invitations will be cancelled.",
+                      action: handleDisbandGroup,
+                      variant: "danger",
+                    })
+                  }
                 >
-                  <div>
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-900">{c.candidate.name}</h4>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {c.candidate.course} • Year {c.candidate.year}
-                        </p>
-                      </div>
-
-                      <Badge variant={getScoreTheme(c.groupAverage).badge} size="sm">
-                        {c.groupAverage}% Fit
-                      </Badge>
-                    </div>
-
-                    {/* Per-member score chips */}
-                    <div className="mt-3 pt-3 border-t border-slate-100 space-y-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                        Compatibility with Members:
-                      </span>
-                      <div className="flex flex-wrap gap-1">
-                        {c.perMemberScores?.map((ps, idx) => (
-                          <span
-                            key={idx}
-                            className="inline-flex text-[10px] font-semibold bg-slate-100 text-slate-700 rounded px-1.5 py-0.5"
-                          >
-                            {ps.memberName}: {ps.score}%
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Shared languages */}
-                    {c.sharedLanguages?.length > 0 && (
-                      <div className="mt-2 text-[11px] text-indigo-700">
-                        🗣️ {c.sharedLanguages.join(", ")}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-slate-100">
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      className="w-full"
-                      loading={invitingId === c.candidate.id}
-                      onClick={() => handleSendInvite(c.candidate.id)}
-                    >
-                      Invite to Group &rarr;
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                  Disband Group
+                </Button>
+              )}
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        </Reveal>
 
-      {/* Review Join Request Modal */}
-      <Modal
-        isOpen={isReviewOpen}
-        onClose={() => {
-          setIsReviewOpen(false);
-          setSelectedRequestId(null);
-          setReviewData(null);
-        }}
-        title={reviewData ? `Review Join Request: ${reviewData.requester?.name}` : "Review Join Request"}
-        description={reviewData ? `${reviewData.requester?.course || "Student"} ${reviewData.requester?.year ? `• Year ${reviewData.requester.year}` : ""}` : ""}
-        maxWidth="max-w-2xl"
-      >
-        {reviewLoading ? (
-          <div className="py-12 text-center text-slate-500">Evaluating compatibility &amp; privacy filters…</div>
-        ) : reviewData && (
-          <div className="space-y-6">
-            {/* Privacy Protection Notice Banner */}
-            <div className="rounded-xl border border-indigo-200 bg-indigo-50/70 p-3 text-xs text-indigo-950 flex items-start gap-2.5">
-              <span className="text-base mt-0.5">🛡️</span>
+        {/* Selected Room Banner (FCFS claimed) */}
+        {group.selectedRoom && (
+          <Reveal direction="up" delay={50}>
+            <Alert
+              variant="success"
+              title={`Reserved For Your Group: Room #${group.selectedRoom.roomNumber}`}
+              action={
+                <Link href="/dashboard/rooms">
+                  <Button variant="success" size="sm">
+                    Room Details &rarr;
+                  </Button>
+                </Link>
+              }
+            >
+              {group.selectedRoom.hostelName} ({group.selectedRoom.hostelCode}) • Floor {group.selectedRoom.floor} • {group.selectedRoom.roomType} ({group.selectedRoom.capacity}-seater). Remaining seats stay reserved for your group.
+            </Alert>
+          </Reveal>
+        )}
+
+        {/* Room Selection Window Prompt for Leader */}
+        {!group.selectedRoom && group.myRole === "leader" && group.status !== "locked" && (
+          <Reveal direction="up" delay={50}>
+            <Alert
+              variant="brand"
+              title="Room Selection Window"
+              action={
+                <Link href="/dashboard/rooms">
+                  <Button variant="primary" size="sm">
+                    Choose a Room &rarr;
+                  </Button>
+                </Link>
+              }
+            >
+              As the leader, you can pick a free room directly during the open selection window on a first-come, first-served basis.
+            </Alert>
+          </Reveal>
+        )}
+
+        {/* Complete Group Banner */}
+        {group.status === "complete" && (
+          <Reveal direction="up" delay={50}>
+            <Alert variant="success" title="Your Group is Complete!">
+              All {group.targetSize} seats have been filled with compatible roommates. Your group is ready for hostel block allocation.
+            </Alert>
+          </Reveal>
+        )}
+
+        {/* HERO: Seat Visualisation Cards */}
+        <Reveal direction="up" delay={100}>
+          <Card variant="elevated" className="p-6 sm:p-8 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 gap-4">
               <div>
-                <strong>Privacy Notice:</strong> Only lifestyle compatibility scores and academic department/year are displayed. Contact details, raw questionnaire answers, and deal-breakers remain private.
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading">
+                  Room Seats & Members
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {group.seatsFilled} of {group.targetSize} seats reserved ({group.seatsRemaining} remaining)
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Badge variant="brand" size="md">
+                  {group.targetSize}-Bed Room ({group.targetSize}-seater)
+                </Badge>
               </div>
             </div>
 
-            {/* Optional message from student */}
-            {reviewData.message && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Note from student:</span>
-                <p className="text-xs text-slate-800 italic">&ldquo;{reviewData.message}&rdquo;</p>
-              </div>
-            )}
+            {/* Seat Tiles Row / Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {Array.from({ length: group.targetSize }).map((_, index) => {
+                const member = group.members[index];
+                return (
+                  <SeatTile
+                    key={index}
+                    seatNumber={index + 1}
+                    member={member}
+                    isLeader={member?.isLeader}
+                    isReserved={Boolean(group.selectedRoom && !member)}
+                    onInvite={
+                      !member && group.myRole === "leader" && group.status === "forming"
+                        ? () => {
+                            const el = document.getElementById("recommended-candidates");
+                            if (el) el.scrollIntoView({ behavior: "smooth" });
+                          }
+                        : undefined
+                    }
+                  />
+                );
+              })}
+            </div>
 
-            {/* Impact Preview */}
-            {reviewData.impact && (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 mb-3">
-                  Group Compatibility Impact
-                </h4>
-                <div className="grid grid-cols-2 gap-3 text-center">
-                  <div className="bg-white p-3 rounded-xl border border-slate-200">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Current Group Average</span>
-                    <span className="text-lg font-black text-slate-800">{reviewData.impact.currentAverage}%</span>
-                    <span className="text-[10px] text-slate-500 block mt-0.5">
-                      Lowest: {reviewData.impact.currentLowestPair}%
+            {/* Group Scores Metrics */}
+            {group.members.length > 1 && (
+              <div className="pt-6 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider block">
+                      Group Average Compatibility
+                    </span>
+                    <span className="text-xs text-slate-500 dark:text-slate-500">
+                      Calculated across all member pairs
                     </span>
                   </div>
-                  <div className="bg-white p-3 rounded-xl border border-indigo-200">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 block">New Group Average</span>
-                    <span className="text-lg font-black text-indigo-600">{reviewData.impact.newAverage}%</span>
-                    <span className="text-[10px] text-slate-500 block mt-0.5">
-                      Lowest: {reviewData.impact.newLowestPair}%
+                  <ScoreRing score={group.averageScore} size={52} strokeWidth={5} />
+                </div>
+
+                <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider block">
+                      Lowest Pair Score
+                    </span>
+                    <span className="text-xs text-slate-500 dark:text-slate-500">
+                      Weakest link compatibility
                     </span>
                   </div>
+                  <ScoreRing score={group.lowestPairScore} size={52} strokeWidth={5} />
                 </div>
               </div>
             )}
 
-            {/* Pairwise breakdown with current group members */}
-            {reviewData.breakdown && (
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Fit Breakdown with Group Members
+            {/* Pairwise Match Ratings */}
+            {group.pairScores?.length > 0 && (
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2.5">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Pairwise Match Ratings
                 </h4>
-                <div className="space-y-3">
-                  {reviewData.breakdown.map((m, idx) => (
-                    <div key={idx} className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-slate-900">{m.name}</span>
-                        <Badge variant="indigo" size="sm">
-                          {m.score}% {m.label}
-                        </Badge>
-                      </div>
-
-                      {m.reasons?.length > 0 && (
-                        <div className="flex flex-wrap gap-1 text-[11px] text-emerald-800">
-                          {m.reasons.map((r, rIdx) => (
-                            <span key={rIdx} className="bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
-                              ✓ {r}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      {m.warnings?.length > 0 && (
-                        <div className="flex flex-wrap gap-1 text-[11px] text-amber-800">
-                          {m.warnings.map((w, wIdx) => (
-                            <span key={wIdx} className="bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
-                              ⚠️ {w}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  {group.pairScores.map((pair, idx) => (
+                    <div
+                      key={idx}
+                      className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 p-3 flex items-center justify-between text-xs"
+                    >
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 truncate mr-2">
+                        {pair.memberA} ↔ {pair.memberB}
+                      </span>
+                      <Badge variant={getScoreTone(pair.score)} size="sm">
+                        {pair.score}% {pair.label}
+                      </Badge>
                     </div>
                   ))}
                 </div>
               </div>
             )}
+          </Card>
+        </Reveal>
 
-            {/* Actions */}
-            <div className="pt-3 flex items-center justify-between border-t border-slate-100">
-              <Button
-                variant="danger"
-                size="sm"
-                loading={actingRequestId === selectedRequestId}
-                disabled={actingRequestId === selectedRequestId}
-                onClick={handleRejectRequest}
-              >
-                Decline Request
-              </Button>
+        {/* Incoming Join Requests (Leader Review) */}
+        {group.myRole === "leader" && group.status === "forming" && (
+          <Reveal direction="up" delay={150}>
+            <Card variant="default" className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading">
+                    Incoming Join Requests
+                  </h3>
+                  <Badge variant={incomingRequests.length > 0 ? "warning" : "neutral"} size="sm" pulse={incomingRequests.length > 0}>
+                    {incomingRequests.length} pending
+                  </Badge>
+                </div>
+              </div>
 
-              <div className="flex items-center gap-2">
+              {requestsLoading ? (
+                <div className="h-24 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 animate-pulse" />
+              ) : incomingRequests.length === 0 ? (
+                <p className="text-xs text-slate-500 dark:text-slate-400 italic py-2">
+                  No students have requested to join your group yet. Compatible students browsing open groups will appear here.
+                </p>
+              ) : (
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
+                  {incomingRequests.map((req) => (
+                    <div
+                      key={req.id}
+                      className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 dark:hover:bg-slate-800/60 transition-colors"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 font-heading">
+                            {req.requester?.name}
+                          </h4>
+                          <Badge variant={getScoreTone(req.scoreSnapshot?.average)} size="sm">
+                            {req.scoreSnapshot?.average}% Match
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {req.requester?.course} {req.requester?.year ? `• Year ${req.requester.year}` : ""}
+                        </p>
+                        {req.message && (
+                          <p className="text-xs text-slate-700 dark:text-slate-300 italic bg-slate-50 dark:bg-slate-800 p-2.5 rounded-lg border border-slate-100 dark:border-slate-700 mt-1 max-w-xl">
+                            &ldquo;{req.message}&rdquo;
+                          </p>
+                        )}
+                        <CountdownBadge targetDate={req.expiresAt} prefix="⏳ " />
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => handleOpenReview(req.id)}
+                        >
+                          Review &amp; Decide &rarr;
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </Reveal>
+        )}
+
+        {/* Pending Invitations Sent by Leader */}
+        {group.myRole === "leader" && group.pendingInvitations?.length > 0 && (
+          <Reveal direction="up" delay={200}>
+            <Card variant="default" className="p-6 space-y-4">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading">
+                Pending Sent Invitations ({group.pendingInvitations.length})
+              </h3>
+              <div className="divide-y divide-slate-100 dark:divide-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-white dark:bg-slate-900">
+                {group.pendingInvitations.map((inv) => (
+                  <div
+                    key={inv.id}
+                    className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/60 dark:hover:bg-slate-800/60 transition-colors"
+                  >
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 font-heading">
+                        {inv.invitedUser?.name}
+                      </h4>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {inv.invitedUser?.course} • Year {inv.invitedUser?.year}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[11px] text-slate-600 dark:text-slate-400">
+                          Fit: Avg <strong>{inv.scoreSnapshot?.average}%</strong>
+                        </span>
+                        <CountdownBadge targetDate={inv.expiresAt} prefix="Expires in " />
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCancelInvite(inv.id)}
+                    >
+                      Cancel Invitation
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </Reveal>
+        )}
+
+        {/* Room Preferences Config */}
+        <Reveal direction="up" delay={250}>
+          <RoomPreferencesCard
+            isLeader={group.myRole === "leader"}
+            isLocked={group.status === "locked"}
+            targetSize={group.targetSize}
+            onPreferencesUpdated={fetchGroupData}
+          />
+        </Reveal>
+
+        {/* Leader's Candidate Discovery Section */}
+        {group.myRole === "leader" && group.status === "forming" && group.seatsRemaining > 0 && (
+          <div id="recommended-candidates">
+            <Reveal direction="up" delay={300}>
+              <Card variant="default" className="p-6 space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading">
+                      Recommended Candidates ({candidates.length})
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      Students compatible with all existing group members, ranked by overall group fit.
+                    </p>
+                  </div>
+
+                  {/* Candidate Filters */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCandidateFilters((prev) => ({ ...prev, sameYearOnly: !prev.sameYearOnly }))
+                      }
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold border transition-all ${
+                        candidateFilters.sameYearOnly
+                          ? "bg-indigo-600 text-white border-indigo-600"
+                          : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
+                      }`}
+                    >
+                      🎓 Same Year Only
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCandidateFilters((prev) => ({
+                          ...prev,
+                          sharedLanguageOnly: !prev.sharedLanguageOnly,
+                        }))
+                      }
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold border transition-all ${
+                        candidateFilters.sharedLanguageOnly
+                          ? "bg-indigo-600 text-white border-indigo-600"
+                          : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
+                      }`}
+                    >
+                      🗣️ Shares Language
+                    </button>
+                  </div>
+                </div>
+
+                {candidatesLoading ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-44 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4 animate-pulse" />
+                    ))}
+                  </div>
+                ) : candidates.length === 0 ? (
+                  <EmptyState
+                    icon="🔍"
+                    title="No Candidates Found"
+                    description="No students currently match your group criteria or filter settings."
+                  />
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {candidates.map((cand) => (
+                      <Card
+                        key={cand.userId}
+                        variant="interactive"
+                        className="p-4 flex flex-col justify-between"
+                      >
+                        <div>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-2.5">
+                              <Avatar name={cand.name} size="md" />
+                              <div className="min-w-0">
+                                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 font-heading truncate">
+                                  {cand.name}
+                                </h4>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                  {[cand.course, cand.year ? `Year ${cand.year}` : null].filter(Boolean).join(" • ")}
+                                </p>
+                              </div>
+                            </div>
+                            <ScoreRing score={cand.groupFitScore} size={42} strokeWidth={4} />
+                          </div>
+
+                          {cand.reasons?.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-1">
+                              {cand.reasons.slice(0, 2).map((r, i) => (
+                                <Badge key={i} variant="success" size="sm">
+                                  ✓ {r}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            loading={invitingId === cand.userId}
+                            disabled={invitingId === cand.userId}
+                            onClick={() => handleSendInvite(cand.userId)}
+                          >
+                            + Invite to Group
+                          </Button>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            </Reveal>
+          </div>
+        )}
+
+        {/* Review Join Request Modal */}
+        <Modal
+          isOpen={isReviewOpen}
+          onClose={() => setIsReviewOpen(false)}
+          title="Review Join Request"
+          size="lg"
+        >
+          {reviewLoading ? (
+            <div className="py-8 text-center text-xs text-slate-500">Loading candidate profile...</div>
+          ) : reviewData ? (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40">
+                <div className="flex items-center gap-3">
+                  <Avatar name={reviewData.requester?.name} size="lg" />
+                  <div>
+                    <h4 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading">
+                      {reviewData.requester?.name}
+                    </h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {[reviewData.requester?.course, reviewData.requester?.year ? `Year ${reviewData.requester.year}` : null].filter(Boolean).join(" • ")}
+                    </p>
+                  </div>
+                </div>
+                <ScoreRing score={reviewData.scoreSnapshot?.average} size={52} strokeWidth={5} />
+              </div>
+
+              {reviewData.message && (
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs">
+                  <span className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">Applicant Note:</span>
+                  <p className="text-slate-600 dark:text-slate-400 italic">&ldquo;{reviewData.message}&rdquo;</p>
+                </div>
+              )}
+
+              {/* Impact */}
+              {reviewData.impact && (
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs flex items-center justify-between">
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 block">Current Group Average</span>
+                    <strong className="text-sm font-bold text-slate-900 dark:text-slate-100">{reviewData.impact.beforeScore}%</strong>
+                  </div>
+                  <span className="text-indigo-600 font-bold">&rarr;</span>
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400 block">After Admitting</span>
+                    <strong className="text-sm font-bold text-teal-600 dark:text-teal-400">{reviewData.impact.afterScore}%</strong>
+                  </div>
+                </div>
+              )}
+
+              {/* Per-member compatibility */}
+              {reviewData.perMemberScores?.length > 0 && (
+                <div className="space-y-2">
+                  <h5 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Pairwise Compatibility with Group Members
+                  </h5>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {reviewData.perMemberScores.map((p, idx) => (
+                      <div key={idx} className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs flex items-center justify-between">
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">{p.memberName}</span>
+                        <Badge variant={getScoreTone(p.score)} size="sm">{p.score}%</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <Button
                   variant="outline"
-                  size="sm"
-                  onClick={() => setIsReviewOpen(false)}
+                  onClick={handleRejectRequest}
+                  loading={actingRequestId === selectedRequestId}
+                  disabled={Boolean(actingRequestId)}
                 >
-                  Cancel
+                  Decline Request
                 </Button>
                 <Button
-                  variant="primary"
-                  size="sm"
-                  loading={actingRequestId === selectedRequestId}
-                  disabled={actingRequestId === selectedRequestId}
+                  variant="success"
                   onClick={handleApproveRequest}
+                  loading={actingRequestId === selectedRequestId}
+                  disabled={Boolean(actingRequestId)}
                 >
-                  Approve &amp; Add to Group →
+                  ✓ Approve & Admit to Group
                 </Button>
               </div>
             </div>
-          </div>
-        )}
-      </Modal>
+          ) : null}
+        </Modal>
 
-      {/* Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={confirmDialog.isOpen}
-        onClose={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
-        onConfirm={confirmDialog.action}
-        title={confirmDialog.title}
-        message={confirmDialog.message}
-        variant={confirmDialog.variant}
-      />
-    </div>
+        {/* Global Confirm Dialog */}
+        <ConfirmDialog
+          isOpen={confirmDialog.isOpen}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          variant={confirmDialog.variant}
+          onConfirm={confirmDialog.action}
+          onCancel={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        />
+
+      </div>
+    </PageTransition>
   );
 }

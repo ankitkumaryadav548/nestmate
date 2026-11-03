@@ -53,5 +53,14 @@ export { default as PageTransition } from "./PageTransition";
 export { default as ThemeToggle } from "./ThemeToggle";
 export { default as RouteProgressBar } from "./RouteProgressBar";
 
+export { default as ScoreRing } from "./ScoreRing";
+export { default as SeatTile } from "./SeatTile";
+export { default as OptionCard } from "./OptionCard";
+export { default as InfoRow } from "./InfoRow";
+export { default as CountdownBadge } from "./CountdownBadge";
+export { default as DayGroupHeader } from "./DayGroupHeader";
+export { getScoreTone, getScoreClasses } from "./ScoreTone";
+
 export * from "./Icons";
+
 

@@ -3,13 +3,32 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import axios from "@/lib/axios";
-import Badge from "@/components/ui/Badge";
-import Button from "@/components/ui/Button";
-import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import Alert from "@/components/ui/Alert";
+import { useToast } from "@/context/ToastContext";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardBody,
+  Badge,
+  Button,
+  ConfirmDialog,
+  Alert,
+  Select,
+  Pagination,
+  EmptyState,
+  PageTransition,
+  Reveal,
+  IconBed,
+  IconBuilding,
+  IconSparkles,
+  IconShield,
+  IconCheck,
+} from "@/components/ui";
 import { LIST_POLL_SECONDS } from "@/config/selection";
 
 export default function StudentRoomsPage() {
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [stateData, setStateData] = useState(null);
   const [rooms, setRooms] = useState([]);
@@ -134,7 +153,7 @@ export default function StudentRoomsPage() {
     return () => clearInterval(interval);
   }, [stateData, fetchState, fetchRooms]);
 
-  // Background polling every LIST_POLL_SECONDS while window is open
+  // Background polling while window is open
   useEffect(() => {
     if (stateData?.window?.status !== "open") return;
 
@@ -155,19 +174,13 @@ export default function StudentRoomsPage() {
       setActionAlert(null);
       const res = await axios.post("/api/selection/select", { roomId: room.id });
       if (res.data?.success) {
-        setActionAlert({
-          type: "success",
-          message: `Success! Room #${room.roomNumber} has been reserved for your group.`,
-        });
+        showToast(`Success! Room #${room.roomNumber} has been reserved for your group.`, "success");
         await fetchState();
         await fetchRooms(false);
       }
     } catch (err) {
       console.error("Select room failed:", err);
-      setActionAlert({
-        type: "error",
-        message: err.response?.data?.message || "Failed to select room. It may have just been claimed by another student.",
-      });
+      showToast(err.response?.data?.message || "Failed to select room. It may have just been claimed by another student.", "error");
       await fetchRooms(true);
     } finally {
       setActionLoading(false);
@@ -183,19 +196,13 @@ export default function StudentRoomsPage() {
       setActionAlert(null);
       const res = await axios.post("/api/selection/release");
       if (res.data?.success) {
-        setActionAlert({
-          type: "success",
-          message: "Your previously selected room has been released.",
-        });
+        showToast("Your previously selected room has been released.", "info");
         await fetchState();
         await fetchRooms(false);
       }
     } catch (err) {
       console.error("Release room failed:", err);
-      setActionAlert({
-        type: "error",
-        message: err.response?.data?.message || "Failed to release room.",
-      });
+      showToast(err.response?.data?.message || "Failed to release room.", "error");
     } finally {
       setActionLoading(false);
       setConfirmDialog((prev) => ({ ...prev, isOpen: false }));
@@ -208,401 +215,366 @@ export default function StudentRoomsPage() {
   const currentClaim = stateData?.currentClaim;
 
   return (
-    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xl">🔑</span>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-              Room Selection Window
-            </h1>
-          </div>
-          <p className="text-xs sm:text-sm text-slate-500">
-            First-Come, First-Served room claiming with immediate allocation lock.
-          </p>
-        </div>
-
-        <Link
-          href="/dashboard"
-          className="text-xs font-semibold text-slate-500 hover:text-indigo-600 self-start sm:self-auto"
-        >
-          &larr; Back to Dashboard
-        </Link>
-      </div>
-
-      {actionAlert && (
-        <Alert
-          type={actionAlert.type}
-          message={actionAlert.message}
-          onClose={() => setActionAlert(null)}
-        />
-      )}
-
-      {/* Window Status Banner */}
-      <div className={`rounded-3xl p-6 sm:p-8 text-white shadow-lg ${
-        windowStatus === "open"
-          ? "bg-gradient-to-r from-emerald-600 via-teal-700 to-indigo-800"
-          : windowStatus === "scheduled"
-          ? "bg-gradient-to-r from-blue-700 via-indigo-800 to-purple-900"
-          : windowStatus === "closed"
-          ? "bg-gradient-to-r from-amber-700 via-orange-800 to-slate-900"
-          : windowStatus === "finalized"
-          ? "bg-gradient-to-r from-purple-800 via-indigo-900 to-slate-950"
-          : "bg-gradient-to-r from-slate-700 to-slate-900"
-      }`}>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-bold uppercase tracking-wider">
-              <span className={`h-2.5 w-2.5 rounded-full ${windowStatus === "open" ? "bg-emerald-300 animate-ping" : "bg-white"}`} />
-              Window Status: {windowStatus}
-            </div>
-
-            <h2 className="text-xl sm:text-2xl font-black">
-              {windowStatus === "open" && "Room Selection is LIVE!"}
-              {windowStatus === "scheduled" && "Upcoming Selection Window"}
-              {windowStatus === "closed" && "Selection Window Closed"}
-              {windowStatus === "finalized" && "Room Selection Finalized"}
-              {windowStatus === "none" && "No Active Selection Window"}
-            </h2>
-
-            <p className="text-xs sm:text-sm text-white/80 max-w-2xl leading-relaxed">
-              {windowStatus === "open" &&
-                "The floor is open! Leaders and single-room students can choose any available room. Picks are confirmed immediately and reserved for your group."}
-              {windowStatus === "scheduled" &&
-                "Prepare your group and room preferences. The room browser will unlock automatically as soon as the countdown reaches zero."}
-              {windowStatus === "closed" &&
-                "Room selection has concluded. The administration will finalize locked groups and auto-fill remaining open seats."}
-              {windowStatus === "finalized" &&
-                "All selection window assignments and auto-fills have been finalized. Check your confirmed assignment in My Room."}
-              {windowStatus === "none" &&
-                "An administrator has not scheduled an open selection window yet. Check back soon!"}
-            </p>
-          </div>
-
-          {/* Countdown Display */}
-          {countdown && (windowStatus === "open" || windowStatus === "scheduled") && (
-            <div className="bg-white/10 border border-white/20 rounded-2xl p-4 text-center shrink-0 min-w-[160px] backdrop-blur-sm">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-white/80 block">
-                {windowStatus === "open" ? "Closes In" : "Opens In"}
-              </span>
-              <div className="text-3xl font-black font-mono tracking-tight text-white mt-0.5">
-                {String(countdown.minutes).padStart(2, "0")}:{String(countdown.seconds).padStart(2, "0")}
+    <PageTransition>
+      <div className="max-w-7xl mx-auto py-6 sm:py-8 px-4 sm:px-6 lg:px-8 space-y-6">
+        
+        {/* Header */}
+        <Reveal direction="down">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <IconBed className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100 font-heading">
+                  Room Selection Window
+                </h1>
               </div>
-              <span className="text-[10px] text-white/60 block mt-0.5">minutes : seconds</span>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Currently Claimed Room Banner */}
-      {currentClaim && (
-        <div className="rounded-2xl border-2 border-emerald-400 bg-emerald-50/90 p-5 sm:p-6 shadow-sm">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-4">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-600 text-white text-2xl shrink-0 shadow-xs">
-                ✓
-              </span>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 bg-emerald-200/80 px-2 py-0.5 rounded-md">
-                    Your Unit Selected
-                  </span>
-                  <h3 className="text-lg font-black text-emerald-950">
-                    Room #{currentClaim.room?.roomNumber} ({currentClaim.hostel?.name})
-                  </h3>
-                </div>
-                <p className="text-xs sm:text-sm text-emerald-900 mt-1">
-                  Floor {currentClaim.room?.floor} • {currentClaim.room?.roomType} • {currentClaim.room?.capacity} Beds
-                  {currentClaim.openSeats > 0 && (
-                    <span className="font-semibold text-emerald-700 ml-2">
-                      ({currentClaim.openSeats} seat{currentClaim.openSeats > 1 ? "s" : ""} remaining for your group)
-                    </span>
-                  )}
-                </p>
-                <p className="text-[11px] text-emerald-700 mt-0.5">
-                  Claimed at {new Date(currentClaim.claimedAt).toLocaleTimeString()}
-                </p>
-              </div>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                First-Come, First-Served room claiming with immediate allocation lock.
+              </p>
             </div>
 
-            {releaseEligibility.canRelease && (
-              <Button
-                variant="outline"
-                size="sm"
-                loading={actionLoading}
-                onClick={() =>
-                  setConfirmDialog({
-                    isOpen: true,
-                    title: "Release Selected Room?",
-                    message: `Are you sure you want to release Room #${currentClaim.room?.roomNumber}? It will immediately become available for other students to claim.`,
-                    variant: "danger",
-                    action: handleReleaseRoom,
-                  })
-                }
-              >
-                Release Room
+            <Link href="/dashboard">
+              <Button variant="secondary" size="sm">
+                &larr; Back to Dashboard
               </Button>
-            )}
+            </Link>
           </div>
-        </div>
-      )}
+        </Reveal>
 
-      {/* Eligibility Warning Banner (if not eligible to select) */}
-      {!eligibility.canSelect && !currentClaim && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 text-xs text-amber-900 flex items-start gap-3">
-          <span className="text-lg">ℹ️</span>
-          <div>
-            <span className="font-bold block">Selection Notice:</span>
-            <span>{eligibility.reason}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Filter Toolbar */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3 text-xs">
-          {/* Hostel Filter */}
-          <div className="flex items-center gap-1.5">
-            <label className="font-semibold text-slate-600">Hostel:</label>
-            <select
-              value={selectedHostel}
-              onChange={(e) => {
-                setSelectedHostel(e.target.value);
-                setPage(1);
-              }}
-              className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs text-slate-800 bg-white focus:outline-indigo-500"
-            >
-              <option value="">All Eligible Hostels</option>
-              {hostels.map((h) => (
-                <option key={h.id} value={h.id}>
-                  {h.name} ({h.code})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Room Type Filter */}
-          <div className="flex items-center gap-1.5">
-            <label className="font-semibold text-slate-600">AC Type:</label>
-            <select
-              value={selectedRoomType}
-              onChange={(e) => {
-                setSelectedRoomType(e.target.value);
-                setPage(1);
-              }}
-              className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs text-slate-800 bg-white focus:outline-indigo-500"
-            >
-              <option value="">All Types</option>
-              <option value="AC">AC</option>
-              <option value="Non-AC">Non-AC</option>
-            </select>
-          </div>
-
-          {/* Floor Filter */}
-          <div className="flex items-center gap-1.5">
-            <label className="font-semibold text-slate-600">Floor:</label>
-            <select
-              value={selectedFloor}
-              onChange={(e) => {
-                setSelectedFloor(e.target.value);
-                setPage(1);
-              }}
-              className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs text-slate-800 bg-white focus:outline-indigo-500"
-            >
-              <option value="">All Floors</option>
-              <option value="0">Ground Floor (0)</option>
-              <option value="1">1st Floor</option>
-              <option value="2">2nd Floor</option>
-              <option value="3">3rd Floor</option>
-              <option value="4">4th Floor+</option>
-            </select>
-          </div>
-
-          {(selectedHostel || selectedRoomType || selectedFloor !== "") && (
-            <button
-              onClick={() => {
-                setSelectedHostel("");
-                setSelectedRoomType("");
-                setSelectedFloor("");
-                setPage(1);
-              }}
-              className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold underline ml-1"
-            >
-              Reset filters
-            </button>
-          )}
-        </div>
-
-        <div className="text-xs text-slate-500 flex items-center gap-3">
-          <span>
-            Showing <strong>{rooms.length}</strong> of <strong>{totalRooms}</strong> free rooms
-          </span>
-          {windowStatus === "open" && (
-            <span className="text-[11px] text-emerald-600 flex items-center gap-1">
-              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              Live Polling (20s)
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Room Grid */}
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-48 rounded-2xl bg-slate-100 animate-pulse" />
-          ))}
-        </div>
-      ) : rooms.length === 0 ? (
-        <div className="rounded-3xl border border-slate-200 bg-white p-12 text-center space-y-3">
-          <span className="text-4xl">🚪</span>
-          <h3 className="text-base font-bold text-slate-800">No Selectable Rooms Found</h3>
-          <p className="text-xs text-slate-500 max-w-md mx-auto">
-            No free rooms matching your unit&apos;s gender, room size, and active filters are currently available. Check back as other students release rooms or broaden your filters.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {rooms.map((room) => {
-            const isCurrentSelected = currentClaim?.room?.id === room.id;
-            const canPick = eligibility.canSelect && windowStatus === "open" && !isCurrentSelected;
-
-            return (
-              <div
-                key={room.id}
-                className={`rounded-2xl border p-5 flex flex-col justify-between transition-all bg-white ${
-                  isCurrentSelected
-                    ? "border-emerald-500 ring-2 ring-emerald-400/30 shadow-md"
-                    : "border-slate-200 hover:border-indigo-400 hover:shadow-md"
-                }`}
-              >
-                <div>
-                  {/* Top Bar: Hostel Name and Full Match Badge */}
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <span className="text-xs font-bold text-slate-700 truncate" title={room.hostelName}>
-                      {room.hostelName}
-                    </span>
-                    {room.matchScore === 100 && (
-                      <Badge variant="emerald" size="sm">
-                        Full Match
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Room Number & Floor */}
-                  <div className="flex items-baseline gap-2 mb-2">
-                    <span className="text-2xl font-black text-slate-900 tracking-tight">
-                      Room #{room.roomNumber}
-                    </span>
-                    <span className="text-xs font-semibold text-slate-500">
-                      Floor {room.floor}
-                    </span>
-                  </div>
-
-                  {/* Specifications & Preference Badges */}
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    <span className="rounded-md bg-slate-100 text-slate-700 px-2 py-0.5 text-[11px] font-semibold">
-                      {room.roomType}
-                    </span>
-                    <span className="rounded-md bg-slate-100 text-slate-700 px-2 py-0.5 text-[11px] font-semibold">
-                      {room.capacity} Bed{room.capacity > 1 ? "s" : ""}
-                    </span>
-
-                    {room.matchesHostel && (
-                      <span className="rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 text-[10px] font-bold">
-                        ★ Preferred Hostel
-                      </span>
-                    )}
-                    {room.matchesAc && (
-                      <span className="rounded-md bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 text-[10px] font-bold">
-                        ✓ AC Match
-                      </span>
-                    )}
-                    {room.matchesFloor && (
-                      <span className="rounded-md bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 text-[10px] font-bold">
-                        ✓ Floor Match
-                      </span>
-                    )}
-                  </div>
+        {/* Window Status Banner */}
+        <Reveal direction="up" delay={50}>
+          <div
+            className={`rounded-3xl p-6 sm:p-8 text-white shadow-xl transition-all ${
+              windowStatus === "open"
+                ? "bg-gradient-to-r from-emerald-600 via-teal-700 to-indigo-800 shadow-emerald-900/20"
+                : windowStatus === "scheduled"
+                ? "bg-gradient-to-r from-blue-700 via-indigo-800 to-purple-900 shadow-indigo-900/20"
+                : windowStatus === "closed"
+                ? "bg-gradient-to-r from-amber-700 via-orange-800 to-slate-900 shadow-amber-900/20"
+                : windowStatus === "finalized"
+                ? "bg-gradient-to-r from-purple-800 via-indigo-900 to-slate-950 shadow-purple-900/20"
+                : "bg-gradient-to-r from-slate-700 to-slate-900"
+            }`}
+          >
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+              <div className="space-y-2">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-bold uppercase tracking-wider backdrop-blur-md">
+                  <span
+                    className={`h-2.5 w-2.5 rounded-full ${
+                      windowStatus === "open" ? "bg-emerald-300 animate-ping" : "bg-white"
+                    }`}
+                  />
+                  Window Status: {windowStatus}
                 </div>
 
-                {/* Bottom Action Area */}
-                <div className="pt-3 border-t border-slate-100 mt-2">
-                  {isCurrentSelected ? (
-                    <div className="text-center py-1.5 text-xs font-extrabold text-emerald-700 bg-emerald-50 rounded-xl">
-                      ✓ Your Selected Room
-                    </div>
-                  ) : (
-                    <Button
-                      variant={canPick ? "primary" : "secondary"}
-                      size="sm"
-                      fullWidth
-                      disabled={!canPick || actionLoading}
-                      onClick={() => {
-                        setSelectingRoom(room);
-                        setConfirmDialog({
-                          isOpen: true,
-                          title: `Claim Room #${room.roomNumber}?`,
-                          message: `Confirm claiming Room #${room.roomNumber} in ${room.hostelName} (${room.capacity}-Bed ${room.roomType}). On confirmation, this room is immediately and finally reserved for your unit on a First-Come, First-Served basis.`,
-                          variant: "primary",
-                          action: () => handleSelectRoom(room),
-                        });
-                      }}
-                    >
-                      {windowStatus !== "open"
-                        ? "Window Closed"
-                        : !eligibility.canSelect
-                        ? "Unavailable"
-                        : "Claim Room"}
-                    </Button>
-                  )}
-                </div>
+                <h2 className="text-xl sm:text-2xl font-black font-heading">
+                  {windowStatus === "open" && "Room Selection is LIVE!"}
+                  {windowStatus === "scheduled" && "Upcoming Selection Window"}
+                  {windowStatus === "closed" && "Selection Window Closed"}
+                  {windowStatus === "finalized" && "Room Selection Finalized"}
+                  {windowStatus === "none" && "No Active Selection Window"}
+                </h2>
+
+                <p className="text-xs sm:text-sm text-white/90 max-w-2xl leading-relaxed">
+                  {windowStatus === "open" &&
+                    "The floor is open! Leaders and single-room students can choose any available room. Picks are confirmed immediately and reserved for your group."}
+                  {windowStatus === "scheduled" &&
+                    "Prepare your group and room preferences. The room browser will unlock automatically as soon as the countdown reaches zero."}
+                  {windowStatus === "closed" &&
+                    "Room selection has concluded. The administration will finalize locked groups and auto-fill remaining open seats."}
+                  {windowStatus === "finalized" &&
+                    "All selection window assignments and auto-fills have been finalized. Check your confirmed assignment in My Room."}
+                  {windowStatus === "none" &&
+                    "An administrator has not scheduled an open selection window yet. Check back soon!"}
+                </p>
               </div>
-            );
-          })}
-        </div>
-      )}
 
-      {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-4 border-t border-slate-200 text-xs">
-          <span className="text-slate-500">
-            Page {page} of {totalPages}
-          </span>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              &larr; Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            >
-              Next &rarr;
-            </Button>
+              {/* Countdown Display */}
+              {countdown && (windowStatus === "open" || windowStatus === "scheduled") && (
+                <div className="bg-white/15 border border-white/25 rounded-2xl p-4 text-center shrink-0 min-w-[160px] backdrop-blur-md shadow-md">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-white/80 block">
+                    {windowStatus === "open" ? "Closes In" : "Opens In"}
+                  </span>
+                  <div className="text-3xl font-black font-mono tracking-tight text-white mt-0.5">
+                    {String(countdown.minutes).padStart(2, "0")}:{String(countdown.seconds).padStart(2, "0")}
+                  </div>
+                  <span className="text-[10px] text-white/70 block mt-0.5">minutes : seconds</span>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        </Reveal>
 
-      {/* Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={confirmDialog.isOpen}
-        title={confirmDialog.title}
-        message={confirmDialog.message}
-        variant={confirmDialog.variant}
-        confirmText="Confirm &amp; Proceed"
-        cancelText="Cancel"
-        onConfirm={confirmDialog.action}
-        onCancel={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
-      />
-    </div>
+        {/* Claimed Room Summary Card */}
+        {currentClaim && (
+          <Reveal direction="up" delay={100}>
+            <Alert
+              variant="success"
+              title={`Your Unit Selected Room #${currentClaim.room?.roomNumber} (${currentClaim.hostel?.name})`}
+              action={
+                releaseEligibility.canRelease ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    loading={actionLoading}
+                    onClick={() =>
+                      setConfirmDialog({
+                        isOpen: true,
+                        title: "Release Selected Room?",
+                        message: `Are you sure you want to release Room #${currentClaim.room?.roomNumber}? It will immediately become available for other students to claim.`,
+                        variant: "danger",
+                        action: handleReleaseRoom,
+                      })
+                    }
+                  >
+                    Release Room
+                  </Button>
+                ) : undefined
+              }
+            >
+              Floor {currentClaim.room?.floor} • {currentClaim.room?.roomType} • {currentClaim.room?.capacity} Beds
+              {currentClaim.openSeats > 0 && (
+                <span className="font-semibold text-teal-800 dark:text-teal-300 ml-2">
+                  ({currentClaim.openSeats} seat{currentClaim.openSeats > 1 ? "s" : ""} remaining for your group)
+                </span>
+              )}
+            </Alert>
+          </Reveal>
+        )}
+
+        {/* Eligibility Warning Alert */}
+        {!eligibility.canSelect && (
+          <Reveal direction="up" delay={100}>
+            <Alert
+              variant="warning"
+              title="Selection Window Notice"
+              action={
+                eligibility.code === "PREFERENCES_INCOMPLETE" ? (
+                  <Link href="/dashboard/preferences">
+                    <Button variant="primary" size="sm">
+                      Complete Preferences &rarr;
+                    </Button>
+                  </Link>
+                ) : eligibility.code === "NOT_GROUP_LEADER" ? (
+                  <Link href="/dashboard/group">
+                    <Button variant="secondary" size="sm">
+                      View Group &rarr;
+                    </Button>
+                  </Link>
+                ) : undefined
+              }
+            >
+              {eligibility.reason}
+            </Alert>
+          </Reveal>
+        )}
+
+        {/* Filters Card */}
+        <Reveal direction="up" delay={150}>
+          <Card variant="default" className="p-4 sm:p-5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Select
+                label="Hostel Block"
+                value={selectedHostel}
+                onChange={(e) => {
+                  setSelectedHostel(e.target.value);
+                  setPage(1);
+                }}
+                options={[
+                  { value: "", label: "All Eligible Hostels" },
+                  ...hostels.map((h) => ({ value: h.id, label: `${h.name} (${h.code})` })),
+                ]}
+              />
+
+              <Select
+                label="Room Type"
+                value={selectedRoomType}
+                onChange={(e) => {
+                  setSelectedRoomType(e.target.value);
+                  setPage(1);
+                }}
+                options={[
+                  { value: "", label: "All Cooling Types" },
+                  { value: "AC", label: "Air Conditioned (AC)" },
+                  { value: "Non-AC", label: "Non-AC (Ventilated)" },
+                ]}
+              />
+
+              <Select
+                label="Floor Level"
+                value={selectedFloor}
+                onChange={(e) => {
+                  setSelectedFloor(e.target.value);
+                  setPage(1);
+                }}
+                options={[
+                  { value: "", label: "All Floors" },
+                  { value: "0", label: "Ground Floor (Floor 0)" },
+                  { value: "1", label: "Floor 1" },
+                  { value: "2", label: "Floor 2" },
+                  { value: "3", label: "Floor 3" },
+                  { value: "4", label: "Floor 4" },
+                ]}
+              />
+            </div>
+          </Card>
+        </Reveal>
+
+        {/* Room Cards Grid */}
+        <div className="space-y-6">
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Card key={i} className="p-5 h-44 animate-pulse" />
+              ))}
+            </div>
+          ) : rooms.length === 0 ? (
+            <EmptyState
+              icon="🚪"
+              title="No Available Rooms Matching Filters"
+              description="No free rooms match your selected hostel, cooling, or floor filters. Try clearing your filters."
+              action={
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedHostel("");
+                    setSelectedRoomType("");
+                    setSelectedFloor("");
+                  }}
+                >
+                  Reset Filters
+                </Button>
+              }
+            />
+          ) : (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {rooms.map((room, idx) => {
+                  const isClaimedByMe = currentClaim?.room?.id === room.id;
+
+                  return (
+                    <Reveal key={room.id} direction="up" delay={Math.min(idx * 40, 400)}>
+                      <Card
+                        variant="interactive"
+                        className={`p-5 flex flex-col justify-between ${
+                          isClaimedByMe
+                            ? "border-emerald-500 dark:border-emerald-500 ring-2 ring-emerald-500/20"
+                            : ""
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <span className="text-2xl font-black text-slate-900 dark:text-slate-100 font-heading">
+                                #{room.roomNumber}
+                              </span>
+                              <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 mt-0.5">
+                                {room.hostelName} ({room.hostelCode}) • Floor {room.floor}
+                              </p>
+                            </div>
+
+                            <Badge
+                              variant={room.roomType === "AC" ? "info" : "neutral"}
+                              size="sm"
+                            >
+                              {room.roomType}
+                            </Badge>
+                          </div>
+
+                          {/* Capacity Beds */}
+                          <div className="mt-3 flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
+                            <span className="font-medium">Capacity:</span>
+                            <div className="flex items-center gap-1">
+                              {Array.from({ length: room.capacity || 2 }).map((_, i) => (
+                                <IconBed key={i} className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                              ))}
+                            </div>
+                            <span>({room.capacity}-seater)</span>
+                          </div>
+
+                          {/* Preference Match Badges */}
+                          <div className="mt-3 flex flex-wrap gap-1.5">
+                            {room.isFirstChoiceHostel && (
+                              <Badge variant="success" size="sm">
+                                🌟 1st Choice Hostel
+                              </Badge>
+                            )}
+                            {room.acMatchesPreference && (
+                              <Badge variant="brand" size="sm">
+                                ❄️ AC Matches
+                              </Badge>
+                            )}
+                            {room.floorMatchesPreference && (
+                              <Badge variant="neutral" size="sm">
+                                📍 Preferred Floor
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Card Action */}
+                        <div className="mt-5 pt-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                          <span className="text-xs text-slate-500 dark:text-slate-400">
+                            {room.status === "available" ? "Ready to claim" : room.status}
+                          </span>
+
+                          {isClaimedByMe ? (
+                            <Badge variant="success" size="sm">
+                              ✓ Your Selected Room
+                            </Badge>
+                          ) : (
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              disabled={!eligibility.canSelect || actionLoading}
+                              onClick={() => {
+                                setSelectingRoom(room);
+                                setConfirmDialog({
+                                  isOpen: true,
+                                  title: `Claim Room #${room.roomNumber}?`,
+                                  message: `You are about to select Room #${room.roomNumber} in ${room.hostelName} (${room.roomType}, ${room.capacity}-seater). This claim is immediate and final.`,
+                                  variant: "primary",
+                                  action: () => handleSelectRoom(room),
+                                });
+                              }}
+                            >
+                              Select This Room &rarr;
+                            </Button>
+                          )}
+                        </div>
+                      </Card>
+                    </Reveal>
+                  );
+                })}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="pt-4 flex justify-center">
+                  <Pagination
+                    currentPage={page}
+                    totalPages={totalPages}
+                    onPageChange={(p) => {
+                      setPage(p);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Global Confirm Dialog */}
+        <ConfirmDialog
+          isOpen={confirmDialog.isOpen}
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          variant={confirmDialog.variant}
+          onConfirm={confirmDialog.action}
+          onCancel={() => setConfirmDialog((prev) => ({ ...prev, isOpen: false }))}
+        />
+
+      </div>
+    </PageTransition>
   );
 }
-
