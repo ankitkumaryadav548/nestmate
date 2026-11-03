@@ -172,13 +172,13 @@ export default function NotificationBell({ userRole = "student" }) {
       <button
         type="button"
         onClick={handleToggle}
-        className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-xs hover:border-indigo-300 hover:bg-slate-50 hover:text-indigo-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
+        className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-white/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 shadow-xs hover:border-indigo-300 dark:hover:border-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-700/80 hover:text-indigo-600 dark:hover:text-indigo-400 focus-visible:outline-2 focus-visible:outline-indigo-500 transition-all"
         aria-expanded={isOpen}
         aria-haspopup="true"
         aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
       >
         <svg
-          className="h-5 w-5"
+          className="h-4.5 w-4.5"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -187,14 +187,14 @@ export default function NotificationBell({ userRole = "student" }) {
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
-            strokeWidth={1.75}
-            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+            strokeWidth={1.8}
+            d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"
           />
         </svg>
 
         {/* Unread Badge (hidden at 0, shows 9+ above 9) */}
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-indigo-600 px-1 text-[11px] font-bold text-white shadow-sm ring-2 ring-white">
+          <span className="absolute -top-1 -right-1 flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-1 text-[10px] font-bold text-white shadow-xs ring-2 ring-white dark:ring-slate-900 animate-pulse">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
@@ -203,16 +203,16 @@ export default function NotificationBell({ userRole = "student" }) {
       {/* Preview Dropdown Panel */}
       {isOpen && (
         <div
-          className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-slate-200 bg-white shadow-2xl ring-1 ring-black/5 z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100"
+          className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl z-50 overflow-hidden animate-scale-in"
           role="region"
           aria-label="Notification preview list"
         >
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 bg-slate-50/70">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 px-4 py-3 bg-slate-50/80 dark:bg-slate-800/50">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-slate-900">Notifications</span>
+              <span className="text-sm font-bold text-slate-900 dark:text-slate-100">Notifications</span>
               {unreadCount > 0 && (
-                <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700">
+                <span className="rounded-full bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60">
                   {unreadCount} new
                 </span>
               )}
@@ -221,34 +221,34 @@ export default function NotificationBell({ userRole = "student" }) {
               <button
                 type="button"
                 onClick={handleMarkAllRead}
-                className="text-xs font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
+                className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline transition-colors"
               >
-                Mark all as read
+                Mark all read
               </button>
             )}
           </div>
 
           {/* List Body */}
-          <div className="max-h-96 divide-y divide-slate-100 overflow-y-auto">
+          <div className="max-h-96 divide-y divide-slate-100 dark:divide-slate-800/70 overflow-y-auto">
             {loadingPreview ? (
               <div className="p-4 space-y-3">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="flex gap-3 animate-pulse">
-                    <div className="h-9 w-9 rounded-xl bg-slate-200 shrink-0" />
+                    <div className="h-9 w-9 rounded-xl bg-slate-200 dark:bg-slate-800 shrink-0" />
                     <div className="flex-1 space-y-1.5">
-                      <div className="h-3 w-3/4 rounded bg-slate-200" />
-                      <div className="h-2.5 w-full rounded bg-slate-100" />
+                      <div className="h-3 w-3/4 rounded bg-slate-200 dark:bg-slate-800" />
+                      <div className="h-2.5 w-full rounded bg-slate-100 dark:bg-slate-800/60" />
                     </div>
                   </div>
                 ))}
               </div>
             ) : previewList.length === 0 ? (
               <div className="py-10 text-center px-4">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 text-xl mb-2">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 text-xl mb-2">
                   🔔
                 </div>
-                <p className="text-sm font-semibold text-slate-700">No notifications yet</p>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No notifications yet</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   We will notify you here when invitations or allocation updates occur.
                 </p>
               </div>
@@ -260,8 +260,10 @@ export default function NotificationBell({ userRole = "student" }) {
                     key={notif._id}
                     type="button"
                     onClick={() => handleItemClick(notif)}
-                    className={`w-full text-left p-3.5 flex items-start gap-3 hover:bg-slate-50 transition-colors ${
-                      isUnread ? "bg-indigo-50/40" : "bg-white"
+                    className={`w-full text-left p-3.5 flex items-start gap-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${
+                      isUnread
+                        ? "bg-indigo-50/40 dark:bg-indigo-950/20"
+                        : "bg-white dark:bg-slate-900"
                     }`}
                   >
                     <NotificationIcon
@@ -273,22 +275,24 @@ export default function NotificationBell({ userRole = "student" }) {
                       <div className="flex items-center justify-between gap-1">
                         <span
                           className={`text-xs truncate ${
-                            isUnread ? "font-bold text-slate-900" : "font-semibold text-slate-700"
+                            isUnread
+                              ? "font-bold text-slate-900 dark:text-slate-100"
+                              : "font-semibold text-slate-700 dark:text-slate-300"
                           }`}
                         >
                           {notif.title}
                         </span>
-                        <span className="text-[10px] text-slate-400 shrink-0">
+                        <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">
                           {formatRelativeTime(notif.createdAt)}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-600 mt-0.5 line-clamp-2 leading-relaxed">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5 line-clamp-2 leading-relaxed">
                         {notif.message}
                       </p>
                     </div>
                     {isUnread && (
                       <span
-                        className="mt-1 h-2 w-2 shrink-0 rounded-full bg-indigo-600"
+                        className="mt-1 h-2 w-2 shrink-0 rounded-full bg-indigo-600 dark:bg-indigo-400"
                         title="Unread"
                       />
                     )}
@@ -299,11 +303,11 @@ export default function NotificationBell({ userRole = "student" }) {
           </div>
 
           {/* Footer View All Link */}
-          <div className="border-t border-slate-100 bg-slate-50/50 p-2.5 text-center">
+          <div className="border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 p-2.5 text-center">
             <Link
               href={allNotificationsHref}
               onClick={() => setIsOpen(false)}
-              className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition-colors inline-flex items-center gap-1"
+              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline transition-colors inline-flex items-center gap-1"
             >
               <span>View all notifications</span>
               <span>&rarr;</span>

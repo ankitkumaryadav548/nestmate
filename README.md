@@ -814,6 +814,90 @@ npm run notify:test -- --reg=DEMO-0001 --clear
 npm run test:notify-flow
 ```
 
+---
+
+## 🎨 Phase UI-1: Design System & Visual Redesign
+
+HostelMatch features a modern, accessible, zero-runtime-dependency design system styled via Tailwind CSS v4 and standard CSS custom properties.
+
+### 1. Design Tokens & Global CSS Variables (`src/app/globals.css`)
+
+All colors, surface depths, shadows, radiuses, and animations are governed by root semantic CSS variables with automatic dark-mode inversion:
+
+| CSS Variable | Light Theme | Dark Theme (`.dark`) | Purpose |
+| :--- | :--- | :--- | :--- |
+| `--bg-page` | `#F8FAFC` (Slate 50) | `#0B0F19` (Deep Navy / Zinc) | Page background body canvas |
+| `--surface` | `#FFFFFF` (Pure White) | `#111827` (Gray 900) | Standard cards, dialogs, dropdowns |
+| `--surface-elevated` | `#FFFFFF` | `#1F2937` (Gray 800) | Floating headers, popovers, modals |
+| `--border` | `#E2E8F0` (Slate 200) | `#1F2937` (Gray 800) | Dividers, card borders, table rules |
+| `--text-primary` | `#0F172A` (Slate 900) | `#F8FAFC` (Slate 50) | Main headings and high-contrast text |
+| `--text-secondary` | `#475569` (Slate 600) | `#94A3B8` (Slate 400) | Body copy and descriptive subtitles |
+| `--text-muted` | `#94A3B8` (Slate 400) | `#64748B` (Slate 500) | Timestamps, placeholders, inactive icons |
+| `--brand-600` | `#4F46E5` (Indigo 600) | `#6366F1` (Indigo 500) | Primary interaction state & focus rings |
+| `--brand-gradient` | `linear-gradient(135deg, #4F46E5, #7C3AED)` | `linear-gradient(135deg, #6366F1, #8B5CF6)` | Hero accents, badges, brand CTA buttons |
+| `--accent-teal` | `#0D9488` | `#14B8A6` | Verification badges & success indicators |
+| `--accent-amber` | `#D97706` | `#F59E0B` | Warnings & expiring timers |
+| `--accent-rose` | `#E11D48` | `#F43F5E` | Deal-breakers, errors & destructive actions |
+
+### 2. Dark Mode Implementation
+
+- **Anti-Flash Script**: An inline script executes in `<head>` in `src/app/layout.js` prior to any stylesheet or DOM paint. It reads `localStorage.getItem("hm_theme")` and checks `window.matchMedia("(prefers-color-scheme: dark)")` to toggle the `.dark` class on `document.documentElement`, ensuring zero FOUC (Flash of Unstyled Content).
+- **ThemeContext (`src/context/ThemeContext.js`)**: Exposes `{ theme, resolvedTheme, setTheme, toggleTheme }` to all client components.
+- **ThemeToggle Component (`src/components/ui/ThemeToggle.jsx`)**: Accessible button toggling between light and dark modes with smooth SVG icon transitions.
+
+### 3. Reusable UI Components (`src/components/ui/`)
+
+All reusable UI components are barrel-exported from `src/components/ui/index.js` and support zero breaking changes to existing props:
+
+| Component | Example Usage |
+| :--- | :--- |
+| `Button` | `<Button variant="primary" size="md" icon={<IconCheck />} loading={isLoading}>Save</Button>` |
+| `Input` | `<Input label="Email" type="email" error={errors.email} helper="Enter student email" />` |
+| `Select` | `<Select label="Year" options={[{ value: '1', label: '1st Year' }]} value={val} onChange={setVal} />` |
+| `Textarea` | `<Textarea label="Bio" maxLength={200} showCount placeholder="Tell us about yourself..." />` |
+| `Card` | `<Card variant="interactive"><CardHeader><CardTitle>Group 1</CardTitle></CardHeader></Card>` |
+| `Badge` | `<Badge variant="success" dot pulse>100% Compatible</Badge>` |
+| `AnimatedNumber` | `<AnimatedNumber value={850} suffix="+" duration={1.2} />` |
+| `StatCard` | `<StatCard title="Active Beds" value={1420} icon={<IconBed />} trend={{ value: "+8%", positive: true }} />` |
+| `ProgressBar` | `<ProgressBar value={75} max={100} showValue color="brand" animated />` |
+| `CircularScore` | `<CircularScore score={94} size={72} strokeWidth={6} label="Match Score" />` |
+| `Modal` | `<Modal isOpen={isOpen} onClose={close} title="Confirm Allocation">Content</Modal>` |
+| `ConfirmDialog` | `<ConfirmDialog isOpen={isOpen} onConfirm={doAction} onCancel={close} title="Disband Group?" />` |
+| `Alert` | `<Alert variant="warning" title="Deadline Approaching">Selection window closes in 2 hours.</Alert>` |
+| `Tabs` | `<Tabs tabs={[{ id: 'all', label: 'All' }]} activeTab={tab} onChange={setTab} variant="pill" />` |
+| `Table` | `<Table><TableHeader><TableRow><TableHead>Name</TableHead></TableRow></TableHeader></Table>` |
+| `Skeleton` | `<Skeleton variant="rectangular" width="100%" height={24} />` |
+| `Spinner` | `<Spinner size="md" color="brand" />` |
+| `EmptyState` | `<EmptyState title="No matches found" description="Adjust your filters" action={<Button>Reset</Button>} />` |
+| `ErrorState` | `<ErrorState title="Failed to load" message={err.message} onRetry={fetchData} />` |
+| `Pagination` | `<Pagination currentPage={page} totalPages={10} onPageChange={setPage} />` |
+| `Avatar` | `<Avatar name="Aman Sharma" size="md" status="online" />` |
+| `Tooltip` | `<Tooltip content="Verified by Warden"><IconShield className="w-4 h-4" /></Tooltip>` |
+| `Stepper` | `<Stepper steps={['Profile', 'Lifestyle', 'Review']} currentStep={1} />` |
+| `SectionHeader`| `<SectionHeader title="Roommates" subtitle="Browse suggestions" action={<Button>Filter</Button>} />` |
+| `PageContainer`| `<PageContainer size="xl">Page Content</PageContainer>` |
+| `Reveal` | `<Reveal direction="up" delay={150}><div>Animated content on scroll</div></Reveal>` |
+| `ToastContext` | `const { showToast } = useToast(); showToast('Saved successfully', 'success');` |
+
+### 4. App Shell & Navigation Layouts
+
+- **Translucent Top Navbar (`src/components/Navbar.jsx`)**: Sticky header with backdrop-blur, scroll-elevation shadow, SVG logo mark, unread notification counter badge, theme toggle, and responsive mobile drawer. Automatically hides on authenticated `/dashboard` and `/admin` routes.
+- **Collapsible Dashboard Shell (`src/components/layout/DashboardShell.jsx`)**: Unified sidebar + compact topbar shell for `/dashboard` and `/admin`.
+  - Desktop collapsible sidebar (state stored in `localStorage`).
+  - Route groups: Student (`Main`, `Matching & Groups`, `Account`) and Admin (`Management`, `Matching & Allocation`, `System & Governance`).
+  - Dynamic pending invitation & join-request badge pills.
+  - Slim topbar featuring dynamic page title, auto-generated breadcrumbs, notification bell, theme toggle, and user avatar dropdown menu.
+- **Slim Footer (`src/components/Footer.jsx`)**: Public institutional footer with top gradient border line.
+
+### 5. Interactive Component Showcase
+
+In development mode (`NODE_ENV !== "production"`), visit:
+```text
+http://localhost:3000/design-system
+```
+This interactive gallery provides live previews of all typography tokens, color swatches, button variants, inputs, badges, score gauges, modals, tabs, and toast triggers. In production environments, this route returns an automatic 404.
+
+
 
 
 

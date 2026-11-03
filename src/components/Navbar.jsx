@@ -2,16 +2,46 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import axios from "@/lib/axios";
 import NotificationBell from "@/components/notifications/NotificationBell";
+import ThemeToggle from "@/components/ui/ThemeToggle";
+import Avatar from "@/components/ui/Avatar";
+import { IconMenu, IconClose, IconLogOut } from "@/components/ui/Icons";
 
+/**
+ * Public & App Navbar
+ * Displays translucent sticky header with scroll shadow, logo mark,
+ * theme toggle, notification bell, user profile menu, and mobile drawer.
+ * Automatically hidden on /dashboard and /admin routes where DashboardShell manages navigation.
+ */
 export default function Navbar() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [pendingInvitesCount, setPendingInvitesCount] = useState(0);
+  const pathname = usePathname();
   const { user, loading, logout } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [pendingInvitesCount, setPendingInvitesCount] = useState(0);
+
   const appName = process.env.NEXT_PUBLIC_APP_NAME || "HostelMatch";
 
+  // Check scroll position to add dynamic elevation shadow
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 12);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Close menus on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+    setUserMenuOpen(false);
+  }, [pathname]);
+
+  // Fetch pending invitations + join requests count
   useEffect(() => {
     if (!user || user.role !== "student") return;
 
@@ -27,13 +57,13 @@ export default function Navbar() {
           total += invRes.value.data.data.pending.length;
         }
         if (countRes.status === "fulfilled" && countRes.value?.data?.data) {
-          total += (countRes.value.data.data.pendingIncoming || 0);
+          total += countRes.value.data.data.pendingIncoming || 0;
         }
         if (isMounted) {
           setPendingInvitesCount(total);
         }
       } catch {
-        // silently ignore
+        // Silently ignore
       }
     };
 
@@ -45,17 +75,31 @@ export default function Navbar() {
     };
   }, [user]);
 
+  // Hide Navbar inside /dashboard and /admin since DashboardShell provides the full-height workspace
+  if (pathname.startsWith("/dashboard") || pathname.startsWith("/admin")) {
+    return null;
+  }
+
   const handleLogout = async () => {
     setMobileMenuOpen(false);
+    setUserMenuOpen(false);
     await logout();
   };
 
+  const isHome = pathname === "/";
+
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-slate-200/80 bg-white/90 backdrop-blur-md transition-all">
+    <header
+      className={`sticky top-0 z-50 w-full transition-all duration-200 border-b ${
+        scrolled
+          ? "border-slate-200/90 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 shadow-sm backdrop-blur-md"
+          : "border-transparent bg-white/60 dark:bg-slate-900/60 backdrop-blur-xs"
+      }`}
+    >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand / Logo */}
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-blue-600 text-white shadow-md shadow-indigo-500/20 transition-transform group-hover:scale-105">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white shadow-sm shadow-indigo-500/20 transition-transform group-hover:scale-105">
             <svg
               className="h-5 w-5"
               fill="none"
@@ -72,141 +116,51 @@ export default function Navbar() {
             </svg>
           </div>
           <div className="flex flex-col">
-            <span className="text-xl font-bold tracking-tight text-slate-900 group-hover:text-indigo-600 transition-colors">
+            <span className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
               {appName}
             </span>
-            <span className="text-[10px] font-medium uppercase tracking-wider text-indigo-600 -mt-1 hidden sm:block">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 -mt-1 hidden sm:block">
               Hostel Allocation System
             </span>
           </div>
         </Link>
 
         {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-5">
-          {user && (
+        <nav className="hidden md:flex items-center gap-6">
+          {user ? (
             <>
               <Link
                 href={user.role === "admin" ? "/admin" : "/dashboard"}
-                className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
+                className="text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
               >
                 {user.role === "admin" ? "Admin Console" : "Dashboard"}
               </Link>
               {user.role === "admin" ? (
                 <>
-                  <Link
-                    href="/admin/hostels"
-                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
-                  >
+                  <Link href="/admin/hostels" className="text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                     Hostels
                   </Link>
-                  <Link
-                    href="/admin/rooms"
-                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
-                  >
+                  <Link href="/admin/rooms" className="text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                     Rooms
                   </Link>
-                  <Link
-                    href="/admin/students"
-                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
-                  >
-                    Students
-                  </Link>
-                  <Link
-                    href="/admin/matching"
-                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
-                  >
-                    Matching
-                  </Link>
-                  <Link
-                    href="/admin/groups"
-                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
-                  >
-                    Groups
-                  </Link>
-                  <Link
-                    href="/admin/demand"
-                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
-                  >
-                    Demand
-                  </Link>
-                  <Link
-                    href="/admin/allocations"
-                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
-                  >
+                  <Link href="/admin/allocations" className="text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                     Allocations
-                  </Link>
-                  <Link
-                    href="/admin/selection"
-                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
-                  >
-                    Selection Window
-                  </Link>
-                  <Link
-                    href="/admin/integrity"
-                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
-                  >
-                    Integrity
-                  </Link>
-                  <Link
-                    href="/admin/announcements"
-                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
-                  >
-                    Announcements
-                  </Link>
-                  <Link
-                    href="/admin/notifications"
-                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
-                  >
-                    Notifications
                   </Link>
                 </>
               ) : (
                 <>
-                  <Link
-                    href="/dashboard/room"
-                    className="text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors"
-                  >
+                  <Link href="/dashboard/room" className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline transition-colors">
                     My Room
                   </Link>
-                  <Link
-                    href="/dashboard/rooms"
-                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
-                  >
+                  <Link href="/dashboard/rooms" className="text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                     Choose Room
                   </Link>
-                  <Link
-                    href="/dashboard/hostels"
-                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
-                  >
-                    Hostels
-                  </Link>
-                  <Link
-                    href="/dashboard/profile"
-                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
-                  >
-                    Profile
-                  </Link>
-                  <Link
-                    href="/dashboard/preferences"
-                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
-                  >
-                    Preferences
-                  </Link>
-                  <Link
-                    href="/dashboard/matches"
-                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
-                  >
+                  <Link href="/dashboard/matches" className="text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                     Matches
                   </Link>
                   <Link
-                    href="/dashboard/group"
-                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
-                  >
-                    Group
-                  </Link>
-                  <Link
                     href="/dashboard/invitations"
-                    className="relative text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors inline-flex items-center gap-1.5"
+                    className="relative text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors inline-flex items-center gap-1.5"
                   >
                     <span>Invitations</span>
                     {pendingInvitesCount > 0 && (
@@ -215,68 +169,95 @@ export default function Navbar() {
                       </span>
                     )}
                   </Link>
-                  <Link
-                    href="/dashboard/notifications"
-                    className="text-sm font-semibold text-slate-700 hover:text-indigo-600 transition-colors"
-                  >
-                    Notifications
-                  </Link>
                 </>
               )}
+            </>
+          ) : (
+            <>
+              <a href="#how-it-works" className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                How It Works
+              </a>
+              <a href="#features" className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                Features
+              </a>
+              <a href="#faq" className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                FAQ
+              </a>
             </>
           )}
         </nav>
 
-        {/* Desktop Auth Controls */}
+        {/* Desktop Auth & Right Controls */}
         <div className="hidden md:flex items-center gap-3">
+          {/* Theme Toggle */}
+          <ThemeToggle />
+
           {loading ? (
-            <div className="h-9 w-24 animate-pulse rounded-lg bg-slate-100" />
+            <div className="h-9 w-24 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
           ) : user ? (
             <div className="flex items-center gap-3">
               {/* Notification Bell */}
               <NotificationBell userRole={user.role} />
 
-              {/* User details & badge */}
-              <div className="flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200/80 px-3 py-1.5">
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-100 text-xs font-bold text-indigo-700">
-                  {user.name?.charAt(0).toUpperCase()}
-                </div>
-                <div className="flex flex-col text-left">
-                  <span className="text-xs font-bold text-slate-900 leading-tight max-w-[120px] truncate">
+              {/* User Dropdown */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center gap-2 rounded-xl p-1 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors focus-visible:outline-2 focus-visible:outline-indigo-500"
+                  aria-expanded={userMenuOpen}
+                >
+                  <Avatar name={user.name} size="sm" status="online" />
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-200 max-w-[120px] truncate">
                     {user.name}
                   </span>
-                  <span
-                    className={`text-[10px] font-semibold uppercase tracking-wider ${
-                      user.role === "admin"
-                        ? "text-purple-600"
-                        : "text-indigo-600"
-                    }`}
-                  >
-                    {user.role}
-                  </span>
-                </div>
-              </div>
+                </button>
 
-              {/* Logout Button */}
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 transition-all"
-              >
-                Logout
-              </button>
+                {userMenuOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setUserMenuOpen(false)}
+                      aria-hidden="true"
+                    />
+                    <div className="absolute right-0 mt-2 w-52 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2 shadow-xl z-50 animate-scale-in">
+                      <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
+                        <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                          {user.name}
+                        </p>
+                        <p className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 uppercase">
+                          {user.role}
+                        </p>
+                      </div>
+                      <Link
+                        href={user.role === "admin" ? "/admin" : "/dashboard"}
+                        className="block rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                      >
+                        {user.role === "admin" ? "Admin Console" : "Dashboard"}
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="w-full text-left rounded-xl px-3 py-2 text-xs font-semibold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40"
+                      >
+                        Sign Out
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <Link
                 href="/login"
-                className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 hover:text-indigo-600 hover:bg-slate-100 transition-all"
+                className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100/80 dark:hover:bg-slate-800 transition-all"
               >
-                Login
+                Sign In
               </Link>
               <Link
                 href="/register"
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 transition-all"
+                className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:from-indigo-500 hover:to-violet-500 hover:shadow-md hover:-translate-y-0.5 transition-all"
               >
                 Register
               </Link>
@@ -284,255 +265,79 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Mobile Actions: Bell & Menu Toggle */}
+        {/* Mobile Menu & Theme Controls */}
         <div className="flex md:hidden items-center gap-2">
+          <ThemeToggle />
           {user && <NotificationBell userRole={user.role} />}
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="inline-flex items-center justify-center rounded-lg p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:outline-none"
+            className="inline-flex items-center justify-center rounded-xl p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none"
             aria-expanded={mobileMenuOpen}
             aria-label="Toggle navigation menu"
           >
-            {mobileMenuOpen ? (
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-              </svg>
-            )}
+            {mobileMenuOpen ? <IconClose /> : <IconMenu />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Menu Dropdown */}
+      {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-b border-slate-200 bg-white/95 px-4 pt-2 pb-6 space-y-3 backdrop-blur-md">
-          <div className="space-y-1">
+        <div className="md:hidden border-t border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md px-4 py-6 space-y-4 animate-fade-up">
+          <div className="space-y-2">
             {user ? (
-              <Link
-                href={user.role === "admin" ? "/admin" : "/dashboard"}
-                onClick={() => setMobileMenuOpen(false)}
-                className="block rounded-lg px-3 py-2 text-base font-semibold text-indigo-600 hover:bg-indigo-50"
-              >
-                {user.role === "admin" ? "Admin Console" : "Dashboard"}
-              </Link>
-            ) : (
               <>
                 <Link
+                  href={user.role === "admin" ? "/admin" : "/dashboard"}
+                  className="block rounded-xl px-3 py-2 text-base font-semibold text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  {user.role === "admin" ? "Admin Console" : "Dashboard"}
+                </Link>
+                {user.role !== "admin" && (
+                  <>
+                    <Link href="/dashboard/room" className="block rounded-xl px-3 py-2 text-sm font-semibold text-indigo-600">
+                      My Room
+                    </Link>
+                    <Link href="/dashboard/rooms" className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                      Choose Room
+                    </Link>
+                    <Link href="/dashboard/matches" className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                      Matches
+                    </Link>
+                    <Link href="/dashboard/invitations" className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                      Invitations {pendingInvitesCount > 0 && `(${pendingInvitesCount})`}
+                    </Link>
+                  </>
+                )}
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Avatar name={user.name} size="sm" />
+                    <span className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                      {user.name}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="text-xs font-semibold text-rose-600 dark:text-rose-400"
+                  >
+                    Logout
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-3 pt-2">
+                <Link
                   href="/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block rounded-lg px-3 py-2 text-base font-medium text-slate-900 hover:bg-indigo-50 hover:text-indigo-600"
+                  className="block w-full text-center rounded-xl border border-slate-300 dark:border-slate-700 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200"
                 >
                   Sign In
                 </Link>
                 <Link
                   href="/register"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block rounded-lg px-3 py-2 text-base font-medium text-indigo-600 hover:bg-indigo-50"
+                  className="block w-full text-center rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-2.5 text-sm font-semibold text-white shadow-sm"
                 >
-                  Create Account
-                </Link>
-              </>
-            )}
-            {user && (
-              <>
-                {user.role === "admin" ? (
-                  <>
-                    <Link
-                      href="/admin/hostels"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                    >
-                      Hostels
-                    </Link>
-                    <Link
-                      href="/admin/rooms"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                    >
-                      Rooms
-                    </Link>
-                    <Link
-                      href="/admin/students"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                    >
-                      Students
-                    </Link>
-                    <Link
-                      href="/admin/matching"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                    >
-                      Matching
-                    </Link>
-                    <Link
-                      href="/admin/groups"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                    >
-                      Groups
-                    </Link>
-                    <Link
-                      href="/admin/demand"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                    >
-                      Demand Analytics
-                    </Link>
-                    <Link
-                      href="/admin/allocations"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                    >
-                      Allocations
-                    </Link>
-                    <Link
-                      href="/admin/selection"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                    >
-                      Selection Window
-                    </Link>
-                    <Link
-                      href="/admin/integrity"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                    >
-                      Integrity Diagnostic
-                    </Link>
-                    <Link
-                      href="/admin/announcements"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                    >
-                      Announcements
-                    </Link>
-                    <Link
-                      href="/admin/notifications"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                    >
-                      Notifications
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      href="/dashboard/room"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-base font-bold text-indigo-600 hover:bg-indigo-50"
-                    >
-                      My Room
-                    </Link>
-                    <Link
-                      href="/dashboard/rooms"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                    >
-                      Choose Room
-                    </Link>
-                    <Link
-                      href="/dashboard/hostels"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                    >
-                      Hostels
-                    </Link>
-                    <Link
-                      href="/dashboard/profile"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                    >
-                      Profile
-                    </Link>
-                    <Link
-                      href="/dashboard/preferences"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                    >
-                      Preferences
-                    </Link>
-                    <Link
-                      href="/dashboard/matches"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                    >
-                      Matches
-                    </Link>
-                    <Link
-                      href="/dashboard/group"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                    >
-                      Group
-                    </Link>
-                    <Link
-                      href="/dashboard/invitations"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center justify-between rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                    >
-                      <span>Invitations</span>
-                      {pendingInvitesCount > 0 && (
-                        <span className="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white bg-amber-500 rounded-full">
-                          {pendingInvitesCount}
-                        </span>
-                      )}
-                    </Link>
-                    <Link
-                      href="/dashboard/notifications"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block rounded-lg px-3 py-2 text-base font-medium text-slate-700 hover:bg-indigo-50 hover:text-indigo-600"
-                    >
-                      Notifications
-                    </Link>
-                  </>
-                )}
-              </>
-            )}
-          </div>
-
-          <div className="pt-4 border-t border-slate-200">
-            {user ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-100 text-sm font-bold text-indigo-700">
-                    {user.name?.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-bold text-slate-900">{user.name}</span>
-                    <span className="text-xs text-slate-500">{user.email}</span>
-                    <span className="inline-block mt-0.5 text-[10px] font-semibold uppercase text-indigo-600">
-                      Role: {user.role}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="w-full text-center rounded-lg border border-rose-200 bg-rose-50 py-2.5 text-sm font-semibold text-rose-700 hover:bg-rose-100 transition-colors"
-                >
-                  Logout
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <Link
-                  href="/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="w-full text-center rounded-lg border border-slate-300 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-                >
-                  Login
-                </Link>
-                <Link
-                  href="/register"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="w-full text-center rounded-lg bg-indigo-600 py-2.5 text-sm font-semibold text-white shadow hover:bg-indigo-700 transition-colors"
-                >
-                  Register
+                  Register Student Account
                 </Link>
               </div>
             )}

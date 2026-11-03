@@ -1,3 +1,9 @@
+"use client";
+
+/**
+ * Alert Component
+ * Status notification block with left accent bar, semantic icons, and optional dismiss button.
+ */
 export default function Alert({
   type = "error",
   title,
@@ -6,63 +12,75 @@ export default function Alert({
   className = "",
   onClose,
 }) {
-  const styles = {
+  const configs = {
     error: {
-      bg: "bg-rose-50 border-rose-200 text-rose-800",
+      bar: "bg-rose-500",
+      container:
+        "border-rose-200/80 bg-rose-50/70 text-rose-900 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-200",
       icon: (
-        <svg className="h-4 w-4 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+        <svg className="h-5 w-5 text-rose-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
         </svg>
       ),
     },
     success: {
-      bg: "bg-emerald-50 border-emerald-200 text-emerald-800",
+      bar: "bg-teal-500",
+      container:
+        "border-teal-200/80 bg-teal-50/70 text-teal-900 dark:border-teal-900/50 dark:bg-teal-950/20 dark:text-teal-200",
       icon: (
-        <svg className="h-4 w-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+        <svg className="h-5 w-5 text-teal-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
     },
     warning: {
-      bg: "bg-amber-50 border-amber-200 text-amber-800",
+      bar: "bg-amber-500",
+      container:
+        "border-amber-200/80 bg-amber-50/70 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200",
       icon: (
-        <svg className="h-4 w-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+        <svg className="h-5 w-5 text-amber-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
         </svg>
       ),
     },
     info: {
-      bg: "bg-blue-50 border-blue-200 text-blue-800",
+      bar: "bg-indigo-500",
+      container:
+        "border-indigo-200/80 bg-indigo-50/70 text-indigo-900 dark:border-indigo-900/50 dark:bg-indigo-950/20 dark:text-indigo-200",
       icon: (
-        <svg className="h-4 w-4 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+        <svg className="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
         </svg>
       ),
     },
   };
 
-  const current = styles[type] || styles.error;
+  const cfg = configs[type] || configs.error;
 
   return (
     <div
-      className={`flex items-start gap-3 rounded-xl border p-3.5 text-xs sm:text-sm ${current.bg} ${className}`}
       role="alert"
+      className={`relative flex items-start gap-3.5 overflow-hidden rounded-2xl border p-4 text-xs sm:text-sm animate-fade-in ${cfg.container} ${className}`}
     >
-      <div className="shrink-0 mt-0.5">{current.icon}</div>
-      <div className="flex-1">
-        {title && <h4 className="font-semibold mb-0.5">{title}</h4>}
-        {message && <p>{message}</p>}
+      {/* Left accent bar */}
+      <div className={`absolute top-0 bottom-0 left-0 w-1 ${cfg.bar}`} />
+
+      <div className="shrink-0 mt-0.5">{cfg.icon}</div>
+      <div className="flex-1 min-w-0 pr-2">
+        {title && <h4 className="font-bold tracking-tight mb-0.5">{title}</h4>}
+        {message && <p className="leading-relaxed">{message}</p>}
         {children}
       </div>
+
       {onClose && (
         <button
           type="button"
           onClick={onClose}
-          className="ml-auto shrink-0 p-1 rounded-lg hover:bg-black/5"
-          aria-label="Close alert"
+          className="shrink-0 -mr-1 -mt-1 rounded-lg p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors focus:outline-none"
+          aria-label="Dismiss alert"
         >
-          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       )}

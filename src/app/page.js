@@ -1,18 +1,10 @@
-import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import LandingClient from "./LandingClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
+export default async function HomePage() {
   const user = await getCurrentUser();
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  if (user.role === "admin") {
-    redirect("/admin");
-  }
-
-  redirect("/dashboard");
+  return <LandingClient user={user} />;
 }

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
+import DashboardShell from "@/components/layout/DashboardShell";
 
 export const dynamic = "force-dynamic";
 
@@ -15,5 +16,5 @@ export default async function AdminLayout({ children }) {
     redirect("/unauthorized");
   }
 
-  return <>{children}</>;
+  return <DashboardShell>{children}</DashboardShell>;
 }
