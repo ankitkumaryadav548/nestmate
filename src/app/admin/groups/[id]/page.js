@@ -27,6 +27,7 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
 
   const [isReleaseRoomOpen, setIsReleaseRoomOpen] = useState(false);
   const [releasingRoom, setReleasingRoom] = useState(false);
+  const [cancellingReqId, setCancellingReqId] = useState(null);
 
   const fetchGroup = useCallback(async () => {
     try {
@@ -91,6 +92,19 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
       alert(err.response?.data?.message || "Could not release room");
     } finally {
       setReleasingRoom(false);
+    }
+  };
+
+  const handleAdminCancelRequest = async (requestId) => {
+    if (!confirm("Are you sure you want to cancel this join request administratively?")) return;
+    try {
+      setCancellingReqId(requestId);
+      await axios.post(`/api/admin/join-requests/${requestId}/cancel`);
+      await fetchGroup();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to cancel request");
+    } finally {
+      setCancellingReqId(null);
     }
   };
 
@@ -483,6 +497,89 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Join Requests (Admin View) */}
+      <div className="space-y-4">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-600">
+          Join Requests ({group.joinRequests?.length || 0})
+        </h2>
+
+        {(!group.joinRequests || group.joinRequests.length === 0) ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-xs text-slate-500">
+            No join requests have been sent to this group.
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-100">
+                <tr>
+                  <th className="p-3.5">Requester</th>
+                  <th className="p-3.5">Program / Year</th>
+                  <th className="p-3.5">Message</th>
+                  <th className="p-3.5">Status</th>
+                  <th className="p-3.5">Dates</th>
+                  <th className="p-3.5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {group.joinRequests.map((r) => (
+                  <tr key={r.id} className="hover:bg-slate-50/50">
+                    <td className="p-3.5 font-semibold text-slate-900">
+                      {r.requester?.name}
+                      <span className="block text-[11px] font-normal text-slate-500">
+                        {r.requester?.email}
+                      </span>
+                    </td>
+                    <td className="p-3.5">
+                      {r.requester?.course} {r.requester?.year ? `• Yr ${r.requester.year}` : ""}
+                    </td>
+                    <td className="p-3.5 max-w-xs truncate italic">
+                      {r.message ? `"${r.message}"` : "—"}
+                    </td>
+                    <td className="p-3.5">
+                      <Badge
+                        variant={
+                          r.status === "approved"
+                            ? "emerald"
+                            : r.status === "pending"
+                            ? "amber"
+                            : r.status === "rejected"
+                            ? "danger"
+                            : "default"
+                        }
+                        size="sm"
+                      >
+                        {r.status.toUpperCase()}
+                      </Badge>
+                      {r.closeReason && (
+                        <span className="block text-[10px] text-slate-400 mt-0.5">
+                          {r.closeReason}
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-3.5 text-slate-500 text-[11px]">
+                      Created: {new Date(r.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="p-3.5 text-right">
+                      {r.status === "pending" && (
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          loading={cancellingReqId === r.id}
+                          disabled={cancellingReqId === r.id}
+                          onClick={() => handleAdminCancelRequest(r.id)}
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Remove Member Confirmation Dialog */}

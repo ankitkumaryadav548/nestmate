@@ -15,6 +15,7 @@ export default function StudentDashboard() {
   });
   const [groupInfo, setGroupInfo] = useState(null);
   const [pendingInvitesCount, setPendingInvitesCount] = useState(0);
+  const [joinRequestCounts, setJoinRequestCounts] = useState({ pendingSent: 0, pendingIncoming: 0 });
   const [allocation, setAllocation] = useState(null);
   const [recentNotifications, setRecentNotifications] = useState([]);
   const [loadingStatus, setLoadingStatus] = useState(true);
@@ -23,18 +24,20 @@ export default function StudentDashboard() {
     async function loadData() {
       try {
         setLoadingStatus(true);
-        const [statusRes, groupRes, invRes, allocRes, notifRes] = await Promise.all([
+        const [statusRes, groupRes, invRes, allocRes, notifRes, countRes] = await Promise.all([
           axios.get("/api/students/me/status").catch(() => ({ data: { data: null } })),
           axios.get("/api/groups/me").catch(() => ({ data: { data: null } })),
           axios.get("/api/invitations/me").catch(() => ({ data: { data: null } })),
           axios.get("/api/allocation/me").catch(() => ({ data: { data: null } })),
           axios.get("/api/notifications?limit=3").catch(() => ({ data: { data: null } })),
+          axios.get("/api/join-requests/counts").catch(() => ({ data: { data: null } })),
         ]);
         if (statusRes.data?.data) setStatus(statusRes.data.data);
         if (groupRes.data?.data) setGroupInfo(groupRes.data.data);
         if (invRes.data?.data?.pending) setPendingInvitesCount(invRes.data.data.pending.length);
         if (allocRes.data?.data) setAllocation(allocRes.data.data);
         if (notifRes.data?.data?.notifications) setRecentNotifications(notifRes.data.data.notifications);
+        if (countRes.data?.data) setJoinRequestCounts(countRes.data.data);
       } catch (err) {
         console.error("Failed to load student status:", err);
       } finally {
@@ -457,6 +460,11 @@ export default function StudentDashboard() {
                   ) : (
                     <Link href="/dashboard/group" className="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full hover:bg-amber-100">
                       ⚙️ Set room preferences
+                    </Link>
+                  )}
+                  {joinRequestCounts.pendingIncoming > 0 && groupInfo.isLeader && (
+                    <Link href="/dashboard/group" className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full hover:bg-amber-200 animate-pulse">
+                      📩 {joinRequestCounts.pendingIncoming} Pending Join {joinRequestCounts.pendingIncoming === 1 ? "Request" : "Requests"}
                     </Link>
                   )}
                 </div>

@@ -436,9 +436,37 @@ export async function getTopMatches(studentId, filters = {}) {
   const offset = (parsedPage - 1) * parsedLimit;
   const paginatedItems = matches.slice(offset, offset + parsedLimit);
 
-  const formattedMatches = paginatedItems.map(({ candidate, result }) =>
-    formatPublicCandidate(candidate, result)
-  );
+  const pageCandidateIds = paginatedItems.map(({ candidate }) => candidate._id);
+  const candidateGroups = await RoommateGroup.find({
+    "members.user": { $in: pageCandidateIds },
+    status: "forming",
+  }).lean();
+
+  const groupByUser = new Map();
+  for (const g of candidateGroups) {
+    if (
+      g.gender === student.gender &&
+      g.targetSize === student.preferences?.roomSize &&
+      g.members.length < g.targetSize
+    ) {
+      for (const m of g.members) {
+        groupByUser.set(m.user.toString(), {
+          groupId: g._id.toString(),
+          filledSeats: g.members.length,
+          targetSize: g.targetSize,
+        });
+      }
+    }
+  }
+
+  const formattedMatches = paginatedItems.map(({ candidate, result }) => {
+    const formatted = formatPublicCandidate(candidate, result);
+    const inGroup = groupByUser.get(candidate._id.toString()) || null;
+    if (inGroup) {
+      formatted.inGroup = inGroup;
+    }
+    return formatted;
+  });
 
   return {
     matches: formattedMatches,

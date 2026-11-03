@@ -5,6 +5,7 @@ import Link from "next/link";
 import api from "@/lib/axios";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
+import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import Alert from "@/components/ui/Alert";
 import EmptyState from "@/components/ui/EmptyState";
@@ -29,6 +30,15 @@ export default function StudentGroupPage() {
     sharedLanguageOnly: false,
   });
   const [invitingId, setInvitingId] = useState(null);
+
+  // Incoming join requests for leader
+  const [incomingRequests, setIncomingRequests] = useState([]);
+  const [requestsLoading, setRequestsLoading] = useState(false);
+  const [selectedRequestId, setSelectedRequestId] = useState(null);
+  const [reviewData, setReviewData] = useState(null);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [actingRequestId, setActingRequestId] = useState(null);
 
   // Modals & Confirm Dialogs
   const [confirmDialog, setConfirmDialog] = useState({
@@ -92,6 +102,21 @@ export default function StudentGroupPage() {
     }
   }, [group, candidateFilters]);
 
+  const fetchIncomingRequests = useCallback(async () => {
+    if (!group || group.myRole !== "leader" || group.status !== "forming") return;
+    setRequestsLoading(true);
+    try {
+      const res = await api.get("/groups/me/join-requests");
+      if (res.data?.success) {
+        setIncomingRequests(res.data.data?.requests || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch incoming join requests:", err);
+    } finally {
+      setRequestsLoading(false);
+    }
+  }, [group]);
+
   useEffect(() => {
     fetchGroupData();
   }, [fetchGroupData]);
@@ -99,8 +124,74 @@ export default function StudentGroupPage() {
   useEffect(() => {
     if (group && group.myRole === "leader" && group.status === "forming") {
       fetchCandidates();
+      fetchIncomingRequests();
     }
-  }, [group, fetchCandidates]);
+  }, [group, fetchCandidates, fetchIncomingRequests]);
+
+  const handleOpenReview = async (requestId) => {
+    setSelectedRequestId(requestId);
+    setIsReviewOpen(true);
+    setReviewLoading(true);
+    try {
+      const res = await api.get(`/groups/me/join-requests/${requestId}`);
+      if (res.data?.success) {
+        setReviewData(res.data.data);
+      }
+    } catch (err) {
+      console.error("Failed to load request review:", err);
+      setAlertMessage({
+        type: "error",
+        message: err.response?.data?.message || "Failed to load request review",
+      });
+      setIsReviewOpen(false);
+    } finally {
+      setReviewLoading(false);
+    }
+  };
+
+  const handleApproveRequest = async () => {
+    if (!selectedRequestId) return;
+    setActingRequestId(selectedRequestId);
+    try {
+      const res = await api.post(`/groups/me/join-requests/${selectedRequestId}/approve`);
+      if (res.data?.success) {
+        setAlertMessage({ type: "success", message: "Student admitted to group successfully!" });
+        setIsReviewOpen(false);
+        setSelectedRequestId(null);
+        setReviewData(null);
+        await fetchGroupData();
+      }
+    } catch (err) {
+      setAlertMessage({
+        type: "error",
+        message: err.response?.data?.message || "Failed to approve join request",
+      });
+    } finally {
+      setActingRequestId(null);
+    }
+  };
+
+  const handleRejectRequest = async () => {
+    if (!selectedRequestId) return;
+    setActingRequestId(selectedRequestId);
+    try {
+      const res = await api.post(`/groups/me/join-requests/${selectedRequestId}/reject`);
+      if (res.data?.success) {
+        setAlertMessage({ type: "info", message: "Join request declined." });
+        setIsReviewOpen(false);
+        setSelectedRequestId(null);
+        setReviewData(null);
+        fetchIncomingRequests();
+      }
+    } catch (err) {
+      setAlertMessage({
+        type: "error",
+        message: err.response?.data?.message || "Failed to decline join request",
+      });
+    } finally {
+      setActingRequestId(null);
+    }
+  };
 
   // Actions
   const handleCreateGroup = async () => {
@@ -690,6 +781,73 @@ export default function StudentGroupPage() {
         )}
       </div>
 
+      {/* Incoming Join Requests (Leader Review) */}
+      {group.myRole === "leader" && group.status === "forming" && (
+        <div className="rounded-2xl border border-indigo-200 bg-white p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-bold text-slate-900">
+                Incoming Join Requests
+              </h3>
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                incomingRequests.length > 0
+                  ? "bg-amber-100 text-amber-800 border border-amber-200"
+                  : "bg-slate-100 text-slate-600"
+              }`}>
+                {incomingRequests.length} pending
+              </span>
+            </div>
+          </div>
+
+          {requestsLoading ? (
+            <div className="h-24 rounded-xl border border-slate-100 bg-slate-50 animate-pulse" />
+          ) : incomingRequests.length === 0 ? (
+            <p className="text-xs text-slate-500 italic py-2">
+              No students have requested to join your group yet. Compatible students browsing open groups will appear here.
+            </p>
+          ) : (
+            <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden bg-white">
+              {incomingRequests.map((req) => (
+                <div
+                  key={req.id}
+                  className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-bold text-slate-900">{req.requester?.name}</h4>
+                      <Badge variant="indigo" size="sm">
+                        {req.scoreSnapshot?.average}% Match
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      {req.requester?.course} {req.requester?.year ? `• Year ${req.requester.year}` : ""}
+                    </p>
+                    {req.message && (
+                      <p className="text-xs text-slate-700 italic bg-slate-50 p-2 rounded-lg border border-slate-100 mt-1 max-w-xl">
+                        &ldquo;{req.message}&rdquo;
+                      </p>
+                    )}
+                    <span className="text-[11px] text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 inline-block mt-1">
+                      ⏳ Expires in {req.daysLeft} day{req.daysLeft === 1 ? "" : "s"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleOpenReview(req.id)}
+                    >
+                      Review &amp; Decide &rarr;
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Pending Invitations Sent by Leader */}
       {group.myRole === "leader" && group.pendingInvitations?.length > 0 && (
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
@@ -853,6 +1011,139 @@ export default function StudentGroupPage() {
           )}
         </div>
       )}
+
+      {/* Review Join Request Modal */}
+      <Modal
+        isOpen={isReviewOpen}
+        onClose={() => {
+          setIsReviewOpen(false);
+          setSelectedRequestId(null);
+          setReviewData(null);
+        }}
+        title={reviewData ? `Review Join Request: ${reviewData.requester?.name}` : "Review Join Request"}
+        description={reviewData ? `${reviewData.requester?.course || "Student"} ${reviewData.requester?.year ? `• Year ${reviewData.requester.year}` : ""}` : ""}
+        maxWidth="max-w-2xl"
+      >
+        {reviewLoading ? (
+          <div className="py-12 text-center text-slate-500">Evaluating compatibility &amp; privacy filters…</div>
+        ) : reviewData && (
+          <div className="space-y-6">
+            {/* Privacy Protection Notice Banner */}
+            <div className="rounded-xl border border-indigo-200 bg-indigo-50/70 p-3 text-xs text-indigo-950 flex items-start gap-2.5">
+              <span className="text-base mt-0.5">🛡️</span>
+              <div>
+                <strong>Privacy Notice:</strong> Only lifestyle compatibility scores and academic department/year are displayed. Contact details, raw questionnaire answers, and deal-breakers remain private.
+              </div>
+            </div>
+
+            {/* Optional message from student */}
+            {reviewData.message && (
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Note from student:</span>
+                <p className="text-xs text-slate-800 italic">&ldquo;{reviewData.message}&rdquo;</p>
+              </div>
+            )}
+
+            {/* Impact Preview */}
+            {reviewData.impact && (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-600 mb-3">
+                  Group Compatibility Impact
+                </h4>
+                <div className="grid grid-cols-2 gap-3 text-center">
+                  <div className="bg-white p-3 rounded-xl border border-slate-200">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Current Group Average</span>
+                    <span className="text-lg font-black text-slate-800">{reviewData.impact.currentAverage}%</span>
+                    <span className="text-[10px] text-slate-500 block mt-0.5">
+                      Lowest: {reviewData.impact.currentLowestPair}%
+                    </span>
+                  </div>
+                  <div className="bg-white p-3 rounded-xl border border-indigo-200">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">New Group Average</span>
+                    <span className="text-lg font-black text-indigo-600">{reviewData.impact.newAverage}%</span>
+                    <span className="text-[10px] text-slate-500 block mt-0.5">
+                      Lowest: {reviewData.impact.newLowestPair}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Pairwise breakdown with current group members */}
+            {reviewData.breakdown && (
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Fit Breakdown with Group Members
+                </h4>
+                <div className="space-y-3">
+                  {reviewData.breakdown.map((m, idx) => (
+                    <div key={idx} className="p-3.5 rounded-xl border border-slate-200 bg-white space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-bold text-slate-900">{m.name}</span>
+                        <Badge variant="indigo" size="sm">
+                          {m.score}% {m.label}
+                        </Badge>
+                      </div>
+
+                      {m.reasons?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 text-[11px] text-emerald-800">
+                          {m.reasons.map((r, rIdx) => (
+                            <span key={rIdx} className="bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                              ✓ {r}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {m.warnings?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 text-[11px] text-amber-800">
+                          {m.warnings.map((w, wIdx) => (
+                            <span key={wIdx} className="bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                              ⚠️ {w}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="pt-3 flex items-center justify-between border-t border-slate-100">
+              <Button
+                variant="danger"
+                size="sm"
+                loading={actingRequestId === selectedRequestId}
+                disabled={actingRequestId === selectedRequestId}
+                onClick={handleRejectRequest}
+              >
+                Decline Request
+              </Button>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsReviewOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  loading={actingRequestId === selectedRequestId}
+                  disabled={actingRequestId === selectedRequestId}
+                  onClick={handleApproveRequest}
+                >
+                  Approve &amp; Add to Group →
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Confirmation Dialog */}
       <ConfirmDialog

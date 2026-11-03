@@ -82,6 +82,30 @@ export const NOTIFICATION_TYPES = {
       severity: "warning",
       category: "groups",
     },
+    join_request_received: {
+      label: "Join Request Received",
+      icon: "user-plus",
+      severity: "info",
+      category: "groups",
+    },
+    join_request_approved: {
+      label: "Join Request Approved",
+      icon: "check-circle",
+      severity: "success",
+      category: "groups",
+    },
+    join_request_rejected: {
+      label: "Join Request Declined",
+      icon: "x-circle",
+      severity: "info",
+      category: "groups",
+    },
+    join_request_closed: {
+      label: "Join Request Closed",
+      icon: "slash",
+      severity: "info",
+      category: "groups",
+    },
   },
   allocation: {
     allocation_published: {
@@ -200,6 +224,10 @@ export const NOTIFICATION_TYPE_KEYS = [
   "group_disbanded",
   "group_leader_changed",
   "group_preferences_review",
+  "join_request_received",
+  "join_request_approved",
+  "join_request_rejected",
+  "join_request_closed",
   // Allocation
   "allocation_published",
   "allocation_waitlisted",
@@ -232,6 +260,10 @@ export const ACTIVE_NOTIFICATION_TYPES = [
   "group_disbanded",
   "group_leader_changed",
   "group_preferences_review",
+  "join_request_received",
+  "join_request_approved",
+  "join_request_rejected",
+  "join_request_closed",
   "allocation_published",
   "allocation_waitlisted",
   "allocation_unallocated",

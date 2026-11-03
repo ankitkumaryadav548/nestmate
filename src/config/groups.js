@@ -42,3 +42,89 @@ export const INVITATION_STATUSES = [
   "cancelled",
   "expired",
 ];
+
+// =============================================================================
+// JOIN REQUESTS CONFIGURATION
+// =============================================================================
+export const JOIN_REQUEST_EXPIRY_DAYS = 7;
+
+export const JOIN_REQUEST_STATUSES = [
+  "pending",
+  "approved",
+  "rejected",
+  "cancelled",
+  "expired",
+];
+
+export const MAX_PENDING_JOIN_REQUESTS_PER_STUDENT = 5;
+export const MAX_JOIN_REQUESTS_PER_STUDENT_PER_DAY = 10;
+export const MAX_PENDING_JOIN_REQUESTS_PER_GROUP = 10;
+export const REJECTION_COOLDOWN_HOURS = 24;
+export const JOIN_REQUEST_MESSAGE_MAX = 200;
+
+export const JOIN_ERROR_CODES = {
+  GROUP_NOT_OPEN: {
+    code: "GROUP_NOT_OPEN",
+    message: "This group is not accepting join requests.",
+  },
+  NO_FREE_SEAT: {
+    code: "NO_FREE_SEAT",
+    message: "This group has no available seats.",
+  },
+  NOT_COMPATIBLE: {
+    code: "NOT_COMPATIBLE",
+    message: "This group is not available for you",
+  },
+  ALREADY_IN_GROUP: {
+    code: "ALREADY_IN_GROUP",
+    message: "You already belong to a full or active roommate group.",
+  },
+  LEAVE_GROUP_FIRST: {
+    code: "LEAVE_GROUP_FIRST",
+    message: "Leave your current group first.",
+  },
+  RELEASE_ROOM_FIRST: {
+    code: "RELEASE_ROOM_FIRST",
+    message: "Release your group's selected room first.",
+  },
+  ALREADY_HAS_ROOM: {
+    code: "ALREADY_HAS_ROOM",
+    message: "You already have an allocated room.",
+  },
+  PENDING_EXISTS: {
+    code: "PENDING_EXISTS",
+    message: "You already have a pending join request for this group.",
+  },
+  INVITATION_EXISTS: {
+    code: "INVITATION_EXISTS",
+    message: "You have a pending invitation from this group.",
+  },
+  COOLDOWN_ACTIVE: {
+    code: "COOLDOWN_ACTIVE",
+    message: "A recent join request was declined. Please wait 24 hours before requesting again.",
+  },
+  TOO_MANY_PENDING: {
+    code: "TOO_MANY_PENDING",
+    message: "You have reached the maximum number of pending join requests (5).",
+  },
+  DAILY_LIMIT: {
+    code: "DAILY_LIMIT",
+    message: "You have reached the daily limit for join requests (10).",
+  },
+  GROUP_PENDING_LIMIT: {
+    code: "GROUP_PENDING_LIMIT",
+    message: "This group has reached its maximum pending join requests.",
+  },
+  REQUEST_NOT_PENDING: {
+    code: "REQUEST_NOT_PENDING",
+    message: "This join request is no longer pending.",
+  },
+  NOT_LEADER: {
+    code: "NOT_LEADER",
+    message: "Only the group leader can review join requests.",
+  },
+  PREFERENCES_INCOMPLETE: {
+    code: "PREFERENCES_INCOMPLETE",
+    message: "Please complete your roommate preferences before requesting to join a group.",
+  },
+};

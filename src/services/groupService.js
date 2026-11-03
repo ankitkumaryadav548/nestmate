@@ -4,6 +4,7 @@ import User from "../models/User.js";
 import Preference from "../models/Preference.js";
 import RoommateGroup from "../models/RoommateGroup.js";
 import GroupInvitation from "../models/GroupInvitation.js";
+import GroupJoinRequest from "../models/GroupJoinRequest.js";
 import AllocationIntent from "../models/AllocationIntent.js";
 import { getSettings } from "./matchingService.js";
 import { calculateGroupScore, canJoinGroup } from "./matching/groupScore.js";
@@ -24,6 +25,7 @@ import SelectionWindow from "../models/SelectionWindow.js";
 import Room from "../models/Room.js";
 import Hostel from "../models/Hostel.js";
 import Allocation from "../models/Allocation.js";
+import { closeRequestsForGroup, closeRequestsForRequester } from "./joinRequestService.js";
 
 /**
  * FAIRNESS & INTEGRITY GUARANTEE:
@@ -219,11 +221,11 @@ export async function getMyGroup(userId) {
       id: inv._id.toString(),
       invitedUser: inv.invitedUser
         ? {
-            id: inv.invitedUser._id.toString(),
-            name: inv.invitedUser.name,
-            course: inv.invitedUser.course,
-            year: inv.invitedUser.year,
-          }
+          id: inv.invitedUser._id.toString(),
+          name: inv.invitedUser.name,
+          course: inv.invitedUser.course,
+          year: inv.invitedUser.year,
+        }
         : null,
       scoreSnapshot: inv.scoreSnapshot,
       expiresAt: inv.expiresAt,
@@ -253,30 +255,30 @@ export async function getMyGroup(userId) {
     createdAt: group.createdAt,
     roomPreferences: group.roomPreferences
       ? {
-          preferredHostels: (group.roomPreferences.preferredHostels || []).map((h) => ({
-            id: h._id ? h._id.toString() : h.toString(),
-            name: h.name || "Hostel",
-            code: h.code || "",
-            gender: h.gender || "",
-            totalFloors: h.totalFloors || 1,
-          })),
-          acType: group.roomPreferences.acType || "no-preference",
-          floorPreference: group.roomPreferences.floorPreference || "any",
-          updatedAt: group.roomPreferences.updatedAt || null,
-        }
+        preferredHostels: (group.roomPreferences.preferredHostels || []).map((h) => ({
+          id: h._id ? h._id.toString() : h.toString(),
+          name: h.name || "Hostel",
+          code: h.code || "",
+          gender: h.gender || "",
+          totalFloors: h.totalFloors || 1,
+        })),
+        acType: group.roomPreferences.acType || "no-preference",
+        floorPreference: group.roomPreferences.floorPreference || "any",
+        updatedAt: group.roomPreferences.updatedAt || null,
+      }
       : {
-          preferredHostels: [],
-          acType: "no-preference",
-          floorPreference: "any",
-          updatedAt: null,
-        },
+        preferredHostels: [],
+        acType: "no-preference",
+        floorPreference: "any",
+        updatedAt: null,
+      },
     preferencesNeedReview: Boolean(group.preferencesNeedReview),
     allocatedRoom: null,
   };
 
   if (group.status === "locked") {
     try {
-    
+
       const alloc = await Allocation.findOne({ group: group._id, status: "active" })
         .populate("room", "roomNumber floor roomType capacity")
         .populate("hostel", "name code")
@@ -1010,6 +1012,8 @@ export async function acceptInvitation(userId, invitationId) {
           { session }
         );
 
+        await closeRequestsForRequester(userId, "requester_joined_elsewhere", session);
+
         if (updatedGroup.members.length === updatedGroup.targetSize) {
           updatedGroup.status = "complete";
           updatedGroup.completedAt = new Date();
@@ -1018,6 +1022,7 @@ export async function acceptInvitation(userId, invitationId) {
             { $set: { status: "cancelled" } },
             { session }
           );
+          await closeRequestsForGroup(updatedGroup._id, "group_full", session);
         }
 
         await updatedGroup.save({ session });
@@ -1060,6 +1065,8 @@ export async function acceptInvitation(userId, invitationId) {
       { $set: { status: "cancelled", respondedAt: new Date() } }
     );
 
+    await closeRequestsForRequester(userId, "requester_joined_elsewhere");
+
     if (updatedGroup.members.length === updatedGroup.targetSize) {
       updatedGroup.status = "complete";
       updatedGroup.completedAt = new Date();
@@ -1067,6 +1074,7 @@ export async function acceptInvitation(userId, invitationId) {
         { group: updatedGroup._id, status: "pending" },
         { $set: { status: "cancelled" } }
       );
+      await closeRequestsForGroup(updatedGroup._id, "group_full");
       await updatedGroup.save();
     }
   }
@@ -1235,92 +1243,47 @@ export async function leaveGroup(userId) {
     throw new Error("Cannot leave a locked group. Room allocation has already been finalized.");
   }
 
-  // If group has selectedRoom, selection window must be open to leave/disband
-  if (group.selectedRoom) {
-    const liveWindow = await SelectionWindow.findOne({ isActive: true }).lean();
-    const windowStatus = effectiveWindowStatus(liveWindow);
-    if (windowStatus !== "open") {
-      const error = new Error("Cannot leave a group with a selected room while the selection window is not open.");
-      error.statusCode = 409;
-      throw error;
-    }
-  }
-
-  const session = await mongoose.startSession();
-  let wasComplete = false;
-  let wasLeader = false;
-  let remainingMemberIds = [];
-
-  try {
-    await session.withTransaction(async () => {
-      // If student was the only member, disband and release room
-      if (group.members.length <= 1) {
-        if (group.selectedRoom) {
-          await releaseRoomForDisbandedGroup(group._id, session);
-        }
-
-        group.status = "disbanded";
-        group.disbandedAt = new Date();
-        group.selectedRoom = null;
-        group.roomClaimedAt = null;
-        await GroupInvitation.updateMany(
-          { group: group._id, status: "pending" },
-          { $set: { status: "cancelled" } },
-          { session }
-        );
-        await group.save({ session });
-        return;
-      }
-
-      wasComplete = group.status === "complete";
-      wasLeader = group.leader.toString() === userId.toString();
-
-      // If group has selectedRoom, decrement occupancy & cancel member's allocation
-      if (group.selectedRoom) {
-        await leaveRoomedGroup(group._id, userId, { session, reason: "left_group" });
-      }
-
-      // Remove student from members array
-      group.members = group.members.filter((m) => m.user.toString() !== userId.toString());
-      remainingMemberIds = group.members.map((m) => m.user.toString());
-
-      // If leader is leaving, transfer leadership to earliest joined member
-      if (wasLeader) {
-        group.members.sort((a, b) => new Date(a.joinedAt) - new Date(b.joinedAt));
-        group.leader = group.members[0].user;
-      }
-
-      // If group was complete, revert to forming
-      if (wasComplete) {
-        group.status = "forming";
-        group.completedAt = null;
-      }
-
-      // Recompute scores for remaining members
-      const settings = await getSettings();
-      const [users, prefs] = await Promise.all([
-        User.find({ _id: { $in: group.members.map((m) => m.user) } }).session(session).lean(),
-        Preference.find({ student: { $in: group.members.map((m) => m.user) } }).session(session).lean(),
-      ]);
-      const pMap = new Map();
-      prefs.forEach((p) => pMap.set(p.student.toString(), p));
-      const remaining = users.map((u) => ({ ...u, preferences: pMap.get(u._id.toString()) || {} }));
-
-      const scores = calculateGroupScore(remaining, settings.weights);
-      group.averageScore = scores.average;
-      group.lowestPairScore = scores.lowest;
-
-      await group.save({ session });
-    });
-  } finally {
-    await session.endSession();
-  }
-
-  if (group.status === "disbanded") {
+  // If student was the only member, disband
+  if (group.members.length <= 1) {
+    group.status = "disbanded";
+    group.disbandedAt = new Date();
+    await GroupInvitation.updateMany(
+      { group: group._id, status: "pending" },
+      { $set: { status: "cancelled" } }
+    );
+    await closeRequestsForGroup(group._id, "group_disbanded");
+    await group.save();
     return { status: "disbanded" };
   }
 
-  await revalidatePreferencesForGroup(group._id).catch(() => {});
+  const wasComplete = group.status === "complete";
+  const wasLeader = group.leader.toString() === userId.toString();
+
+  // Remove student from members array
+  group.members = group.members.filter((m) => m.user.toString() !== userId.toString());
+
+  // If group was complete, revert to forming
+  if (wasComplete) {
+    group.status = "forming";
+    group.completedAt = null;
+  }
+
+  // Recompute scores for remaining members
+  const settings = await getSettings();
+  const [users, prefs] = await Promise.all([
+    User.find({ _id: { $in: group.members.map((m) => m.user) } }).lean(),
+    Preference.find({ student: { $in: group.members.map((m) => m.user) } }).lean(),
+  ]);
+  const pMap = new Map();
+  prefs.forEach((p) => pMap.set(p.student.toString(), p));
+  const remaining = users.map((u) => ({ ...u, preferences: pMap.get(u._id.toString()) || {} }));
+
+  const scores = calculateGroupScore(remaining, settings.weights);
+  group.averageScore = scores.average;
+  group.lowestPairScore = scores.lowest;
+
+  await group.save();
+  await revalidatePreferencesForGroup(group._id);
 
   // Post-commit notifications for leaveGroup (best-effort)
   try {
@@ -1400,49 +1363,28 @@ export async function removeMember(leaderId, memberId) {
     .filter((m) => m.user.toString() !== memberId.toString())
     .map((m) => m.user.toString());
 
-  if (group.selectedRoom) {
-    const liveWindow = await SelectionWindow.findOne({ isActive: true }).lean();
-    const windowStatus = effectiveWindowStatus(liveWindow);
-    if (windowStatus !== "open") {
-      const error = new Error("Cannot remove a member from a group with a selected room while the selection window is not open.");
-      error.statusCode = 409;
-      throw error;
-    }
+  group.members = group.members.filter((m) => m.user.toString() !== memberId.toString());
+
+  if (group.status === "complete") {
+    group.status = "forming";
+    group.completedAt = null;
   }
 
-  const session = await mongoose.startSession();
-  try {
-    await session.withTransaction(async () => {
-      if (group.selectedRoom) {
-        await leaveRoomedGroup(group._id, memberId, { session, reason: "removed_by_leader" });
-      }
+  // Recompute scores
+  const settings = await getSettings();
+  const [users, prefs] = await Promise.all([
+    User.find({ _id: { $in: group.members.map((m) => m.user) } }).lean(),
+    Preference.find({ student: { $in: group.members.map((m) => m.user) } }).lean(),
+  ]);
+  const pMap = new Map();
+  prefs.forEach((p) => pMap.set(p.student.toString(), p));
+  const remaining = users.map((u) => ({ ...u, preferences: pMap.get(u._id.toString()) || {} }));
 
-      group.members = group.members.filter((m) => m.user.toString() !== memberId.toString());
+  const scores = calculateGroupScore(remaining, settings.weights);
+  group.averageScore = scores.average;
+  group.lowestPairScore = scores.lowest;
 
-      if (group.status === "complete") {
-        group.status = "forming";
-        group.completedAt = null;
-      }
-
-      // Recompute scores
-      const settings = await getSettings();
-      const [users, prefs] = await Promise.all([
-        User.find({ _id: { $in: group.members.map((m) => m.user) } }).session(session).lean(),
-        Preference.find({ student: { $in: group.members.map((m) => m.user) } }).session(session).lean(),
-      ]);
-      const pMap = new Map();
-      prefs.forEach((p) => pMap.set(p.student.toString(), p));
-      const remaining = users.map((u) => ({ ...u, preferences: pMap.get(u._id.toString()) || {} }));
-
-      const scores = calculateGroupScore(remaining, settings.weights);
-      group.averageScore = scores.average;
-      group.lowestPairScore = scores.lowest;
-
-      await group.save({ session });
-    });
-  } finally {
-    await session.endSession();
-  }
+  await group.save();
   await revalidatePreferencesForGroup(group._id);
 
   // Post-commit notifications: group_member_removed to student, group_member_left to others (best-effort)
@@ -1532,6 +1474,8 @@ export async function disbandGroup(leaderId) {
         { $set: { status: "cancelled" } },
         { session }
       );
+
+      await closeRequestsForGroup(group._id, "group_disbanded", session);
 
       await group.save({ session });
     });
@@ -1685,9 +1629,13 @@ export async function adminGetGroup(id) {
   if (!group) throw new Error("Roommate group not found");
 
   const memberIds = group.members.map((m) => m.user?._id).filter(Boolean);
-  const [prefs, settings] = await Promise.all([
+  const [prefs, settings, joinRequests] = await Promise.all([
     Preference.find({ student: { $in: memberIds } }).lean(),
     getSettings(),
+    GroupJoinRequest.find({ group: id })
+      .populate("requester", "name email registrationNumber course department year")
+      .sort({ createdAt: -1 })
+      .lean(),
   ]);
 
   const pMap = new Map();
@@ -1702,6 +1650,23 @@ export async function adminGetGroup(id) {
 
   return {
     ...group,
+    joinRequests: joinRequests.map((r) => ({
+      id: r._id.toString(),
+      requester: {
+        id: r.requester?._id?.toString() || "",
+        name: r.requester?.name || "Unknown",
+        email: r.requester?.email || "",
+        registrationNumber: r.requester?.registrationNumber || "",
+        course: r.requester?.course || "",
+        year: r.requester?.year || null,
+      },
+      message: r.message,
+      status: r.status,
+      closeReason: r.closeReason,
+      createdAt: r.createdAt,
+      expiresAt: r.expiresAt,
+      respondedAt: r.respondedAt,
+    })),
     pairScores: groupScores.pairs.map((p) => ({
       memberA: group.members[p.a]?.user?.name || "Member",
       memberB: group.members[p.b]?.user?.name || "Member",
@@ -1770,6 +1735,8 @@ export async function adminDisbandGroup(groupId) {
         { session }
       );
 
+      await closeRequestsForGroup(group._id, "group_disbanded", session);
+
       await group.save({ session });
     });
   } finally {
@@ -1820,6 +1787,9 @@ export async function getGroupStats() {
     AllocationIntent.countDocuments({ mode: "auto" }),
     Preference.countDocuments({ completedAt: { $ne: null } }),
     Preference.countDocuments({ completedAt: { $ne: null }, roomSize: 1 }),
+    GroupJoinRequest.countDocuments({ status: "pending" }),
+    GroupJoinRequest.countDocuments({ status: "approved" }),
+    GroupJoinRequest.countDocuments({ status: "rejected" }),
   ]);
 
   const studentsInGroupsSet = new Set();
@@ -1841,5 +1811,8 @@ export async function getGroupStats() {
     studentsInAutoPool: autoIntentCount,
     singleRoomStudents: singleRoomCount,
     studentsUngrouped,
+    pendingJoinRequests,
+    approvedJoinRequests,
+    rejectedJoinRequests,
   };
 }

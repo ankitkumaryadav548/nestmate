@@ -174,6 +174,10 @@ export async function checkIntegrity() {
     const gId = String(a.group);
     const status = groupStatusMap.get(gId);
     if (status && status !== "locked") {
+      // First-come-first-serve selection allows active allocations while group is forming or complete (before finalization locks it)
+      if (a.source === "selection" && ["forming", "complete"].includes(status)) {
+        continue;
+      }
       problems.push({
         code: "allocation_group_not_locked",
         severity: "warning",

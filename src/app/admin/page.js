@@ -321,6 +321,11 @@ export default function AdminPage() {
                 </div>
               </div>
             )}
+            {stats?.groups?.pendingJoinRequests > 0 && (
+              <span className="block text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg mt-2">
+                📩 {stats.groups.pendingJoinRequests} pending join {stats.groups.pendingJoinRequests === 1 ? "request" : "requests"} across groups
+              </span>
+            )}
           </div>
           <div className="mt-4 pt-3 border-t border-slate-100 text-xs font-semibold text-indigo-600 flex items-center justify-between">
             <span>

@@ -18,9 +18,19 @@ export default function Navbar() {
     let isMounted = true;
     const fetchInvitesCount = async () => {
       try {
-        const res = await axios.get("/api/invitations/me");
-        if (isMounted && res.data?.data?.pending) {
-          setPendingInvitesCount(res.data.data.pending.length);
+        const [invRes, countRes] = await Promise.allSettled([
+          axios.get("/api/invitations/me"),
+          axios.get("/api/join-requests/counts"),
+        ]);
+        let total = 0;
+        if (invRes.status === "fulfilled" && invRes.value?.data?.data?.pending) {
+          total += invRes.value.data.data.pending.length;
+        }
+        if (countRes.status === "fulfilled" && countRes.value?.data?.data) {
+          total += (countRes.value.data.data.pendingIncoming || 0);
+        }
+        if (isMounted) {
+          setPendingInvitesCount(total);
         }
       } catch {
         // silently ignore

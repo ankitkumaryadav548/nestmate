@@ -19,6 +19,7 @@ import { planOpenSeatFilling } from "./selection/openSeatFilling.js";
 import { joinRoomedGroup } from "./roomSelectionService.js";
 import { notify } from "./notificationService.js";
 import { getSettings } from "./matchingService.js";
+import { closeRequestsForGroup } from "./joinRequestService.js";
 
 /**
  * Previews finalize counts before committing.
@@ -217,6 +218,14 @@ export async function finalizeSelection(adminId, options = {}) {
       },
     }
   );
+
+  // Auto-close join requests for locked groups
+  const lockedGroupIds = await RoommateGroup.find({
+    status: "locked",
+  }).distinct("_id");
+  for (const gId of lockedGroupIds) {
+    await closeRequestsForGroup(gId, "group_locked");
+  }
 
   // 2. Compute Open-Seat Fill Plan
   const preview = await previewFinalize();

@@ -163,6 +163,42 @@ export function buildNotification(type, params = {}) {
       break;
     }
 
+    case "join_request_received": {
+      const name = safeStr(p.name, "A student");
+      rawTitle = "New Join Request";
+      rawMessage = `${name} requested to join your roommate group.`;
+      defaultLink = "/dashboard/group";
+      severity = "info";
+      break;
+    }
+
+    case "join_request_approved": {
+      const leaderName = safeStr(p.leaderName, "the group leader");
+      rawTitle = "Join Request Approved";
+      rawMessage = `You joined ${leaderName}'s group.`;
+      defaultLink = p.hasRoom || p.selectedRoom ? "/dashboard/room" : "/dashboard/group";
+      severity = "success";
+      break;
+    }
+
+    case "join_request_rejected": {
+      const leaderName = safeStr(p.leaderName, "the group");
+      rawTitle = "Join Request Update";
+      rawMessage = `Your request to join ${leaderName}'s group was declined.`;
+      defaultLink = "/dashboard/invitations";
+      severity = "info";
+      break;
+    }
+
+    case "join_request_closed": {
+      const reason = safeStr(p.reason, "the group is no longer available");
+      rawTitle = "Join Request Closed";
+      rawMessage = `Your join request was closed: ${reason}.`;
+      defaultLink = "/dashboard/invitations";
+      severity = "info";
+      break;
+    }
+
     // ==========================================
     // 3. ALLOCATION
     // ==========================================

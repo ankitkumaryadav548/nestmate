@@ -32,6 +32,8 @@
     "test:selection": "node --test src/services/selection/selection.test.js",
     "selection:demo": "node scripts/selection-demo.js",
     "test:selection-flow": "node scripts/test-selection-flow.js",
+    "test:joinrequests": "node --test src/services/matching/joinRequestRules.test.js",
+    "test:joinrequest-flow": "node scripts/test-joinrequest-flow.js",
     "notify:test": "node scripts/notify-test.js",
     "test:notify-flow": "node scripts/test-notify-flow.js"
   },
