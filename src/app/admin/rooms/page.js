@@ -1,14 +1,31 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import axios from "@/lib/axios";
-import Badge from "@/components/ui/Badge";
-import Button from "@/components/ui/Button";
-import Pagination from "@/components/ui/Pagination";
-import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import EmptyState from "@/components/ui/EmptyState";
-import Alert from "@/components/ui/Alert";
+import {
+  PageContainer,
+  Card,
+  Badge,
+  Button,
+  Pagination,
+  ConfirmDialog,
+  EmptyState,
+  Alert,
+  ProgressBar,
+  Select,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@/components/ui";
+import {
+  AdminPageHeader,
+  FilterBar,
+  DataTable,
+  StatusBadge,
+} from "@/components/admin";
 import RoomModal from "@/components/rooms/RoomModal";
 import BulkRoomModal from "@/components/rooms/BulkRoomModal";
 
@@ -101,266 +118,328 @@ export default function AdminRoomsPage() {
     }
   };
 
-  const getStatusBadge = (status, currentOccupancy, capacity) => {
-    if (status === "maintenance") {
-      return <Badge variant="warning" size="sm">Maintenance</Badge>;
-    }
-    if (status === "claimed") {
-      return <Badge variant="indigo" size="sm">Claimed</Badge>;
-    }
-    if (currentOccupancy >= capacity) {
-      return <Badge variant="danger" size="sm">Full</Badge>;
-    }
-    return <Badge variant="success" size="sm">Available</Badge>;
+  const hasActiveFilters = Boolean(
+    hostelFilter || floorFilter !== "" || roomTypeFilter || statusFilter || availableOnly
+  );
+
+  const handleClearFilters = () => {
+    setHostelFilter("");
+    setFloorFilter("");
+    setRoomTypeFilter("");
+    setStatusFilter("");
+    setAvailableOnly(false);
+    setPage(1);
   };
 
+  const hostelOptions = useMemo(() => {
+    return [
+      { value: "", label: "All Hostels" },
+      ...hostels.map((h) => ({
+        value: h._id,
+        label: `${h.code} - ${h.name}`,
+      })),
+    ];
+  }, [hostels]);
+
   return (
-    <div className="flex-1 py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+    <PageContainer maxWidth="7xl" className="py-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-            <Link href="/admin" className="hover:text-indigo-600">Admin</Link>
-            <span>/</span>
-            <span className="text-slate-800">Rooms</span>
+      <AdminPageHeader
+        title="Room Inventory"
+        description="Comprehensive directory of all residential rooms, occupancy status, AC configurations, and maintenance."
+        breadcrumbs={[{ label: "Rooms" }]}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsBulkRoomModalOpen(true)}
+            >
+              + Bulk Add Rooms
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => {
+                setSelectedRoomToEdit(null);
+                setIsSingleRoomModalOpen(true);
+              }}
+            >
+              + Add Room
+            </Button>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-            Room Inventory
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Comprehensive directory of all residential rooms across campus buildings.
-          </p>
+        }
+      />
+
+      {/* Notifications */}
+      {successMsg && (
+        <div className="mb-6">
+          <Alert variant="success" title="Success" onClose={() => setSuccessMsg(null)}>
+            {successMsg}
+          </Alert>
+        </div>
+      )}
+      {error && (
+        <div className="mb-6">
+          <Alert variant="danger" title="Error" onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        </div>
+      )}
+
+      {/* Filter Toolbar */}
+      <FilterBar
+        hasActiveFilters={hasActiveFilters}
+        onClear={handleClearFilters}
+      >
+        <div className="w-full sm:w-44">
+          <Select
+            value={hostelFilter}
+            onChange={(val) => {
+              setHostelFilter(val);
+              setPage(1);
+            }}
+            options={hostelOptions}
+          />
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="w-full sm:w-36">
+          <Select
+            value={floorFilter}
+            onChange={(val) => {
+              setFloorFilter(val);
+              setPage(1);
+            }}
+            options={[
+              { value: "", label: "All Floors" },
+              { value: "0", label: "Floor 0 (Ground)" },
+              { value: "1", label: "Floor 1" },
+              { value: "2", label: "Floor 2" },
+              { value: "3", label: "Floor 3" },
+              { value: "4", label: "Floor 4" },
+              { value: "5", label: "Floor 5" },
+            ]}
+          />
+        </div>
+
+        <div className="w-full sm:w-36">
+          <Select
+            value={roomTypeFilter}
+            onChange={(val) => {
+              setRoomTypeFilter(val);
+              setPage(1);
+            }}
+            options={[
+              { value: "", label: "All Types" },
+              { value: "AC", label: "AC" },
+              { value: "Non-AC", label: "Non-AC" },
+            ]}
+          />
+        </div>
+
+        <div className="w-full sm:w-36">
+          <Select
+            value={statusFilter}
+            onChange={(val) => {
+              setStatusFilter(val);
+              setPage(1);
+            }}
+            options={[
+              { value: "", label: "All Statuses" },
+              { value: "available", label: "Available" },
+              { value: "claimed", label: "Claimed" },
+              { value: "full", label: "Full" },
+              { value: "maintenance", label: "Maintenance" },
+            ]}
+          />
+        </div>
+
+        {/* Free Beds Only Toggle */}
+        <label className="flex items-center gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={availableOnly}
+            onChange={(e) => {
+              setAvailableOnly(e.target.checked);
+              setPage(1);
+            }}
+            className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500"
+          />
+          <span>Free Beds Only</span>
+        </label>
+      </FilterBar>
+
+      {/* Rooms DataTable */}
+      <DataTable
+        isLoading={loading}
+        isEmpty={rooms.length === 0}
+        emptyTitle="No rooms found"
+        emptyDescription={
+          hasActiveFilters
+            ? "No rooms matched your selected filter parameters."
+            : "No rooms configured yet. Add rooms individually or in bulk."
+        }
+        emptyAction={
           <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setIsBulkRoomModalOpen(true)}
-          >
-            + Bulk Add Rooms
-          </Button>
-          <Button
+            variant="primary"
             size="sm"
             onClick={() => {
               setSelectedRoomToEdit(null);
               setIsSingleRoomModalOpen(true);
             }}
           >
-            + Add Room
+            + Add First Room
           </Button>
-        </div>
-      </div>
+        }
+        pagination={{
+          currentPage: pagination.page,
+          totalPages: pagination.totalPages,
+          totalItems: pagination.total,
+          onPageChange: (p) => setPage(p),
+        }}
+        skeletonRows={8}
+        skeletonCols={9}
+      >
+        <TableHeader>
+          <TableRow>
+            <TableHead>Room #</TableHead>
+            <TableHead>Hostel</TableHead>
+            <TableHead>Floor</TableHead>
+            <TableHead>Type</TableHead>
+            <TableHead>Capacity</TableHead>
+            <TableHead>Occupancy</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Notes</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rooms.map((room) => {
+            const isFull = room.currentOccupancy >= room.capacity;
+            const derivedStatus =
+              room.status === "maintenance"
+                ? "maintenance"
+                : room.status === "claimed"
+                ? "claimed"
+                : isFull
+                ? "full"
+                : "available";
 
-      {/* Notifications */}
-      {successMsg && (
-        <div className="mb-4">
-          <Alert type="success" message={successMsg} onClose={() => setSuccessMsg(null)} />
-        </div>
-      )}
-      {error && (
-        <div className="mb-4">
-          <Alert type="error" message={error} onClose={() => setError(null)} />
-        </div>
-      )}
+            const occupancyPct =
+              room.capacity > 0
+                ? Math.round((room.currentOccupancy / room.capacity) * 100)
+                : 0;
 
-      {/* Filter Toolbar */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
-          {/* Hostel Filter */}
-          <select
-            value={hostelFilter}
-            onChange={(e) => {
-              setHostelFilter(e.target.value);
-              setPage(1);
-            }}
-            className="rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-medium text-slate-700 focus:border-indigo-500 focus:bg-white focus:outline-none"
-          >
-            <option value="">All Hostels</option>
-            {hostels.map((h) => (
-              <option key={h._id} value={h._id}>
-                {h.name} ({h.code})
-              </option>
-            ))}
-          </select>
+            return (
+              <TableRow key={room._id}>
+                {/* Room # */}
+                <TableCell>
+                  <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
+                    #{room.roomNumber}
+                  </span>
+                </TableCell>
 
-          {/* Floor Filter */}
-          <select
-            value={floorFilter}
-            onChange={(e) => {
-              setFloorFilter(e.target.value);
-              setPage(1);
-            }}
-            className="rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-medium text-slate-700 focus:border-indigo-500 focus:bg-white focus:outline-none"
-          >
-            <option value="">All Floors</option>
-            {[0, 1, 2, 3, 4, 5, 6].map((fl) => (
-              <option key={fl} value={fl}>
-                Floor {fl}
-              </option>
-            ))}
-          </select>
+                {/* Hostel */}
+                <TableCell>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                      {room.hostel?.code || "—"}
+                    </span>
+                    <span className="text-slate-500 dark:text-slate-400 text-[11px] truncate max-w-[120px]">
+                      {room.hostel?.name}
+                    </span>
+                  </div>
+                </TableCell>
 
-          {/* Room Type */}
-          <select
-            value={roomTypeFilter}
-            onChange={(e) => {
-              setRoomTypeFilter(e.target.value);
-              setPage(1);
-            }}
-            className="rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-medium text-slate-700 focus:border-indigo-500 focus:bg-white focus:outline-none"
-          >
-            <option value="">All Types</option>
-            <option value="AC">AC</option>
-            <option value="Non-AC">Non-AC</option>
-          </select>
+                {/* Floor */}
+                <TableCell>
+                  <span className="text-slate-600 dark:text-slate-400 font-mono">
+                    Floor {room.floor}
+                  </span>
+                </TableCell>
 
-          {/* Status */}
-          <select
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value);
-              setPage(1);
-            }}
-            className="rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-medium text-slate-700 focus:border-indigo-500 focus:bg-white focus:outline-none"
-          >
-            <option value="">All Statuses</option>
-            <option value="available">Available</option>
-            <option value="claimed">Claimed</option>
-            <option value="full">Full</option>
-            <option value="maintenance">Maintenance</option>
-          </select>
+                {/* Type */}
+                <TableCell>
+                  <span
+                    className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold border ${
+                      room.roomType === "AC"
+                        ? "bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800/60"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700"
+                    }`}
+                  >
+                    {room.roomType}
+                  </span>
+                </TableCell>
 
-          {/* Free Beds Only Toggle */}
-          <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-medium text-slate-700 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={availableOnly}
-              onChange={(e) => {
-                setAvailableOnly(e.target.checked);
-                setPage(1);
-              }}
-              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-            />
-            <span>Free Beds Only</span>
-          </label>
-        </div>
-      </div>
+                {/* Capacity */}
+                <TableCell>
+                  <span className="font-mono text-slate-700 dark:text-slate-300">
+                    {room.capacity} {room.capacity === 1 ? "bed" : "beds"}
+                  </span>
+                </TableCell>
 
-      {/* Rooms Table */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center text-xs text-slate-500">
-            <div className="h-40 animate-pulse rounded-xl bg-slate-100" />
-          </div>
-        ) : rooms.length === 0 ? (
-          <div className="p-10">
-            <EmptyState
-              title="No rooms found"
-              message="No rooms matched your selected filters."
-              actionLabel="Add Room"
-              onAction={() => {
-                setSelectedRoomToEdit(null);
-                setIsSingleRoomModalOpen(true);
-              }}
-            />
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/80 text-slate-500 font-semibold uppercase tracking-wider text-[11px]">
-                  <th className="py-3 px-4">Room #</th>
-                  <th className="py-3 px-4">Hostel</th>
-                  <th className="py-3 px-4">Floor</th>
-                  <th className="py-3 px-4">Type</th>
-                  <th className="py-3 px-4">Capacity</th>
-                  <th className="py-3 px-4">Occupancy</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4">Notes</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {rooms.map((room) => (
-                  <tr key={room._id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3 px-4 font-mono font-bold text-slate-900">
-                      #{room.roomNumber}
-                    </td>
-                    <td className="py-3 px-4">
-                      {room.hostel ? (
-                        <Link
-                          href={`/admin/hostels/${room.hostel._id}`}
-                          className="font-medium text-indigo-600 hover:text-indigo-800"
-                        >
-                          {room.hostel.name} ({room.hostel.code})
-                        </Link>
-                      ) : (
-                        <span className="text-slate-400">Unassigned</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-slate-600">Floor {room.floor}</td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold border ${
-                          room.roomType === "AC"
-                            ? "bg-cyan-50 text-cyan-700 border-cyan-200"
-                            : "bg-slate-100 text-slate-600 border-slate-200"
-                        }`}
-                      >
-                        {room.roomType}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-slate-700">{room.capacity} beds</td>
-                    <td className="py-3 px-4">
-                      <span className="font-semibold text-slate-900">
+                {/* Occupancy with mini progress bar */}
+                <TableCell>
+                  <div className="w-28 space-y-1">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="font-bold text-slate-900 dark:text-slate-100 font-mono">
                         {room.currentOccupancy} / {room.capacity}
                       </span>
-                      <span className="ml-1.5 text-[11px] text-emerald-600 font-medium">
-                        ({room.availableBeds} free)
+                      <span className="text-slate-400 dark:text-slate-500">
+                        {room.capacity - room.currentOccupancy} free
                       </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      {getStatusBadge(room.status, room.currentOccupancy, room.capacity)}
-                    </td>
-                    <td className="py-3 px-4 text-slate-500 max-w-[150px] truncate">
-                      {room.notes || "—"}
-                    </td>
-                    <td className="py-3 px-4 text-right space-x-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedRoomToEdit(room);
-                          setIsSingleRoomModalOpen(true);
-                        }}
-                        className="font-semibold text-indigo-600 hover:text-indigo-800"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget(room)}
-                        className="font-semibold text-rose-500 hover:text-rose-700"
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                    </div>
+                    <ProgressBar
+                      value={occupancyPct}
+                      max={100}
+                      color={occupancyPct >= 100 ? "danger" : occupancyPct > 0 ? "brand" : "neutral"}
+                      size="xs"
+                    />
+                  </div>
+                </TableCell>
 
-      {/* Pagination */}
-      <Pagination
-        currentPage={pagination.page}
-        totalPages={pagination.totalPages}
-        onPageChange={(p) => setPage(p)}
-      />
+                {/* Status Badge */}
+                <TableCell>
+                  <StatusBadge type="room" status={derivedStatus} />
+                </TableCell>
 
-      {/* Modals */}
+                {/* Notes */}
+                <TableCell>
+                  <span className="text-slate-400 dark:text-slate-500 text-[11px] truncate max-w-[140px] block">
+                    {room.notes || "—"}
+                  </span>
+                </TableCell>
+
+                {/* Actions */}
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1.5">
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => {
+                        setSelectedRoomToEdit(room);
+                        setIsSingleRoomModalOpen(true);
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={() => setDeleteTarget(room)}
+                      className="text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </DataTable>
+
+      {/* Single Room Modal */}
       <RoomModal
         isOpen={isSingleRoomModalOpen}
         onClose={() => {
@@ -375,6 +454,7 @@ export default function AdminRoomsPage() {
         room={selectedRoomToEdit}
       />
 
+      {/* Bulk Room Modal */}
       <BulkRoomModal
         isOpen={isBulkRoomModalOpen}
         onClose={() => setIsBulkRoomModalOpen(false)}
@@ -385,24 +465,25 @@ export default function AdminRoomsPage() {
         hostelList={hostels}
       />
 
+      {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={!!deleteTarget}
         title={`Delete Room #${deleteTarget?.roomNumber}?`}
         message={
           deleteTarget?.currentOccupancy > 0
-            ? `Cannot delete room #${deleteTarget.roomNumber}: It currently has ${deleteTarget.currentOccupancy} occupant(s). You must unassign occupants first.`
+            ? `Cannot delete room #${deleteTarget.roomNumber}: It currently has ${deleteTarget.currentOccupancy} occupant(s). You must unassign occupants before deleting.`
             : `Are you sure you want to delete room #${deleteTarget?.roomNumber}? This cannot be undone.`
         }
         confirmText={deleteTarget?.currentOccupancy > 0 ? "Understood" : "Delete Room"}
-        confirmVariant="danger"
-        loading={deleting}
-        onCancel={() => setDeleteTarget(null)}
+        variant="danger"
+        isLoading={deleting}
+        onClose={() => setDeleteTarget(null)}
         onConfirm={
           deleteTarget?.currentOccupancy > 0
             ? () => setDeleteTarget(null)
             : handleDelete
         }
       />
-    </div>
+    </PageContainer>
   );
 }

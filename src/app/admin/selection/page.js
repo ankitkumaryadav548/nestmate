@@ -3,11 +3,23 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import axios from "@/lib/axios";
-import Badge from "@/components/ui/Badge";
-import Button from "@/components/ui/Button";
-import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import Modal from "@/components/ui/Modal";
-import Alert from "@/components/ui/Alert";
+import {
+  PageContainer,
+  Card,
+  Badge,
+  Button,
+  ConfirmDialog,
+  Modal,
+  Alert,
+  CountdownBadge,
+  AnimatedNumber,
+  Input,
+} from "@/components/ui";
+import {
+  AdminPageHeader,
+  StatusBadge,
+  ConfirmTypeDialog,
+} from "@/components/admin";
 import { FINALIZE_CONFIRM_TEXT } from "@/config/selection";
 
 export default function AdminSelectionPage() {
@@ -30,7 +42,6 @@ export default function AdminSelectionPage() {
   const [isFinalizeOpen, setIsFinalizeOpen] = useState(false);
   const [finalizePreview, setFinalizePreview] = useState(null);
   const [finalizePreviewLoading, setFinalizePreviewLoading] = useState(false);
-  const [confirmInput, setConfirmInput] = useState("");
   const [finalizing, setFinalizing] = useState(false);
 
   const [releaseTarget, setReleaseTarget] = useState(null);
@@ -85,7 +96,7 @@ export default function AdminSelectionPage() {
       await fetchData();
     } catch (err) {
       setActionAlert({
-        type: "error",
+        type: "danger",
         message: err.response?.data?.message || "Failed to open window",
       });
     } finally {
@@ -105,7 +116,7 @@ export default function AdminSelectionPage() {
       await fetchData();
     } catch (err) {
       setActionAlert({
-        type: "error",
+        type: "danger",
         message: err.response?.data?.message || "Failed to close window",
       });
     } finally {
@@ -130,7 +141,7 @@ export default function AdminSelectionPage() {
       await fetchData();
     } catch (err) {
       setActionAlert({
-        type: "error",
+        type: "danger",
         message: err.response?.data?.message || "Failed to extend window",
       });
     } finally {
@@ -154,7 +165,7 @@ export default function AdminSelectionPage() {
       await fetchData();
     } catch (err) {
       setActionAlert({
-        type: "error",
+        type: "danger",
         message: err.response?.data?.message || "Failed to create selection window",
       });
     } finally {
@@ -167,7 +178,6 @@ export default function AdminSelectionPage() {
     try {
       setFinalizePreviewLoading(true);
       setIsFinalizeOpen(true);
-      setConfirmInput("");
       const res = await axios.get("/api/admin/selection/finalize-preview");
       if (res.data?.success) {
         setFinalizePreview(res.data.data);
@@ -175,7 +185,7 @@ export default function AdminSelectionPage() {
     } catch (err) {
       console.error("Failed to load finalize preview:", err);
       setActionAlert({
-        type: "error",
+        type: "danger",
         message: err.response?.data?.message || "Failed to load finalize preview",
       });
       setIsFinalizeOpen(false);
@@ -186,12 +196,11 @@ export default function AdminSelectionPage() {
 
   // Action: Confirm Finalize
   const handleConfirmFinalize = async () => {
-    if (confirmInput !== FINALIZE_CONFIRM_TEXT) return;
     try {
       setFinalizing(true);
       setActionAlert(null);
       const res = await axios.post("/api/admin/selection/finalize", {
-        confirmText: confirmInput,
+        confirmText: FINALIZE_CONFIRM_TEXT,
       });
       if (res.data?.success) {
         setActionAlert({
@@ -204,7 +213,7 @@ export default function AdminSelectionPage() {
     } catch (err) {
       console.error("Finalize error:", err);
       setActionAlert({
-        type: "error",
+        type: "danger",
         message: err.response?.data?.message || "Failed to finalize selection",
       });
     } finally {
@@ -228,7 +237,7 @@ export default function AdminSelectionPage() {
     } catch (err) {
       console.error("Release error:", err);
       setActionAlert({
-        type: "error",
+        type: "danger",
         message: err.response?.data?.message || "Failed to release room",
       });
     } finally {
@@ -241,117 +250,126 @@ export default function AdminSelectionPage() {
   const windowStatus = windowDoc?.status || "none";
 
   return (
-    <div className="flex-1 py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-6">
+    <PageContainer maxWidth="7xl" className="py-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-            <Link href="/admin" className="hover:text-indigo-600">Admin</Link>
-            <span>/</span>
-            <span className="text-slate-800">Selection Window</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-            Room Selection Window Console
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Real-time management for First-Come, First-Served room picking, locks, and finalization.
-          </p>
-        </div>
-
-        {/* Action Controls */}
-        <div className="flex flex-wrap items-center gap-2">
-          {windowStatus === "open" ? (
-            <>
+      <AdminPageHeader
+        title="Room Selection Window Console"
+        description="Real-time management for First-Come, First-Served room picking, locks, and finalization."
+        breadcrumbs={[{ label: "Selection Window" }]}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            {windowStatus === "open" ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsExtendOpen(true)}
+                  disabled={actionLoading}
+                >
+                  ⏱️ Extend Window
+                </Button>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={handleCloseNow}
+                  isLoading={actionLoading}
+                >
+                  Close Window Now
+                </Button>
+              </>
+            ) : windowStatus === "scheduled" ? (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleOpenNow}
+                isLoading={actionLoading}
+              >
+                🚀 Open Window Now
+              </Button>
+            ) : (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setIsExtendOpen(true)}
+                onClick={() => {
+                  const now = new Date();
+                  const defaultEnd = new Date(now.getTime() + 60 * 60 * 1000);
+                  setCreateForm({
+                    name: "General Student Room Selection Window",
+                    startsAt: now.toISOString().slice(0, 16),
+                    endsAt: defaultEnd.toISOString().slice(0, 16),
+                  });
+                  setIsCreateOpen(true);
+                }}
+              >
+                + Schedule Window
+              </Button>
+            )}
+
+            {windowStatus !== "finalized" && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleOpenFinalizeModal}
                 disabled={actionLoading}
               >
-                ⏱️ Extend (+Min)
+                🔒 Finalize Selection &amp; Auto-Fill
               </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={handleCloseNow}
-                loading={actionLoading}
-              >
-                Close Window Now
-              </Button>
-            </>
-          ) : windowStatus === "scheduled" ? (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleOpenNow}
-              loading={actionLoading}
-            >
-              🚀 Open Window Immediately
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const now = new Date();
-                const defaultEnd = new Date(now.getTime() + 60 * 60 * 1000);
-                setCreateForm({
-                  name: "General Student Room Selection Window",
-                  startsAt: now.toISOString().slice(0, 16),
-                  endsAt: defaultEnd.toISOString().slice(0, 16),
-                });
-                setIsCreateOpen(true);
-              }}
-            >
-              + Schedule Window
-            </Button>
-          )}
-
-          {windowStatus !== "finalized" && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleOpenFinalizeModal}
-              disabled={actionLoading}
-            >
-              🔒 Finalize Selection &amp; Auto-Fill
-            </Button>
-          )}
-        </div>
-      </div>
+            )}
+          </div>
+        }
+      />
 
       {actionAlert && (
-        <Alert
-          type={actionAlert.type}
-          message={actionAlert.message}
-          onClose={() => setActionAlert(null)}
-        />
+        <div className="mb-6">
+          <Alert
+            variant={actionAlert.type}
+            title={actionAlert.type === "success" ? "Success" : "Notice"}
+            onClose={() => setActionAlert(null)}
+          >
+            {actionAlert.message}
+          </Alert>
+        </div>
       )}
 
-      {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
+      {error && (
+        <div className="mb-6">
+          <Alert variant="danger" title="Error" onClose={() => setError(null)}>
+            {error}
+          </Alert>
+        </div>
+      )}
 
-      {/* Window Status Card */}
-      <div className={`rounded-3xl p-6 sm:p-8 text-white shadow-xl ${
-        windowStatus === "open"
-          ? "bg-gradient-to-r from-emerald-600 via-teal-700 to-indigo-800"
-          : windowStatus === "scheduled"
-          ? "bg-gradient-to-r from-blue-700 via-indigo-800 to-purple-900"
-          : windowStatus === "closed"
-          ? "bg-gradient-to-r from-amber-700 via-orange-800 to-slate-900"
-          : windowStatus === "finalized"
-          ? "bg-gradient-to-r from-purple-800 via-indigo-900 to-slate-950"
-          : "bg-gradient-to-r from-slate-700 to-slate-900"
-      }`}>
+      {/* Prominent Window Status Card */}
+      <div
+        className={`rounded-2xl p-6 sm:p-8 text-white shadow-xl mb-6 ${
+          windowStatus === "open"
+            ? "bg-gradient-to-r from-teal-700 via-indigo-900 to-indigo-950 border border-teal-500/40"
+            : windowStatus === "scheduled"
+            ? "bg-gradient-to-r from-blue-700 via-indigo-900 to-slate-900 border border-blue-500/40"
+            : windowStatus === "closed"
+            ? "bg-gradient-to-r from-amber-700 via-orange-900 to-slate-950 border border-amber-500/40"
+            : windowStatus === "finalized"
+            ? "bg-gradient-to-r from-purple-900 via-slate-900 to-slate-950 border border-purple-500/40"
+            : "bg-slate-900 border border-slate-800"
+        }`}
+      >
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-bold uppercase tracking-wider">
-              <span className={`h-2.5 w-2.5 rounded-full ${windowStatus === "open" ? "bg-emerald-300 animate-ping" : "bg-white"}`} />
-              Window: {windowStatus.toUpperCase()}
+            <div className="flex items-center gap-2">
+              <StatusBadge type="window" status={windowStatus} />
+              {windowStatus === "open" && windowDoc?.endsAt && (
+                <CountdownBadge
+                  targetDate={windowDoc.endsAt}
+                  label="Closes in"
+                />
+              )}
             </div>
-            <h2 className="text-xl sm:text-2xl font-black">
+
+            <h2 className="text-xl sm:text-2xl font-black font-heading">
               {windowDoc?.name || "No Active Selection Window"}
             </h2>
-            <p className="text-xs sm:text-sm text-white/80 max-w-xl">
+
+            <p className="text-xs sm:text-sm text-white/80 max-w-xl leading-relaxed">
               {windowDoc ? (
                 <>
                   Starts: <strong>{new Date(windowDoc.startsAt).toLocaleString()}</strong> • Ends:{" "}
@@ -369,9 +387,9 @@ export default function AdminSelectionPage() {
             </p>
           </div>
 
-          {windowStatus === "open" && (
-            <div className="bg-white/10 border border-white/20 rounded-2xl p-4 text-center shrink-0 min-w-[160px] backdrop-blur-sm">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-200 block">
+          {windowStatus === "open" && windowDoc?.endsAt && (
+            <div className="bg-white/10 border border-white/20 rounded-2xl p-4 text-center shrink-0 min-w-[170px] backdrop-blur-sm">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-teal-200 block">
                 Window Closes At
               </span>
               <div className="text-2xl font-black font-mono tracking-tight text-white mt-1">
@@ -384,86 +402,86 @@ export default function AdminSelectionPage() {
 
       {/* Metrics Overview Grid */}
       {overview && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-          <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
-            <span className="text-[11px] font-medium text-slate-500 block">Total Rooms</span>
-            <span className="text-xl font-black text-slate-900 mt-1 block">
-              {overview.roomCounts?.total || 0}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
+          <Card className="p-3.5">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Total Rooms</span>
+            <span className="text-xl font-bold text-slate-900 dark:text-slate-100 font-mono mt-1 block">
+              <AnimatedNumber value={overview.roomCounts?.total || 0} />
             </span>
             <span className="text-[10px] text-slate-400">Campus inventory</span>
-          </div>
+          </Card>
 
-          <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
-            <span className="text-[11px] font-medium text-slate-500 block">Claimed Rooms</span>
-            <span className="text-xl font-black text-indigo-600 mt-1 block">
-              {overview.roomCounts?.claimed || 0}
+          <Card className="p-3.5">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Claimed Rooms</span>
+            <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400 font-mono mt-1 block">
+              <AnimatedNumber value={overview.roomCounts?.claimed || 0} />
             </span>
-            <span className="text-[10px] text-indigo-500 font-semibold">Active FCFS holds</span>
-          </div>
+            <span className="text-[10px] text-indigo-500 font-semibold">FCFS active holds</span>
+          </Card>
 
-          <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
-            <span className="text-[11px] font-medium text-slate-500 block">Available Rooms</span>
-            <span className="text-xl font-black text-emerald-600 mt-1 block">
-              {overview.roomCounts?.available || 0}
+          <Card className="p-3.5">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Available Rooms</span>
+            <span className="text-xl font-bold text-teal-600 dark:text-teal-400 font-mono mt-1 block">
+              <AnimatedNumber value={overview.roomCounts?.available || 0} />
             </span>
-            <span className="text-[10px] text-emerald-500 font-semibold">Ready to claim</span>
-          </div>
+            <span className="text-[10px] text-teal-500 font-semibold">Ready to claim</span>
+          </Card>
 
-          <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
-            <span className="text-[11px] font-medium text-slate-500 block">Reserved Beds</span>
-            <span className="text-xl font-black text-purple-600 mt-1 block">
-              {overview.bedCounts?.reserved || 0}
+          <Card className="p-3.5">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Reserved Beds</span>
+            <span className="text-xl font-bold text-purple-600 dark:text-purple-400 font-mono mt-1 block">
+              <AnimatedNumber value={overview.bedCounts?.reserved || 0} />
             </span>
             <span className="text-[10px] text-slate-400">In claimed rooms</span>
-          </div>
+          </Card>
 
-          <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
-            <span className="text-[11px] font-medium text-slate-500 block">Open Seats</span>
-            <span className="text-xl font-black text-amber-600 mt-1 block">
-              {overview.unitCounts?.openSeatsInClaimedRooms || 0}
+          <Card className="p-3.5">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Open Seats</span>
+            <span className="text-xl font-bold text-amber-600 dark:text-amber-400 font-mono mt-1 block">
+              <AnimatedNumber value={overview.unitCounts?.openSeatsInClaimedRooms || 0} />
             </span>
             <span className="text-[10px] text-amber-600 font-semibold">To be auto-filled</span>
-          </div>
+          </Card>
 
-          <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
-            <span className="text-[11px] font-medium text-slate-500 block">Units Placed</span>
-            <span className="text-xl font-black text-slate-900 mt-1 block">
-              {overview.unitCounts?.groupsWithRoom || 0}
+          <Card className="p-3.5">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Groups With Room</span>
+            <span className="text-xl font-bold text-slate-900 dark:text-slate-100 font-mono mt-1 block">
+              <AnimatedNumber value={overview.unitCounts?.groupsWithRoom || 0} />
             </span>
-            <span className="text-[10px] text-slate-400">Groups with rooms</span>
-          </div>
+            <span className="text-[10px] text-slate-400">Claimed successfully</span>
+          </Card>
 
-          <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
-            <span className="text-[11px] font-medium text-slate-500 block">Unplaced Groups</span>
-            <span className="text-xl font-black text-rose-600 mt-1 block">
-              {overview.unitCounts?.groupsWithoutRoom || 0}
+          <Card className="p-3.5">
+            <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">Groups Waiting</span>
+            <span className="text-xl font-bold text-rose-600 dark:text-rose-400 font-mono mt-1 block">
+              <AnimatedNumber value={overview.unitCounts?.groupsWithoutRoom || 0} />
             </span>
             <span className="text-[10px] text-rose-500 font-semibold">Eligible to pick</span>
-          </div>
+          </Card>
         </div>
       )}
 
       {/* Claimed Rooms Table */}
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-        <div className="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <Card className="overflow-hidden">
+        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h3 className="text-base font-bold text-slate-900">
+            <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading">
               Active Room Claims ({overview?.claimedRooms?.length || 0})
             </h3>
-            <p className="text-xs text-slate-500">
-              Rooms currently claimed by group leaders during selection windows.
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Rooms currently claimed by student group leaders during open selection windows.
             </p>
           </div>
         </div>
 
         {overview?.claimedRooms?.length === 0 ? (
-          <div className="p-8 text-center text-xs text-slate-400">
-            No rooms have been claimed yet.
+          <div className="p-8 text-center text-xs text-slate-400 py-10">
+            No rooms have been claimed yet in this selection cycle.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50/75 border-b border-slate-200 text-slate-500 font-semibold">
+              <thead className="bg-slate-50/75 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-semibold">
                 <tr>
                   <th className="px-4 py-3">Room</th>
                   <th className="px-4 py-3">Hostel</th>
@@ -475,14 +493,14 @@ export default function AdminSelectionPage() {
                   <th className="px-4 py-3 text-right">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
                 {overview?.claimedRooms?.map((cr) => (
-                  <tr key={cr.roomId} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-4 py-3 font-bold text-slate-900">
-                      Room #{cr.roomNumber}
+                  <tr key={cr.roomId} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors">
+                    <td className="px-4 py-3 font-bold text-slate-900 dark:text-slate-100 font-mono">
+                      #{cr.roomNumber}
                     </td>
                     <td className="px-4 py-3">
-                      {cr.hostelName} <span className="text-slate-400">({cr.hostelCode})</span>
+                      {cr.hostelName} <span className="text-slate-400 dark:text-slate-500">({cr.hostelCode})</span>
                     </td>
                     <td className="px-4 py-3">
                       {cr.roomType} • Floor {cr.floor}
@@ -491,10 +509,12 @@ export default function AdminSelectionPage() {
                       {cr.capacity} Beds
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-semibold text-slate-900">{cr.currentOccupancy}</span> / {cr.capacity}
+                      <span className="font-semibold text-slate-900 dark:text-slate-100 font-mono">{cr.currentOccupancy}</span> / {cr.capacity}
                       {cr.openSeats > 0 && (
-                        <span className="ml-2 text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                          {cr.openSeats} Open Seat{cr.openSeats > 1 ? "s" : ""}
+                        <span className="ml-2">
+                          <Badge variant="warning" size="xs">
+                            {cr.openSeats} Open Seat{cr.openSeats > 1 ? "s" : ""}
+                          </Badge>
                         </span>
                       )}
                     </td>
@@ -502,7 +522,7 @@ export default function AdminSelectionPage() {
                       {cr.claimedByGroup ? (
                         <Link
                           href={`/admin/groups/${cr.claimedByGroup.id}`}
-                          className="font-bold text-indigo-600 hover:underline"
+                          className="font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
                         >
                           Group #{cr.claimedByGroup.id.slice(-6).toUpperCase()}
                           {cr.claimedByGroup.leader && ` (${cr.claimedByGroup.leader.name})`}
@@ -511,19 +531,20 @@ export default function AdminSelectionPage() {
                         <span className="text-slate-400">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-slate-500 font-mono text-[11px]">
+                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
                       {cr.claimedAt ? new Date(cr.claimedAt).toLocaleTimeString() : "—"}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {cr.claimedByGroup && (
                         <button
+                          type="button"
                           onClick={() =>
                             setReleaseTarget({
                               groupId: cr.claimedByGroup.id,
                               roomNumber: cr.roomNumber,
                             })
                           }
-                          className="text-xs font-bold text-rose-600 hover:text-rose-800 underline"
+                          className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
                         >
                           Release
                         </button>
@@ -535,53 +556,51 @@ export default function AdminSelectionPage() {
             </table>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Schedule Window Modal */}
       <Modal
         isOpen={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
         title="Schedule Selection Window"
+        description="Set the date and time boundaries when student group leaders can browse and claim rooms."
       >
-        <form onSubmit={handleCreateWindow} className="space-y-4 text-xs">
+        <form onSubmit={handleCreateWindow} className="space-y-4">
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Window Title</label>
-            <input
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">Window Title</label>
+            <Input
               type="text"
               value={createForm.name}
               onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:outline-indigo-500"
               required
             />
           </div>
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Starts At</label>
-            <input
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">Starts At</label>
+            <Input
               type="datetime-local"
               value={createForm.startsAt}
               onChange={(e) => setCreateForm({ ...createForm, startsAt: e.target.value })}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:outline-indigo-500"
               required
             />
           </div>
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Ends At</label>
-            <input
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">Ends At</label>
+            <Input
               type="datetime-local"
               value={createForm.endsAt}
               onChange={(e) => setCreateForm({ ...createForm, endsAt: e.target.value })}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs focus:outline-indigo-500"
               required
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-            <Button variant="outline" size="sm" onClick={() => setIsCreateOpen(false)}>
+          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <Button variant="secondary" size="sm" onClick={() => setIsCreateOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" size="sm" type="submit" loading={actionLoading}>
+            <Button variant="primary" size="sm" type="submit" isLoading={actionLoading}>
               Schedule Window
             </Button>
           </div>
@@ -593,21 +612,22 @@ export default function AdminSelectionPage() {
         isOpen={isExtendOpen}
         onClose={() => setIsExtendOpen(false)}
         title="Extend Selection Window"
+        description="Add more time to the currently active selection window."
       >
         <div className="space-y-4 text-xs">
-          <p className="text-slate-600">
+          <p className="text-slate-600 dark:text-slate-400">
             Choose how many minutes to add to the current window closing time:
           </p>
-          <div className="flex items-center gap-3">
+          <div className="grid grid-cols-4 gap-2.5">
             {[15, 30, 60, 120].map((min) => (
               <button
                 key={min}
                 type="button"
                 onClick={() => setExtendMinutes(min)}
-                className={`flex-1 py-2 rounded-xl font-bold border transition-all ${
+                className={`py-2 rounded-xl font-bold border transition-all cursor-pointer ${
                   extendMinutes === min
-                    ? "bg-indigo-600 text-white border-indigo-600"
-                    : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                    : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
                 }`}
               >
                 +{min} min
@@ -615,104 +635,34 @@ export default function AdminSelectionPage() {
             ))}
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-            <Button variant="outline" size="sm" onClick={() => setIsExtendOpen(false)}>
+          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <Button variant="secondary" size="sm" onClick={() => setIsExtendOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" size="sm" onClick={handleExtendWindow} loading={actionLoading}>
+            <Button variant="primary" size="sm" onClick={handleExtendWindow} isLoading={actionLoading}>
               Extend Now
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* Finalize Preview & Execution Modal */}
-      <Modal
+      {/* Finalize Selection ConfirmTypeDialog */}
+      <ConfirmTypeDialog
         isOpen={isFinalizeOpen}
         onClose={() => setIsFinalizeOpen(false)}
+        onConfirm={handleConfirmFinalize}
         title="Finalize Selection Window & Auto-Fill Open Seats"
-      >
-        <div className="space-y-4 text-xs">
-          {finalizePreviewLoading ? (
-            <div className="py-8 text-center text-slate-500">
-              <div className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
-              <p className="mt-2">Computing deterministic auto-fill preview...</p>
-            </div>
-          ) : finalizePreview ? (
-            <>
-              <div className="rounded-2xl border border-indigo-100 bg-indigo-50/80 p-4 space-y-2">
-                <h4 className="font-bold text-indigo-950">Finalization Plan Preview:</h4>
-                <ul className="list-disc list-inside text-indigo-900 space-y-1">
-                  <li>
-                    <strong>{finalizePreview.groupsToLock?.length || 0}</strong> roomed groups will be locked immediately.
-                  </li>
-                  <li>
-                    <strong>{finalizePreview.openSeatsToFill?.length || 0}</strong> open seats planned to be auto-filled with compatible candidates.
-                  </li>
-                  <li>
-                    <strong>{finalizePreview.unallocatedEligibleCount || 0}</strong> unplaced students will remain for the fallback allocation simulation.
-                  </li>
-                </ul>
-              </div>
-
-              {finalizePreview.openSeatsToFill?.length > 0 && (
-                <div>
-                  <h5 className="font-bold text-slate-800 mb-2">Planned Seat Fills:</h5>
-                  <div className="max-h-40 overflow-y-auto space-y-1.5 border border-slate-200 rounded-xl p-2 bg-slate-50/50">
-                    {finalizePreview.openSeatsToFill.map((fill, idx) => (
-                      <div
-                        key={idx}
-                        className="text-[11px] bg-white p-2 rounded-lg border border-slate-200 flex items-center justify-between"
-                      >
-                        <div>
-                          <span className="font-bold text-slate-800">{fill.studentName}</span>
-                          <span className="text-slate-400 ml-1.5">
-                            &rarr; Room #{fill.roomNumber} ({fill.hostelName})
-                          </span>
-                        </div>
-                        <Badge variant="emerald" size="sm">
-                          {fill.compatibilityAverage}% Match
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-900">
-                <span className="font-bold block mb-1">Confirmation Required:</span>
-                <p className="text-[11px]">
-                  This action closes the window, locks roomed groups, and executes auto-fill additions. To proceed, please type <strong>{FINALIZE_CONFIRM_TEXT}</strong> below:
-                </p>
-                <input
-                  type="text"
-                  value={confirmInput}
-                  onChange={(e) => setConfirmInput(e.target.value)}
-                  placeholder={FINALIZE_CONFIRM_TEXT}
-                  className="mt-2 w-full rounded-xl border border-amber-300 bg-white px-3 py-1.5 text-xs font-mono font-bold text-slate-900 focus:outline-amber-600"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
-                <Button variant="outline" size="sm" onClick={() => setIsFinalizeOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  disabled={confirmInput !== FINALIZE_CONFIRM_TEXT || finalizing}
-                  loading={finalizing}
-                  onClick={handleConfirmFinalize}
-                >
-                  Execute Finalization
-                </Button>
-              </div>
-            </>
-          ) : (
-            <p className="text-rose-600">Failed to load preview.</p>
-          )}
-        </div>
-      </Modal>
+        description="This action locks all roomed groups, runs the deterministic open-seat auto-fill engine for claimed rooms with vacant spots, and closes the selection window."
+        requiredWord={FINALIZE_CONFIRM_TEXT}
+        confirmButtonText="Execute Finalization"
+        variant="warning"
+        isLoading={finalizing}
+        items={[
+          `${finalizePreview?.groupsToLock?.length || 0} roomed groups will be locked immediately.`,
+          `${finalizePreview?.openSeatsToFill?.length || 0} open seats planned to be auto-filled with compatible candidates.`,
+          `${finalizePreview?.unallocatedEligibleCount || 0} unplaced students will remain for the fallback allocation simulation.`,
+        ]}
+      />
 
       {/* Release Confirmation Dialog */}
       <ConfirmDialog
@@ -722,10 +672,9 @@ export default function AdminSelectionPage() {
         title="Admin Release Room Override"
         message={`Are you sure you want to release Room #${releaseTarget?.roomNumber}? Active allocations will be deleted, and the room will immediately become available again.`}
         confirmText="Release Room"
-        confirmVariant="danger"
-        loading={releasing}
+        variant="danger"
+        isLoading={releasing}
       />
-    </div>
+    </PageContainer>
   );
 }
-

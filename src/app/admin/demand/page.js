@@ -3,7 +3,20 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import axios from "@/lib/axios";
-import Badge from "@/components/ui/Badge";
+import {
+  PageContainer,
+  Card,
+  Badge,
+  Button,
+  ProgressBar,
+  Alert,
+} from "@/components/ui";
+import {
+  AdminPageHeader,
+  HorizontalBars,
+  StackedBar,
+  DonutRing,
+} from "@/components/admin";
 
 export default function AdminDemandPage() {
   const [data, setData] = useState(null);
@@ -31,27 +44,24 @@ export default function AdminDemandPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 py-16 px-4 max-w-7xl mx-auto w-full text-center">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-r-transparent"></div>
-        <p className="mt-3 text-xs font-semibold text-slate-500">Aggregating hostel demand & campus inventory...</p>
-      </div>
+      <PageContainer maxWidth="7xl" className="py-8">
+        <div className="h-64 animate-pulse rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800" />
+      </PageContainer>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="flex-1 py-12 px-4 max-w-4xl mx-auto w-full">
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center">
-          <p className="text-sm font-bold text-rose-800">{error || "Failed to load demand summary"}</p>
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-xs"
-          >
+      <PageContainer maxWidth="7xl" className="py-8">
+        <Alert variant="danger" title="Error">
+          {error || "Failed to load demand summary"}
+        </Alert>
+        <div className="mt-4">
+          <Button variant="secondary" size="sm" onClick={() => window.location.reload()}>
             Retry
-          </button>
+          </Button>
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
@@ -60,120 +70,167 @@ export default function AdminDemandPage() {
   const totalAcDemanded = (acDemand.ac || 0) + (acDemand["non-ac"] || 0) + (acDemand["no-preference"] || 0);
   const acPercent = totalAcDemanded ? Math.round(((acDemand.ac || 0) / totalAcDemanded) * 100) : 0;
   const nonAcPercent = totalAcDemanded ? Math.round(((acDemand["non-ac"] || 0) / totalAcDemanded) * 100) : 0;
-  const flexPercent = totalAcDemanded ? Math.round(((acDemand["no-preference"] || 0) / totalAcDemanded) * 100) : 0;
+
+  // Demand bars for top hostels
+  const demandBars = hostelSummaries.slice(0, 6).map((h) => ({
+    label: `${h.code} - ${h.name}`,
+    value: h.firstChoiceDemand || 0,
+    max: Math.max(...hostelSummaries.map((x) => x.firstChoiceDemand || 0), 10),
+    displayValue: `${h.firstChoiceDemand || 0} groups (${h.inventory?.availableBeds || 0} beds free)`,
+    color: (h.firstChoiceDemand || 0) > 8 ? "bg-amber-500 dark:bg-amber-400" : "bg-indigo-600 dark:bg-indigo-500",
+  }));
+
+  // AC Stacked Bar segments
+  const acSegments = [
+    {
+      label: "AC Required",
+      value: acDemand.ac || 0,
+      color: "bg-blue-600 dark:bg-blue-500",
+      displayValue: `${acDemand.ac || 0} (${acPercent}%)`,
+    },
+    {
+      label: "Non-AC",
+      value: acDemand["non-ac"] || 0,
+      color: "bg-teal-600 dark:bg-teal-500",
+      displayValue: `${acDemand["non-ac"] || 0} (${nonAcPercent}%)`,
+    },
+    {
+      label: "Flexible",
+      value: acDemand["no-preference"] || 0,
+      color: "bg-slate-400 dark:bg-slate-600",
+      displayValue: `${acDemand["no-preference"] || 0}`,
+    },
+  ];
 
   return (
-    <div className="flex-1 py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-8">
+    <PageContainer maxWidth="7xl" className="py-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/admin"
-              className="text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-colors"
-            >
-              &larr; Admin Console
-            </Link>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
-            Hostel Demand vs. Supply Analytics
-          </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Pre-allocation intelligence comparing student first-choice preferences against available campus capacity.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Link
-            href="/admin/groups"
-            className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs"
-          >
-            Manage Groups &rarr;
+      <AdminPageHeader
+        title="Hostel Demand vs. Supply Analytics"
+        description="Pre-allocation intelligence comparing student first-choice preferences against available campus capacity."
+        breadcrumbs={[{ label: "Demand Analysis" }]}
+        actions={
+          <Link href="/admin/groups">
+            <Button variant="secondary" size="sm">
+              Manage Groups &rarr;
+            </Button>
           </Link>
-        </div>
-      </div>
+        }
+      />
 
-      {/* Pre-Allocation Strategy Banner */}
-      <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-200/80 text-indigo-950 flex items-start gap-3 shadow-xs">
+      {/* Pre-Allocation Guidance Callout */}
+      <div className="mb-6 p-4.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 flex items-start gap-3.5">
         <span className="text-2xl mt-0.5">📊</span>
         <div>
-          <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-900">
-            Warden Allocation Guidance
+          <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-950 dark:text-indigo-200 font-heading">
+            Pre-Allocation Intelligence Guidance
           </h3>
-          <p className="text-xs text-indigo-800 mt-0.5 leading-relaxed">
+          <p className="text-xs text-indigo-900/80 dark:text-indigo-300 mt-1 leading-relaxed">
             Use this dashboard before running automated allocation to identify hostels where student demand exceeds available room supply. Students whose top choices are over-subscribed will be evaluated for their secondary preferences.
           </p>
         </div>
       </div>
 
-      {/* Overview Metric Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-          <span className="text-xs text-slate-500 font-medium">Total Entities Requesting</span>
-          <div className="text-2xl font-black text-slate-900 mt-1">
+      {/* Overview Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <Card className="p-4.5">
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Total Entities Requesting</span>
+          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono">
             {totals.totalEntitiesRequesting}
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">
-            {totals.activeGroupsCount} Roommate Groups • {totals.autoAssignCount} Auto-Assign Pool
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+            {totals.activeGroupsCount} Groups • {totals.autoAssignCount} Auto-Pool
           </p>
-        </div>
+        </Card>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-          <span className="text-xs text-slate-500 font-medium">Available Campus Beds</span>
-          <div className="text-2xl font-black text-emerald-600 mt-1">
+        <Card className="p-4.5">
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Available Campus Beds</span>
+          <div className="text-2xl font-bold text-teal-600 dark:text-teal-400 mt-1 font-mono">
             {campusTotals.availableBeds} / {campusTotals.totalBeds}
           </div>
-          <p className="text-[11px] text-slate-400 mt-1">
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
             {campusTotals.availableRooms} vacant rooms across {hostelSummaries.length} hostels
           </p>
-        </div>
+        </Card>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-          <span className="text-xs text-slate-500 font-medium">Climate Control Demand</span>
-          <div className="text-sm font-bold text-slate-800 mt-2 flex items-center justify-between">
-            <span className="text-blue-700">❄️ {acDemand.ac || 0} AC ({acPercent}%)</span>
-            <span className="text-emerald-700">🍃 {acDemand["non-ac"] || 0} Non-AC ({nonAcPercent}%)</span>
+        <Card className="p-4.5 flex items-center justify-between">
+          <div>
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Climate Control Demand</span>
+            <div className="mt-1 space-y-0.5 text-xs font-bold">
+              <span className="text-blue-600 dark:text-blue-400 block font-mono">❄️ {acDemand.ac || 0} AC ({acPercent}%)</span>
+              <span className="text-teal-600 dark:text-teal-400 block font-mono">🍃 {acDemand["non-ac"] || 0} Non-AC ({nonAcPercent}%)</span>
+            </div>
           </div>
-          {/* Progress bar */}
-          <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden mt-2 flex">
-            <div style={{ width: `${acPercent}%` }} className="bg-blue-600" />
-            <div style={{ width: `${nonAcPercent}%` }} className="bg-emerald-500" />
-            <div style={{ width: `${flexPercent}%` }} className="bg-slate-300" />
-          </div>
-          <p className="text-[10px] text-slate-400 mt-1.5 text-right">
-            {acDemand["no-preference"] || 0} flexible with either
-          </p>
-        </div>
+          <DonutRing
+            value={acPercent}
+            max={100}
+            size={68}
+            strokeWidth={7}
+            centerValue={`${acPercent}%`}
+            centerLabel="AC"
+            color="#3b82f6"
+          />
+        </Card>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-          <span className="text-xs text-slate-500 font-medium">Floor Height Distribution</span>
+        <Card className="p-4.5">
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Floor Height Distribution</span>
           <div className="grid grid-cols-4 gap-1 text-center mt-2 text-xs">
-            <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-100">
-              <span className="block font-bold text-slate-900">{floorDemand.low || 0}</span>
+            <div className="bg-slate-50 dark:bg-slate-900 p-1 rounded-lg border border-slate-200/60 dark:border-slate-800">
+              <span className="block font-bold text-slate-900 dark:text-slate-100 font-mono">{floorDemand.low || 0}</span>
               <span className="text-[10px] text-slate-400">Low</span>
             </div>
-            <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-100">
-              <span className="block font-bold text-slate-900">{floorDemand.mid || 0}</span>
+            <div className="bg-slate-50 dark:bg-slate-900 p-1 rounded-lg border border-slate-200/60 dark:border-slate-800">
+              <span className="block font-bold text-slate-900 dark:text-slate-100 font-mono">{floorDemand.mid || 0}</span>
               <span className="text-[10px] text-slate-400">Mid</span>
             </div>
-            <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-100">
-              <span className="block font-bold text-slate-900">{floorDemand.high || 0}</span>
+            <div className="bg-slate-50 dark:bg-slate-900 p-1 rounded-lg border border-slate-200/60 dark:border-slate-800">
+              <span className="block font-bold text-slate-900 dark:text-slate-100 font-mono">{floorDemand.high || 0}</span>
               <span className="text-[10px] text-slate-400">High</span>
             </div>
-            <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-100">
-              <span className="block font-bold text-slate-900">{floorDemand.any || 0}</span>
+            <div className="bg-slate-50 dark:bg-slate-900 p-1 rounded-lg border border-slate-200/60 dark:border-slate-800">
+              <span className="block font-bold text-slate-900 dark:text-slate-100 font-mono">{floorDemand.any || 0}</span>
               <span className="text-[10px] text-slate-400">Any</span>
             </div>
           </div>
-          <p className="text-[10px] text-slate-400 mt-1.5 text-center">
+          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5 text-center">
             Relative building third bands
           </p>
-        </div>
+        </Card>
+      </div>
+
+      {/* Visual Charts: First-Choice Demand & Climate Control */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <Card className="p-6">
+          <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading mb-1">
+            Top First-Choice Demand vs. Free Beds
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+            Hostels with the highest concentration of priority #1 selections
+          </p>
+          <HorizontalBars data={demandBars} className="my-2" />
+        </Card>
+
+        <Card className="p-6">
+          <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading mb-1">
+            AC vs. Non-AC Climate Demand
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+            Overall student climate control preference distribution
+          </p>
+          <StackedBar
+            segments={acSegments}
+            total={totalAcDemanded || 1}
+            height="h-5"
+            className="my-3"
+          />
+        </Card>
       </div>
 
       {/* Room Size Demand vs. Inventory Breakdown */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs space-y-4">
-        <h2 className="text-base font-bold text-slate-900">Room Capacity Demand vs. Campus Supply</h2>
+      <Card className="p-6 mb-8 space-y-4">
+        <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading">
+          Room Capacity Demand vs. Campus Supply
+        </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((size) => {
             const req = roomSizeDemand[size] || { groups: 0, autoStudents: 0, totalBedsDemanded: 0 };
@@ -183,39 +240,39 @@ export default function AdminDemandPage() {
             return (
               <div
                 key={size}
-                className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3"
+                className="p-4 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-3"
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-slate-900">
+                  <span className="text-sm font-bold text-slate-900 dark:text-slate-100 font-heading">
                     {size === 1 ? "1-Bed Single" : `${size}-Bed Rooms`}
                   </span>
-                  <Badge variant={diff >= 0 ? "success" : "danger"} size="sm">
-                    {diff >= 0 ? `+${diff} Beds Available` : `${diff} Bed Deficit`}
+                  <Badge variant={diff >= 0 ? "success" : "danger"} size="xs">
+                    {diff >= 0 ? `+${diff} Available` : `${diff} Deficit`}
                   </Badge>
                 </div>
 
                 <div className="space-y-1.5 text-xs">
-                  <div className="flex justify-between text-slate-600">
+                  <div className="flex justify-between text-slate-600 dark:text-slate-400">
                     <span>{size === 1 ? "Single-Room Students:" : "Groups Requesting:"}</span>
-                    <strong className="text-slate-900">
+                    <strong className="text-slate-900 dark:text-slate-100">
                       {size === 1
                         ? `${req.autoStudents || 0} students`
                         : `${req.groups} (${req.groups * size} beds)`}
                     </strong>
                   </div>
                   {size > 1 && (
-                    <div className="flex justify-between text-slate-600">
+                    <div className="flex justify-between text-slate-600 dark:text-slate-400">
                       <span>Auto-Assign Students:</span>
-                      <strong className="text-slate-900">{req.autoStudents} beds</strong>
+                      <strong className="text-slate-900 dark:text-slate-100">{req.autoStudents} beds</strong>
                     </div>
                   )}
-                  <div className="flex justify-between text-slate-700 font-semibold pt-1 border-t border-slate-200">
+                  <div className="flex justify-between text-slate-700 dark:text-slate-300 font-semibold pt-1 border-t border-slate-200 dark:border-slate-800">
                     <span>Total Bed Demand:</span>
-                    <span className="text-indigo-600 font-black">{req.totalBedsDemanded} beds</span>
+                    <span className="text-indigo-600 dark:text-indigo-400 font-bold font-mono">{req.totalBedsDemanded} beds</span>
                   </div>
-                  <div className="flex justify-between text-slate-700 font-semibold">
+                  <div className="flex justify-between text-slate-700 dark:text-slate-300 font-semibold">
                     <span>Available Free Beds:</span>
-                    <span className="text-emerald-700 font-black">
+                    <span className="text-teal-600 dark:text-teal-400 font-bold font-mono">
                       {supply.availableBeds} beds ({supply.availableRooms} rooms)
                     </span>
                   </div>
@@ -224,113 +281,125 @@ export default function AdminDemandPage() {
             );
           })}
         </div>
-      </div>
+      </Card>
 
-      {/* Hostels First-Choice Demand Table */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs space-y-4">
-        <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      {/* Hostels First-Choice Demand Balance Sheet */}
+      <Card className="overflow-hidden">
+        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h2 className="text-base font-bold text-slate-900">Per-Hostel 1st-Choice Demand Balance Sheet</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading">
+              Per-Hostel 1st-Choice Demand Balance Sheet
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Ranked by total groups and auto students choosing each hostel as priority #1.
             </p>
           </div>
-          <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-xl">
+          <Badge variant="neutral" size="sm">
             {hostelSummaries.length} Campus Hostels
-          </span>
+          </Badge>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 uppercase font-bold tracking-wider text-[11px]">
+            <thead className="bg-slate-50/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 uppercase font-bold tracking-wider text-[11px]">
               <tr>
-                <th className="py-3 px-4">Hostel / Code</th>
-                <th className="py-3 px-4">Gender</th>
-                <th className="py-3 px-4">1st Choice Demand</th>
-                <th className="py-3 px-4">1-Bed Single</th>
-                <th className="py-3 px-4">Available 2-Bed</th>
-                <th className="py-3 px-4">Available 3-Bed</th>
-                <th className="py-3 px-4">Available 4-Bed</th>
-                <th className="py-3 px-4">Total Free Beds</th>
-                <th className="py-3 px-4">AC vs Non-AC</th>
-                <th className="py-3 px-4 text-right">Supply Status</th>
+                <th className="py-3.5 px-4">Hostel / Code</th>
+                <th className="py-3.5 px-4">Gender</th>
+                <th className="py-3.5 px-4">1st Choice Demand</th>
+                <th className="py-3.5 px-4">1-Bed Single</th>
+                <th className="py-3.5 px-4">Available 2-Bed</th>
+                <th className="py-3.5 px-4">Available 3-Bed</th>
+                <th className="py-3.5 px-4">Available 4-Bed</th>
+                <th className="py-3.5 px-4">Total Free Beds</th>
+                <th className="py-3.5 px-4">AC vs Non-AC</th>
+                <th className="py-3.5 px-4 text-right">Supply Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300 font-medium">
               {hostelSummaries.map((h) => {
                 const isHighDemand = h.firstChoiceDemand > 5 && h.inventory.availableBeds < h.firstChoiceDemand * 2;
 
                 return (
-                  <tr key={h.id} className="hover:bg-slate-50/60 transition-colors">
+                  <tr key={h.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/60 transition-colors">
                     <td className="py-3.5 px-4">
                       <div>
-                        <span className="font-bold text-slate-900">{h.name}</span>
-                        <span className="block text-[11px] font-mono text-slate-500">{h.code}</span>
+                        <span className="font-bold text-slate-900 dark:text-slate-100">{h.name}</span>
+                        <span className="block text-[11px] font-mono text-slate-500 dark:text-slate-400">{h.code}</span>
                       </div>
                     </td>
 
                     <td className="py-3.5 px-4 capitalize">
-                      <span className="inline-block bg-slate-100 px-2 py-0.5 rounded text-[11px] font-semibold text-slate-700">
+                      <Badge
+                        variant={h.gender === "boys" ? "boys" : h.gender === "girls" ? "girls" : "neutral"}
+                        size="xs"
+                      >
                         {h.gender}
-                      </span>
+                      </Badge>
                     </td>
 
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-extrabold text-sm text-indigo-700">
+                        <span className="font-extrabold text-sm text-indigo-600 dark:text-indigo-400 font-mono">
                           {h.firstChoiceDemand}
                         </span>
-                        <span className="text-[10px] text-slate-400">group(s)</span>
+                        <span className="text-[10px] text-slate-400">groups</span>
                       </div>
                     </td>
 
                     <td className="py-3.5 px-4">
-                      <span className="font-semibold text-slate-800">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">
                         {h.inventory.bySizeAvailable[1] || 0}
                       </span>{" "}
                       <span className="text-[10px] text-slate-400">rooms</span>
                     </td>
 
                     <td className="py-3.5 px-4">
-                      <span className="font-semibold text-slate-800">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">
                         {h.inventory.bySizeAvailable[2] || 0}
                       </span>{" "}
                       <span className="text-[10px] text-slate-400">rooms</span>
                     </td>
 
                     <td className="py-3.5 px-4">
-                      <span className="font-semibold text-slate-800">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">
                         {h.inventory.bySizeAvailable[3] || 0}
                       </span>{" "}
                       <span className="text-[10px] text-slate-400">rooms</span>
                     </td>
 
                     <td className="py-3.5 px-4">
-                      <span className="font-semibold text-slate-800">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">
                         {h.inventory.bySizeAvailable[4] || 0}
                       </span>{" "}
                       <span className="text-[10px] text-slate-400">rooms</span>
                     </td>
 
                     <td className="py-3.5 px-4">
-                      <span className="font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs">
-                        {h.inventory.availableBeds} beds
-                      </span>
+                      <span className="font-bold text-teal-600 dark:text-teal-400 font-mono">
+                        {h.inventory.availableBeds} free
+                      </span>{" "}
+                      <span className="text-[10px] text-slate-400">/ {h.inventory.totalBeds} total</span>
                     </td>
 
-                    <td className="py-3.5 px-4 text-[11px]">
-                      <span className="text-blue-700 font-semibold">❄️ {h.inventory.acBedsAvailable}</span>
-                      {" / "}
-                      <span className="text-emerald-700 font-semibold">🍃 {h.inventory.nonAcBedsAvailable}</span>
+                    <td className="py-3.5 px-4">
+                      <span className="text-[11px] text-slate-600 dark:text-slate-400">
+                        {h.inventory.acBeds} AC • {h.inventory.nonAcBeds} Non-AC
+                      </span>
                     </td>
 
                     <td className="py-3.5 px-4 text-right">
                       {isHighDemand ? (
-                        <Badge variant="danger" size="sm">High Demand</Badge>
-                      ) : h.firstChoiceDemand > 0 ? (
-                        <Badge variant="indigo" size="sm">Balanced</Badge>
+                        <Badge variant="warning" size="xs">
+                          High Demand
+                        </Badge>
+                      ) : h.inventory.availableBeds === 0 ? (
+                        <Badge variant="danger" size="xs">
+                          Full
+                        </Badge>
                       ) : (
-                        <Badge variant="neutral" size="sm">Available</Badge>
+                        <Badge variant="success" size="xs">
+                          Available
+                        </Badge>
                       )}
                     </td>
                   </tr>
@@ -339,7 +408,7 @@ export default function AdminDemandPage() {
             </tbody>
           </table>
         </div>
-      </div>
-    </div>
+      </Card>
+    </PageContainer>
   );
 }

@@ -3,12 +3,27 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import axios from "@/lib/axios";
-import Badge from "@/components/ui/Badge";
-import Button from "@/components/ui/Button";
-import Modal from "@/components/ui/Modal";
-import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import Pagination from "@/components/ui/Pagination";
-import EmptyState from "@/components/ui/EmptyState";
+import {
+  PageContainer,
+  Card,
+  Badge,
+  Button,
+  Modal,
+  ConfirmDialog,
+  Alert,
+  Input,
+  Select,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+} from "@/components/ui";
+import {
+  AdminPageHeader,
+  DataTable,
+  StatusBadge,
+} from "@/components/admin";
 import { PRIORITY_MODES, PRIORITY_MODE_DETAILS } from "@/config/allocation";
 
 export default function AdminAllocationsPage() {
@@ -102,372 +117,279 @@ export default function AdminAllocationsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <PageContainer maxWidth="7xl" className="py-8">
       {/* Simulation Safety Guarantee Banner */}
-      <div className="flex items-center gap-3 rounded-2xl bg-indigo-50/80 border border-indigo-200/80 p-4 text-indigo-900 shadow-sm">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white font-bold text-lg shadow-sm">
+      <div className="mb-6 flex items-center gap-3.5 rounded-2xl bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 p-4 text-indigo-900 dark:text-indigo-300 shadow-xs">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white font-bold text-lg shadow-xs">
           ⚡
         </span>
         <div className="text-xs sm:text-sm">
           <p className="font-bold">Draft Simulation Engine</p>
-          <p className="text-indigo-700 mt-0.5">
-            Simulation only. Running this does <strong>NOT</strong> modify any physical room occupancy, roommate group, or student enrollment records.
+          <p className="text-indigo-800 dark:text-indigo-300/80 mt-0.5">
+            Simulation only. Running this does <strong>NOT</strong> modify physical room occupancy, roommate groups, or student assignment records until explicitly published.
           </p>
         </div>
       </div>
 
-      {/* Header & Run Action */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Automated Allocations
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Run multi-round priority simulations, examine random baseline comparisons, and inspect room placements.
-          </p>
+      {/* Header */}
+      <AdminPageHeader
+        title="Automated Allocations"
+        description="Run multi-round priority simulations, examine random baseline comparisons, and inspect room placements."
+        breadcrumbs={[{ label: "Allocations" }]}
+        actions={
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              setFormError(null);
+              setIsModalOpen(true);
+            }}
+          >
+            <span className="mr-1.5 text-base">▶</span> Run Simulation
+          </Button>
+        }
+      />
+
+      {error && (
+        <div className="mb-6">
+          <Alert variant="danger" title="Error" onClose={() => setError(null)}>
+            {error}
+          </Alert>
         </div>
-        <Button
-          onClick={() => {
-            setFormError(null);
-            setIsModalOpen(true);
-          }}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/20"
-        >
-          <span className="mr-1.5 text-base">▶</span> Run Simulation
-        </Button>
-      </div>
+      )}
 
-      {/* Runs Table Card */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">
-        <div className="border-b border-slate-200/80 bg-slate-50/60 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-sm font-bold text-slate-900">Simulation History</h2>
-          <span className="text-xs text-slate-500">
-            Showing {runs.length} of {pagination.total} runs
-          </span>
-        </div>
+      {/* Runs DataTable */}
+      <DataTable
+        isLoading={loading}
+        isEmpty={runs.length === 0}
+        emptyTitle="No allocation simulations executed yet"
+        emptyDescription="Launch your first draft simulation to cluster students, place groups by priority rounds, and evaluate satisfaction metrics."
+        emptyAction={
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setIsModalOpen(true)}
+          >
+            Run First Simulation
+          </Button>
+        }
+        pagination={{
+          currentPage: pagination.page,
+          totalPages: pagination.pages,
+          totalItems: pagination.total,
+          onPageChange: (p) => fetchRuns(p),
+        }}
+        skeletonRows={6}
+        skeletonCols={8}
+      >
+        <TableHeader>
+          <TableRow>
+            <TableHead>Run Name</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Mode &amp; Seed</TableHead>
+            <TableHead>Allocated</TableHead>
+            <TableHead>Waitlist</TableHead>
+            <TableHead>Execution</TableHead>
+            <TableHead>Created</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {runs.map((run) => {
+            const counts = run.stats?.counts || {};
+            return (
+              <TableRow key={run._id}>
+                {/* Run Name */}
+                <TableCell>
+                  <Link
+                    href={`/admin/allocations/${run._id}`}
+                    className="font-bold text-slate-900 dark:text-slate-100 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors block"
+                  >
+                    {run.name}
+                  </Link>
+                </TableCell>
 
-        {loading ? (
-          <div className="p-12 text-center">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
-            <p className="mt-3 text-sm text-slate-500">Loading allocation history...</p>
-          </div>
-        ) : error ? (
-          <div className="p-8 text-center text-rose-600 text-sm">{error}</div>
-        ) : runs.length === 0 ? (
-          <EmptyState
-            title="No allocation simulations executed yet"
-            description="Launch your first draft simulation to cluster students, place groups by priority rounds, and evaluate satisfaction metrics."
-            actionLabel="Run First Simulation"
-            onAction={() => setIsModalOpen(true)}
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-600">
-              <thead className="bg-slate-50/80 text-xs font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-200/80">
-                <tr>
-                  <th className="px-6 py-3.5">Run Name</th>
-                  <th className="px-6 py-3.5">Status</th>
-                  <th className="px-6 py-3.5">Mode & Seed</th>
-                  <th className="px-6 py-3.5">Allocated</th>
-                  <th className="px-6 py-3.5">Waitlist</th>
-                  <th className="px-6 py-3.5">Execution</th>
-                  <th className="px-6 py-3.5">Created</th>
-                  <th className="px-6 py-3.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {runs.map((run) => {
-                  const counts = run.stats?.counts || {};
-                  return (
-                    <tr key={run._id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="px-6 py-4 font-semibold text-slate-900">
-                        <Link
-                          href={`/admin/allocations/${run._id}`}
-                          className="hover:text-indigo-600 transition-colors"
-                        >
-                          {run.name}
-                        </Link>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge
-                          variant={
-                            run.status === "published"
-                              ? "emerald"
-                              : run.status === "draft"
-                              ? "blue"
-                              : run.status === "publishing" || run.status === "running"
-                              ? "amber"
-                              : run.status === "rolled_back"
-                              ? "default"
-                              : run.status === "discarded"
-                              ? "default"
-                              : "rose"
-                          }
-                          size="sm"
-                        >
-                          {run.status.replace("_", " ").toUpperCase()}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 text-xs font-mono text-slate-600">
-                        <span className="font-sans font-semibold capitalize text-slate-800">
-                          {run.options?.priorityMode || "lottery"}
-                        </span>
-                        <span className="text-slate-400 block text-[11px]">
-                          Seed: {run.options?.seed ?? "N/A"}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="font-bold text-slate-900">
-                          {counts.studentsAllocated ?? "—"}
-                        </span>{" "}
-                        <span className="text-xs text-slate-400">students</span>
-                        <span className="block text-[11px] text-slate-500">
-                          {counts.roomsUsed ?? 0} rooms
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span
-                          className={`font-semibold ${
-                            run.waitlistCount > 0 ? "text-amber-700" : "text-slate-500"
-                          }`}
-                        >
-                          {run.waitlistCount || 0}
-                        </span>{" "}
-                        <span className="text-xs text-slate-400">units</span>
-                      </td>
-                      <td className="px-6 py-4 text-xs text-slate-500">
-                        {run.stats?.durationMs ? `${run.stats.durationMs}ms` : "—"}
-                      </td>
-                      <td className="px-6 py-4 text-xs text-slate-500">
-                        {new Date(run.createdAt).toLocaleString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </td>
-                      <td className="px-6 py-4 text-right space-x-2">
-                        <Link
-                          href={`/admin/allocations/${run._id}`}
-                          className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-indigo-600 shadow-sm"
-                        >
-                          View
-                        </Link>
-                        {(run.status === "draft" || run.status === "failed" || run.status === "discarded") && (
-                          <button
-                            type="button"
-                            onClick={() => setDeleteRunId(run._id)}
-                            className="inline-flex items-center rounded-lg border border-rose-200 bg-rose-50/50 px-2.5 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100/80 transition-colors"
-                          >
-                            Delete
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                {/* Status Badge */}
+                <TableCell>
+                  <StatusBadge type="run" status={run.status} />
+                </TableCell>
 
-        {pagination.pages > 1 && (
-          <div className="p-4 border-t border-slate-200/80">
-            <Pagination
-              currentPage={pagination.page}
-              totalPages={pagination.pages}
-              onPageChange={(p) => fetchRuns(p)}
-            />
-          </div>
-        )}
-      </div>
+                {/* Mode & Seed */}
+                <TableCell>
+                  <div className="text-xs font-mono text-slate-600 dark:text-slate-400">
+                    <span className="font-sans font-semibold capitalize text-slate-800 dark:text-slate-200 block">
+                      {run.options?.priorityMode || "lottery"}
+                    </span>
+                    <span className="text-slate-400 dark:text-slate-500 text-[11px] block">
+                      Seed: {run.options?.seed ?? "N/A"}
+                    </span>
+                  </div>
+                </TableCell>
+
+                {/* Allocated */}
+                <TableCell>
+                  <div>
+                    <span className="font-bold text-slate-900 dark:text-slate-100 font-mono">
+                      {counts.studentsAllocated ?? "—"}
+                    </span>{" "}
+                    <span className="text-xs text-slate-400">students</span>
+                    <span className="block text-[11px] text-slate-500 dark:text-slate-400">
+                      {counts.roomsUsed ?? 0} rooms used
+                    </span>
+                  </div>
+                </TableCell>
+
+                {/* Waitlist */}
+                <TableCell>
+                  <div>
+                    <span
+                      className={`font-semibold font-mono ${
+                        run.waitlistCount > 0 ? "text-amber-600 dark:text-amber-400 font-bold" : "text-slate-500 dark:text-slate-400"
+                      }`}
+                    >
+                      {run.waitlistCount || 0}
+                    </span>{" "}
+                    <span className="text-xs text-slate-400">units</span>
+                  </div>
+                </TableCell>
+
+                {/* Execution Duration */}
+                <TableCell>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                    {run.stats?.durationMs ? `${run.stats.durationMs}ms` : "—"}
+                  </span>
+                </TableCell>
+
+                {/* Created */}
+                <TableCell>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                    {new Date(run.createdAt).toLocaleString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </TableCell>
+
+                {/* Actions */}
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-1.5">
+                    <Link href={`/admin/allocations/${run._id}`}>
+                      <Button variant="ghost" size="xs" className="text-indigo-600 dark:text-indigo-400">
+                        View &rarr;
+                      </Button>
+                    </Link>
+                    {(run.status === "draft" || run.status === "failed" || run.status === "discarded") && (
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => setDeleteRunId(run._id)}
+                        className="text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                      >
+                        Delete
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </DataTable>
 
       {/* Run Simulation Modal */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => !isSimulating && setIsModalOpen(false)}
+        onClose={() => setIsModalOpen(false)}
         title="Execute Allocation Simulation"
-        description="Configure deterministic parameters for the room allocation engine."
-        maxWidth="max-w-2xl"
+        description="Configure priority rounds, seed reproducibility, and grouping rules for this draft placement run."
+        maxWidth="max-w-xl"
       >
-        <form onSubmit={handleStartSimulation} className="space-y-5 overflow-y-auto pr-1">
+        <form onSubmit={handleStartSimulation} className="space-y-4">
           {formError && (
-            <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-xs text-rose-700 font-medium">
+            <Alert variant="danger" title="Simulation Error">
               {formError}
-            </div>
+            </Alert>
           )}
 
-          {/* Seed Input */}
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-              Random Seed (Optional)
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. 42 (leave blank to generate automatically)"
-              value={formData.seed}
-              onChange={(e) => setFormData({ ...formData, seed: e.target.value })}
-              className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              disabled={isSimulating}
-            />
-            <p className="text-[11px] text-slate-500 mt-1">
-              Re-running with the identical seed and data guarantees the exact same allocation results.
-            </p>
-          </div>
-
-          {/* Priority Mode Selection */}
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-              Unit Priority Policy
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {PRIORITY_MODES.map((modeKey) => {
-                const info = PRIORITY_MODE_DETAILS[modeKey];
-                const isSelected = formData.priorityMode === modeKey;
-                return (
-                  <label
-                    key={modeKey}
-                    className={`flex flex-col justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${
-                      isSelected
-                        ? "border-indigo-600 bg-indigo-50/50 ring-1 ring-indigo-500"
-                        : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50"
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-bold text-xs text-slate-900">{info.label}</span>
-                        <input
-                          type="radio"
-                          name="priorityMode"
-                          value={modeKey}
-                          checked={isSelected}
-                          onChange={(e) => setFormData({ ...formData, priorityMode: e.target.value })}
-                          className="h-3.5 w-3.5 text-indigo-600 focus:ring-indigo-500"
-                          disabled={isSimulating}
-                        />
-                      </div>
-                      <p className="text-[11px] text-slate-500 leading-relaxed">{info.description}</p>
-                    </div>
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Gender Filter & Student Scope */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                Gender Isolation Pool
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                Priority Mode
               </label>
-              <select
-                value={formData.gender}
-                onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                disabled={isSimulating}
-              >
-                <option value="all">All Genders (Independent Pools)</option>
-                <option value="male">Male Students & Boys/Mixed Hostels</option>
-                <option value="female">Female Students & Girls/Mixed Hostels</option>
-                <option value="other">Other Students & Mixed Hostels</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                Student Scope
-              </label>
-              <select
-                value={formData.studentScope}
-                onChange={(e) => setFormData({ ...formData, studentScope: e.target.value })}
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                disabled={isSimulating}
-              >
-                <option value="all">All Registered Students</option>
-                <option value="demo">Demo Accounts Only (isDemo: true)</option>
-                <option value="real">Real Enrollments Only (isDemo: false)</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Incomplete Group Policy & Default Room Size */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                Incomplete Group Policy
-              </label>
-              <select
-                value={formData.incompleteGroupPolicy}
-                onChange={(e) => setFormData({ ...formData, incompleteGroupPolicy: e.target.value })}
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                disabled={isSimulating}
-              >
-                <option value="shrink">Shrink (groups with &ge; 2 members placed in smaller rooms)</option>
-                <option value="waitlist">Waitlist (place on waitlist until full)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-                Default Room Size for Solo Pool
-              </label>
-              <select
-                value={formData.defaultRoomSize}
-                onChange={(e) => setFormData({ ...formData, defaultRoomSize: Number(e.target.value) })}
-                className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                disabled={isSimulating}
-              >
-                <option value={2}>2 Beds (Double Occupancy)</option>
-                <option value={3}>3 Beds (Triple Occupancy)</option>
-                <option value={4}>4 Beds (Quad Occupancy)</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Include Ungrouped Students Checkbox */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-3.5">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.includeUngrouped}
-                onChange={(e) => setFormData({ ...formData, includeUngrouped: e.target.checked })}
-                className="mt-0.5 h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500"
-                disabled={isSimulating}
+              <Select
+                value={formData.priorityMode}
+                onChange={(val) => setFormData({ ...formData, priorityMode: val })}
+                options={[
+                  { value: "lottery", label: "Random Lottery" },
+                  { value: "seniority", label: "Academic Seniority (Year 4 &rarr; 1)" },
+                  { value: "first_come_first_served", label: "Application Timestamp (FCFS)" },
+                  { value: "distance", label: "Geographic Distance" },
+                ]}
               />
-              <div>
-                <span className="font-semibold text-xs text-slate-900 block">
-                  Include Ungrouped Students
-                </span>
-                <span className="text-[11px] text-slate-500 block mt-0.5 leading-normal">
-                  Automatically cluster students with completed preferences who did not form a group and did not explicitly select auto-assign mode.
-                </span>
-              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                Reproducibility Seed (Optional)
+              </label>
+              <Input
+                type="text"
+                placeholder="e.g. 12345 (Leave empty for random)"
+                value={formData.seed}
+                onChange={(e) => setFormData({ ...formData, seed: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                Gender Filter
+              </label>
+              <Select
+                value={formData.gender}
+                onChange={(val) => setFormData({ ...formData, gender: val })}
+                options={[
+                  { value: "all", label: "All Students (Male & Female)" },
+                  { value: "male", label: "Male Students Only" },
+                  { value: "female", label: "Female Students Only" },
+                ]}
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                Max Swap Optimization Passes
+              </label>
+              <Input
+                type="number"
+                min="0"
+                max="10"
+                value={formData.maxSwapPasses}
+                onChange={(e) => setFormData({ ...formData, maxSwapPasses: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 pt-2">
+            <input
+              type="checkbox"
+              id="includeUngrouped"
+              checked={formData.includeUngrouped}
+              onChange={(e) => setFormData({ ...formData, includeUngrouped: e.target.checked })}
+              className="h-4 w-4 rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-indigo-500"
+            />
+            <label htmlFor="includeUngrouped" className="text-xs font-medium text-slate-700 dark:text-slate-300 cursor-pointer">
+              Include ungrouped / individual auto-pool students
             </label>
           </div>
 
-          {/* Modal Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsModalOpen(false)}
-              disabled={isSimulating}
-            >
+          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <Button variant="secondary" size="sm" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={isSimulating}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white min-w-[140px]"
-            >
-              {isSimulating ? (
-                <span className="flex items-center gap-2">
-                  <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Running...
-                </span>
-              ) : (
-                "Start Simulation"
-              )}
+            <Button variant="primary" size="sm" type="submit" isLoading={isSimulating}>
+              Execute Simulation
             </Button>
           </div>
         </form>
@@ -476,13 +398,14 @@ export default function AdminAllocationsPage() {
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={Boolean(deleteRunId)}
-        title="Delete Allocation Draft"
-        message="Are you sure you want to delete this draft run and all associated assignment records? This action cannot be undone."
-        confirmLabel={isDeleting ? "Deleting..." : "Delete Run"}
-        isDestructive={true}
+        onClose={() => setDeleteRunId(null)}
         onConfirm={handleDelete}
-        onCancel={() => setDeleteRunId(null)}
+        title="Delete Allocation Run?"
+        message="Are you sure you want to delete this draft simulation run? All draft room placements, comparison metrics, and assignments in this run will be deleted permanently."
+        confirmText="Delete Run"
+        variant="danger"
+        isLoading={isDeleting}
       />
-    </div>
+    </PageContainer>
   );
 }

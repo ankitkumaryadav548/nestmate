@@ -45,6 +45,16 @@ import {
   IconUsers,
   IconShield,
 } from "@/components/ui";
+import {
+  AdminPageHeader,
+  FilterBar,
+  StatusBadge,
+  ConfirmTypeDialog,
+  HorizontalBars,
+  StackedBar,
+  DonutRing,
+  Sparkline,
+} from "@/components/admin";
 
 export default function DesignSystemClient() {
   const toast = useToast();
@@ -56,6 +66,9 @@ export default function DesignSystemClient() {
   const [textareaValue, setTextareaValue] = useState("");
   const [selectValue, setSelectValue] = useState("opt1");
   const [currentPage, setCurrentPage] = useState(1);
+  const [confirmTypeOpen, setConfirmTypeOpen] = useState(false);
+  const [filterSearch, setFilterSearch] = useState("");
+  const [filterSelect, setFilterSelect] = useState("all");
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0b0f19] py-10 transition-colors">
@@ -465,6 +478,136 @@ export default function DesignSystemClient() {
               totalItems={48}
               onPageChange={setCurrentPage}
             />
+          </section>
+
+          {/* 13. ADMIN SPECIALIZED COMPONENTS & CHARTS */}
+          <section className="space-y-6">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 border-b pb-2 border-slate-200 dark:border-slate-800">
+              13. Admin Components & Analytics Charts
+            </h2>
+
+            {/* Admin Header */}
+            <AdminPageHeader
+              title="Admin Section Showcase"
+              description="Demonstrating admin-specific headers, filters, data indicators, and pure SVG charts."
+              breadcrumbs={[
+                { label: "Admin", href: "/admin" },
+                { label: "Design System", href: "/design-system" },
+                { label: "Admin Components" },
+              ]}
+              actions={
+                <Button size="sm" variant="outline" onClick={() => setConfirmTypeOpen(true)}>
+                  Test ConfirmTypeDialog
+                </Button>
+              }
+            />
+
+            {/* FilterBar */}
+            <FilterBar
+              searchValue={filterSearch}
+              onSearchChange={setFilterSearch}
+              searchPlaceholder="Filter across records..."
+              onClear={() => {
+                setFilterSearch("");
+                setFilterSelect("all");
+              }}
+              hasActiveFilters={filterSearch.length > 0 || filterSelect !== "all"}
+            >
+              <Select
+                value={filterSelect}
+                onChange={(e) => setFilterSelect(e.target.value)}
+                className="w-40 text-xs py-1.5"
+              >
+                <option value="all">All Statuses</option>
+                <option value="active">Active Only</option>
+                <option value="draft">Draft Only</option>
+              </Select>
+            </FilterBar>
+
+            {/* Status Badges */}
+            <div className="space-y-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Universal Status Badges</h3>
+              <div className="flex flex-wrap items-center gap-3">
+                <StatusBadge type="room" status="available" />
+                <StatusBadge type="room" status="claimed" />
+                <StatusBadge type="room" status="maintenance" />
+                <StatusBadge type="run" status="draft" />
+                <StatusBadge type="run" status="published" />
+                <StatusBadge type="run" status="rolled_back" />
+                <StatusBadge type="window" status="open" />
+                <StatusBadge type="window" status="closed" />
+                <StatusBadge type="score" score={94} />
+                <StatusBadge type="score" score={68} />
+                <StatusBadge type="score" score={42} />
+              </div>
+            </div>
+
+            {/* Charts Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              <Card className="p-5 space-y-3">
+                <h4 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
+                  Horizontal Bars
+                </h4>
+                <HorizontalBars
+                  data={[
+                    { label: "Himalaya Hostel", value: 180, max: 200, suffix: " / 200 beds (90%)", color: "var(--teal-500)" },
+                    { label: "Nilgiri Hostel", value: 120, max: 150, suffix: " / 150 beds (80%)", color: "var(--brand-500)" },
+                    { label: "Aravali Hostel", value: 65, max: 100, suffix: " / 100 beds (65%)", color: "var(--purple-500)" },
+                  ]}
+                />
+              </Card>
+
+              <Card className="p-5 space-y-3">
+                <h4 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
+                  Stacked Progress Bar
+                </h4>
+                <StackedBar
+                  segments={[
+                    { label: "1st Choice (70)", value: 70, color: "var(--teal-500)" },
+                    { label: "2nd Choice (20)", value: 20, color: "var(--brand-500)" },
+                    { label: "3rd Choice (8)", value: 8, color: "var(--purple-500)" },
+                    { label: "Other (2)", value: 2, color: "var(--slate-400)" },
+                  ]}
+                  total={100}
+                />
+              </Card>
+
+              <Card className="p-5 space-y-3 flex flex-col items-center justify-center">
+                <h4 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider self-start">
+                  Donut Ring Gauge
+                </h4>
+                <DonutRing value={82} label="Weight Total" size={120} strokeWidth={12} />
+              </Card>
+
+              <Card className="p-5 space-y-3">
+                <h4 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
+                  Sparkline Trend
+                </h4>
+                <div className="flex items-center justify-between">
+                  <span className="text-xl font-bold text-[var(--foreground)]">+18.4%</span>
+                  <Sparkline data={[12, 18, 15, 24, 22, 35, 42]} color="var(--teal-500)" width={120} height={36} />
+                </div>
+              </Card>
+            </div>
+
+            {/* ConfirmTypeDialog Demo */}
+            <ConfirmTypeDialog
+              isOpen={confirmTypeOpen}
+              onClose={() => setConfirmTypeOpen(false)}
+              onConfirm={() => {
+                setConfirmTypeOpen(false);
+                toast.success("Confirmed typed action!");
+              }}
+              title="Test Typed Confirmation"
+              description="Type the word CONFIRM to execute this critical action."
+              requiredWord="CONFIRM"
+              confirmLabel="Execute Action"
+              isDestructive={false}
+            >
+              <Alert variant="warning">
+                This dialog demonstrates typed confirmation safeguards for destructive operations.
+              </Alert>
+            </ConfirmTypeDialog>
           </section>
         </div>
       </PageContainer>

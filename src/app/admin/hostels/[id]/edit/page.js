@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import axios from "@/lib/axios";
+import { PageContainer, Card, Alert } from "@/components/ui";
+import { AdminPageHeader } from "@/components/admin";
 import HostelForm from "@/components/hostels/HostelForm";
-import Alert from "@/components/ui/Alert";
 
 export default function EditHostelPage() {
   const { id } = useParams();
@@ -50,39 +50,42 @@ export default function EditHostelPage() {
     }
   };
 
-  return (
-    <div className="flex-1 py-10 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-          <Link href="/admin" className="hover:text-indigo-600">Admin</Link>
-          <span>/</span>
-          <Link href="/admin/hostels" className="hover:text-indigo-600">Hostels</Link>
-          <span>/</span>
-          <span className="text-slate-800">Edit {hostel?.name || "Hostel"}</span>
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-          Edit Hostel: {hostel?.name || "..."}
-        </h1>
-        <p className="text-xs text-slate-500 mt-1">
-          Update facilities, rules, active status, or allowed academic years.
-        </p>
-      </div>
+  if (fetching) {
+    return (
+      <PageContainer maxWidth="4xl" className="py-8">
+        <div className="h-64 animate-pulse rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800" />
+      </PageContainer>
+    );
+  }
 
-      {fetching ? (
-        <div className="h-64 animate-pulse rounded-2xl border border-slate-200 bg-white" />
-      ) : error && !hostel ? (
-        <Alert type="error" title="Error Loading Hostel" message={error} />
-      ) : (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8 shadow-xs">
-          <HostelForm
-            initialData={hostel}
-            onSubmit={handleUpdateHostel}
-            loading={saving}
-            error={error}
-          />
+  return (
+    <PageContainer maxWidth="4xl" className="py-8">
+      <AdminPageHeader
+        title={`Edit Hostel: ${hostel?.name || "Loading..."}`}
+        description="Update capacity boundaries, gender policy, and operational rules."
+        breadcrumbs={[
+          { href: "/admin/hostels", label: "Hostels" },
+          { href: `/admin/hostels/${id}`, label: hostel?.code || "Hostel" },
+          { label: "Edit" },
+        ]}
+      />
+
+      {error && (
+        <div className="mb-6">
+          <Alert variant="danger" title="Error" onClose={() => setError(null)}>
+            {error}
+          </Alert>
         </div>
       )}
-    </div>
+
+      <Card className="p-6 sm:p-8">
+        <HostelForm
+          initialData={hostel}
+          onSubmit={handleUpdateHostel}
+          loading={saving}
+          error={error}
+        />
+      </Card>
+    </PageContainer>
   );
 }

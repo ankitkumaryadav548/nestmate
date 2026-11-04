@@ -3,12 +3,29 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import axios from "@/lib/axios";
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
-import Select from "@/components/ui/Select";
-import Badge from "@/components/ui/Badge";
-import Pagination from "@/components/ui/Pagination";
-import EmptyState from "@/components/ui/EmptyState";
+import {
+  PageContainer,
+  Card,
+  Badge,
+  Button,
+  Pagination,
+  EmptyState,
+  Alert,
+  Avatar,
+  Select,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+  ScoreRing,
+} from "@/components/ui";
+import {
+  AdminPageHeader,
+  FilterBar,
+  DataTable,
+  StatusBadge,
+} from "@/components/admin";
 
 export default function AdminGroupsPage() {
   const [groups, setGroups] = useState([]);
@@ -78,307 +95,251 @@ export default function AdminGroupsPage() {
     fetchGroups(newPage);
   };
 
+  const hasActiveFilters = Boolean(search || status || targetSize || gender);
+
   const handleResetFilters = () => {
     setSearch("");
     setStatus("");
     setTargetSize("");
     setGender("");
+    setPage(1);
   };
 
-  const getStatusBadge = (grpStatus) => {
+  const getGroupStatusBadge = (grpStatus) => {
     switch (grpStatus) {
       case "forming":
-        return <Badge variant="info">Forming</Badge>;
+        return <Badge variant="warning" size="sm" dot>Forming</Badge>;
       case "complete":
-        return <Badge variant="success">Complete</Badge>;
+        return <Badge variant="success" size="sm" dot>Complete</Badge>;
       case "locked":
-        return <Badge variant="purple">Locked</Badge>;
+        return <Badge variant="brand" size="sm" dot>Locked</Badge>;
       case "disbanded":
-        return <Badge variant="neutral">Disbanded</Badge>;
+        return <Badge variant="neutral" size="sm">Disbanded</Badge>;
       default:
-        return <Badge variant="neutral">{grpStatus}</Badge>;
+        return <Badge variant="neutral" size="sm">{grpStatus}</Badge>;
     }
   };
 
-  const getScoreColor = (score) => {
-    if (score === null || score === undefined) return "text-slate-400";
-    if (score >= 80) return "text-emerald-700 bg-emerald-50 border-emerald-200";
-    if (score >= 60) return "text-blue-700 bg-blue-50 border-blue-200";
-    if (score >= 40) return "text-amber-700 bg-amber-50 border-amber-200";
-    return "text-rose-700 bg-rose-50 border-rose-200";
-  };
-
   return (
-    <div className="flex-1 py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+    <PageContainer maxWidth="7xl" className="py-8">
       {/* Header */}
-      <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/admin"
-              className="text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-colors"
-            >
-              &larr; Admin Console
-            </Link>
+      <AdminPageHeader
+        title="Roommate Groups"
+        description="Monitor student-formed roommate clusters, audit compatibility breakdown, and override assignments."
+        breadcrumbs={[{ label: "Groups" }]}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="brand" size="md">
+              Total Groups: {pagination.total}
+            </Badge>
+            {stats && (
+              <Badge variant="success" size="md">
+                In Groups: {stats.studentsInGroups || 0}
+              </Badge>
+            )}
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mt-1">
-            Roommate Groups
-          </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
-            Monitor, inspect compatibility diagnostics, and manage student roommate clusters.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
-            Total Groups: {pagination.total}
-          </span>
-          {stats && (
-            <>
-              <span className="text-xs font-semibold text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-200">
-                In Groups: {stats.studentsInGroups}
-              </span>
-              <span className="text-xs font-semibold text-slate-700 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
-                Auto Pool: {stats.studentsInAutoPool}
-              </span>
-              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
-                Single-Room Students: {stats.singleRoomStudents || 0}
-              </span>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Filter Toolbar */}
-      <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 items-end">
-          <div className="lg:col-span-2">
-            <Input
-              label="Search Members"
-              placeholder="Search by student name or reg no..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <Select
-              label="Status"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              options={[
-                { value: "", label: "All Statuses" },
-                { value: "forming", label: "Forming" },
-                { value: "complete", label: "Complete" },
-                { value: "locked", label: "Locked" },
-                { value: "disbanded", label: "Disbanded" },
-              ]}
-            />
-          </div>
-
-          <div>
-            <Select
-              label="Target Size"
-              value={targetSize}
-              onChange={(e) => setTargetSize(e.target.value)}
-              options={[
-                { value: "", label: "All Sizes" },
-                { value: "1", label: "1-bed (Single)" },
-                { value: "2", label: "2-bed Room" },
-                { value: "3", label: "3-bed Room" },
-                { value: "4", label: "4-bed Room" },
-              ]}
-            />
-          </div>
-
-          <div>
-            <Select
-              label="Gender"
-              value={gender}
-              onChange={(e) => setGender(e.target.value)}
-              options={[
-                { value: "", label: "All Genders" },
-                { value: "male", label: "Male" },
-                { value: "female", label: "Female" },
-                { value: "other", label: "Other" },
-              ]}
-            />
-          </div>
-        </div>
-
-        {(search || status || targetSize || gender) && (
-          <div className="mt-3 pt-3 border-t border-slate-100 flex justify-end">
-            <Button variant="ghost" size="sm" onClick={handleResetFilters}>
-              Reset Filters
-            </Button>
-          </div>
-        )}
-      </div>
+        }
+      />
 
       {/* Error state */}
       {error && (
-        <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs font-semibold text-rose-700">
-          {error}
+        <div className="mb-6">
+          <Alert variant="danger" title="Error" onClose={() => setError(null)}>
+            {error}
+          </Alert>
         </div>
       )}
 
-      {/* Main Table */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
-        {loading ? (
-          <div className="p-12 text-center">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-r-transparent"></div>
-            <p className="mt-3 text-xs font-semibold text-slate-500">Loading roommate groups...</p>
-          </div>
-        ) : groups.length === 0 ? (
-          <div className="p-8">
-            <EmptyState
-              title="No roommate groups found"
-              description="No groups match your current filter parameters or none have been formed yet."
-            />
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 uppercase font-bold tracking-wider text-[11px]">
-                <tr>
-                  <th className="py-3.5 px-4">Group / Leader</th>
-                  <th className="py-3.5 px-4">Members</th>
-                  <th className="py-3.5 px-4">Size & Gender</th>
-                  <th className="py-3.5 px-4">Avg Compatibility</th>
-                  <th className="py-3.5 px-4">Lowest Pair</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4">Created Date</th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
-                {groups.map((group) => {
-                  const filledCount = group.members?.length || 0;
-                  const leaderId = group.leader?._id?.toString() || group.leader?.toString();
+      {/* Filter Toolbar */}
+      <FilterBar
+        search={search}
+        onSearchChange={(val) => setSearch(val)}
+        searchPlaceholder="Search by student name or registration number..."
+        hasActiveFilters={hasActiveFilters}
+        onClear={handleResetFilters}
+      >
+        <div className="w-full sm:w-36">
+          <Select
+            value={status}
+            onChange={(val) => setStatus(val)}
+            placeholder="Status"
+            options={[
+              { value: "", label: "All Statuses" },
+              { value: "forming", label: "Forming" },
+              { value: "complete", label: "Complete" },
+              { value: "locked", label: "Locked" },
+              { value: "disbanded", label: "Disbanded" },
+            ]}
+          />
+        </div>
 
-                  return (
-                    <tr key={group._id} className="hover:bg-slate-50/60 transition-colors">
-                      {/* Group & Leader */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 font-bold text-indigo-700 text-xs border border-indigo-100">
-                            👥
-                          </div>
-                          <div>
-                            <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                              <span>{group.leader?.name || "Unknown Leader"}</span>
-                              <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.2 rounded font-semibold">
-                                Leader
-                              </span>
-                            </div>
-                            <span className="text-[11px] text-slate-500 font-mono">
-                              {group.leader?.registrationNumber || group.leader?.email || "ID: " + group._id.slice(-6)}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
+        <div className="w-full sm:w-36">
+          <Select
+            value={targetSize}
+            onChange={(val) => setTargetSize(val)}
+            placeholder="Target Size"
+            options={[
+              { value: "", label: "All Sizes" },
+              { value: "1", label: "1-Bed (Single)" },
+              { value: "2", label: "2-Bed Room" },
+              { value: "3", label: "3-Bed Room" },
+              { value: "4", label: "4-Bed Room" },
+            ]}
+          />
+        </div>
 
-                      {/* Members */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex flex-col gap-1">
-                          <span className="font-semibold text-slate-900">
-                            {filledCount} of {group.targetSize} beds filled
-                          </span>
-                          <div className="flex flex-wrap gap-1">
-                            {group.members?.map((m, idx) => (
-                              <span
-                                key={m.user?._id || idx}
-                                className="inline-block bg-slate-100 text-slate-700 rounded px-1.5 py-0.5 text-[10px]"
-                                title={m.user?.course ? `${m.user.name} (${m.user.course})` : m.user?.name}
-                              >
-                                {m.user?.name?.split(" ")[0] || "Student"}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </td>
+        <div className="w-full sm:w-36">
+          <Select
+            value={gender}
+            onChange={(val) => setGender(val)}
+            placeholder="Gender"
+            options={[
+              { value: "", label: "All Genders" },
+              { value: "male", label: "Male" },
+              { value: "female", label: "Female" },
+              { value: "other", label: "Other" },
+            ]}
+          />
+        </div>
+      </FilterBar>
 
-                      {/* Target Size & Gender */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex flex-col gap-1 items-start">
-                          <span className="font-semibold text-slate-900">
-                            {group.targetSize}-Bed Room
-                          </span>
-                          <span className="inline-flex capitalize text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
-                            {group.gender}
-                          </span>
-                        </div>
-                      </td>
+      {/* Groups DataTable */}
+      <DataTable
+        isLoading={loading}
+        isEmpty={groups.length === 0}
+        emptyTitle="No roommate groups found"
+        emptyDescription="No groups match your current filter parameters or none have been formed yet."
+        emptyAction={
+          <Button variant="secondary" size="sm" onClick={handleResetFilters}>
+            Clear Filters
+          </Button>
+        }
+        pagination={{
+          currentPage: pagination.page,
+          totalPages: pagination.totalPages,
+          totalItems: pagination.total,
+          onPageChange: handlePageChange,
+        }}
+        skeletonRows={8}
+        skeletonCols={8}
+      >
+        <TableHeader>
+          <TableRow>
+            <TableHead>Group / Leader</TableHead>
+            <TableHead>Members</TableHead>
+            <TableHead>Size &amp; Gender</TableHead>
+            <TableHead>Avg Compatibility</TableHead>
+            <TableHead>Lowest Pair</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Created</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {groups.map((grp) => {
+            const memberCount = grp.members?.length || 0;
+            const target = grp.targetSize || 2;
+            const leaderName = grp.leader?.name || "Unassigned";
 
-                      {/* Average Score */}
-                      <td className="py-3.5 px-4">
-                        {group.averageScore !== null && group.averageScore !== undefined ? (
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border ${getScoreColor(
-                              group.averageScore
-                            )}`}
-                          >
-                            {group.averageScore}%
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 text-xs">— (1 member)</span>
-                        )}
-                      </td>
+            return (
+              <TableRow key={grp._id}>
+                {/* Group / Leader */}
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <Avatar name={leaderName} size="sm" />
+                    <div>
+                      <span className="font-bold text-slate-900 dark:text-slate-100 block">
+                        {grp.name || `Group #${grp._id.slice(-4)}`}
+                      </span>
+                      <span className="text-xs text-indigo-600 dark:text-indigo-400 font-mono block">
+                        Leader: {leaderName}
+                      </span>
+                    </div>
+                  </div>
+                </TableCell>
 
-                      {/* Lowest Pair */}
-                      <td className="py-3.5 px-4">
-                        {group.lowestPairScore !== null && group.lowestPairScore !== undefined ? (
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border ${getScoreColor(
-                              group.lowestPairScore
-                            )}`}
-                          >
-                            {group.lowestPairScore}%
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 text-xs">—</span>
-                        )}
-                      </td>
+                {/* Members Count & Preview */}
+                <TableCell>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 font-semibold text-slate-800 dark:text-slate-200">
+                      <span>{memberCount}</span>
+                      <span className="text-slate-400">/</span>
+                      <span>{target} members</span>
+                    </div>
+                    {/* Seat Dots */}
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: target }).map((_, i) => (
+                        <span
+                          key={i}
+                          className={`h-2 w-2 rounded-full ${
+                            i < memberCount
+                              ? "bg-indigo-600 dark:bg-indigo-400"
+                              : "border border-dashed border-slate-300 dark:border-slate-600 bg-transparent"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </TableCell>
 
-                      {/* Status */}
-                      <td className="py-3.5 px-4">{getStatusBadge(group.status)}</td>
+                {/* Size & Gender */}
+                <TableCell>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <Badge variant="neutral" size="sm">
+                      {target}-Bed
+                    </Badge>
+                    <Badge
+                      variant={grp.gender === "male" ? "boys" : grp.gender === "female" ? "girls" : "neutral"}
+                      size="sm"
+                    >
+                      {grp.gender}
+                    </Badge>
+                  </div>
+                </TableCell>
 
-                      {/* Created Date */}
-                      <td className="py-3.5 px-4 text-slate-500 text-[11px]">
-                        {new Date(group.createdAt).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </td>
+                {/* Avg Compatibility */}
+                <TableCell>
+                  {grp.averageScore !== undefined && grp.averageScore !== null ? (
+                    <StatusBadge type="score" score={grp.averageScore} size="sm" />
+                  ) : (
+                    <span className="text-slate-400 text-xs">—</span>
+                  )}
+                </TableCell>
 
-                      {/* Action */}
-                      <td className="py-3.5 px-4 text-right">
-                        <Link
-                          href={`/admin/groups/${group._id}`}
-                          className="inline-flex items-center gap-1 rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-600 hover:text-white transition-all shadow-2xs"
-                        >
-                          View &rarr;
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                {/* Lowest Pair */}
+                <TableCell>
+                  {grp.lowestScore !== undefined && grp.lowestScore !== null ? (
+                    <StatusBadge type="score" score={grp.lowestScore} size="sm" />
+                  ) : (
+                    <span className="text-slate-400 text-xs">—</span>
+                  )}
+                </TableCell>
 
-        {/* Pagination */}
-        {!loading && pagination.totalPages > 1 && (
-          <div className="p-4 border-t border-slate-200 bg-slate-50/50">
-            <Pagination
-              currentPage={pagination.page}
-              totalPages={pagination.totalPages}
-              onPageChange={handlePageChange}
-            />
-          </div>
-        )}
-      </div>
-    </div>
+                {/* Status */}
+                <TableCell>
+                  {getGroupStatusBadge(grp.status)}
+                </TableCell>
+
+                {/* Created Date */}
+                <TableCell>
+                  <span className="text-slate-500 dark:text-slate-400 text-xs font-mono">
+                    {grp.createdAt ? new Date(grp.createdAt).toLocaleDateString() : "—"}
+                  </span>
+                </TableCell>
+
+                {/* Actions */}
+                <TableCell className="text-right">
+                  <Link href={`/admin/groups/${grp._id}`}>
+                    <Button variant="ghost" size="xs" className="text-indigo-600 dark:text-indigo-400">
+                      Manage &rarr;
+                    </Button>
+                  </Link>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </DataTable>
+    </PageContainer>
   );
 }

@@ -4,6 +4,22 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import axios from "@/lib/axios";
+import {
+  PageContainer,
+  Card,
+  CardBody,
+  Badge,
+  AnimatedNumber,
+  Button,
+  Reveal,
+  Skeleton,
+} from "@/components/ui";
+import {
+  AdminPageHeader,
+  StatusBadge,
+  StackedBar,
+  HorizontalBars,
+} from "@/components/admin";
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -45,440 +61,528 @@ export default function AdminPage() {
     rooms: 0,
     totalBeds: 0,
     occupiedBeds: 0,
+    reservedBeds: 0,
     availableBeds: 0,
     roomsInMaintenance: 0,
     studentsRegistered: 0,
+    studentsWithCompletedPreferences: 0,
+    studentsAllocated: 0,
+    studentsUnallocated: 0,
+    publishedRunsCount: 0,
+    draftRunsCount: 0,
   };
 
-  const statCards = [
+  const groupData = stats?.groups || {
+    forming: 0,
+    complete: 0,
+    locked: 0,
+    pendingJoinRequests: 0,
+    studentsInGroups: 0,
+    studentsInAutoPool: 0,
+  };
+
+  // Bed Distribution Segments for StackedBar
+  const bedSegments = [
     {
-      label: "Total Hostels",
-      value: totals.hostels,
-      icon: "🏢",
-      color: "bg-blue-50 text-blue-700 border-blue-200",
-      link: "/admin/hostels",
+      label: "Occupied",
+      value: totals.occupiedBeds || 0,
+      color: "bg-indigo-600 dark:bg-indigo-500",
+      displayValue: `${totals.occupiedBeds || 0} beds`,
     },
     {
-      label: "Room Occupancy",
-      value: `${totals.roomsOccupied || 0} / ${totals.rooms}`,
-      icon: "🚪",
-      color: "bg-indigo-50 text-indigo-700 border-indigo-200",
-      link: "/admin/rooms",
-      subtext: `${totals.occupiedBeds} of ${totals.totalBeds} beds occupied`,
+      label: "Reserved (Claimed)",
+      value: totals.reservedBeds || 0,
+      color: "bg-amber-500 dark:bg-amber-400",
+      displayValue: `${totals.reservedBeds || 0} beds`,
     },
     {
-      label: "Students Placement",
-      value: `${totals.studentsAllocated || 0} Allocated`,
-      icon: "🎓",
-      color: "bg-emerald-50 text-emerald-700 border-emerald-200",
-      link: "/admin/allocations",
-      subtext: `${totals.studentsUnallocated || 0} unallocated · ${totals.publishedAllocationsCount || 0} active assignments`,
-    },
-    {
-      label: "Students Registered",
-      value: totals.studentsRegistered,
-      icon: "👥",
-      color: "bg-purple-50 text-purple-700 border-purple-200",
-      link: "/admin/students",
-      subtext: `${totals.studentsWithCompletedPreferences || 0} completed · ${totals.internationalStudents || 0} intl`,
+      label: "Available",
+      value: totals.availableBeds || 0,
+      color: "bg-teal-500 dark:bg-teal-400",
+      displayValue: `${totals.availableBeds || 0} beds`,
     },
   ];
 
+  // Hostel Breakdown for HorizontalBars
+  const hostelBars = (stats?.breakdown || []).slice(0, 6).map((h) => ({
+    label: `${h.code} (${h.name})`,
+    value: h.occupiedBeds || 0,
+    max: h.totalBeds || 1,
+    displayValue: `${h.occupiedBeds || 0} / ${h.totalBeds || 0}`,
+    color:
+      (h.occupiedBeds || 0) >= (h.totalBeds || 1)
+        ? "bg-indigo-600 dark:bg-indigo-500"
+        : (h.occupiedBeds || 0) > 0
+        ? "bg-teal-600 dark:bg-teal-500"
+        : "bg-slate-300 dark:bg-slate-700",
+  }));
+
   return (
-    <div className="flex-1 py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-      {/* Admin Welcome Banner */}
-      <div className="rounded-2xl bg-gradient-to-r from-purple-800 via-indigo-900 to-slate-900 p-8 text-white shadow-xl shadow-purple-950/20 mb-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <PageContainer maxWidth="7xl" className="py-8">
+      {/* Admin Welcome Hero Banner */}
+      <div className="rounded-2xl bg-gradient-to-r from-indigo-900 via-slate-900 to-indigo-950 p-6 sm:p-8 text-white shadow-xl shadow-indigo-950/20 mb-8 border border-indigo-800/40">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-md px-3 py-1 text-xs font-semibold text-purple-200 border border-purple-400/20 mb-3">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              Institutional Administration Console
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-md px-3 py-1 text-xs font-semibold text-indigo-200 border border-indigo-400/20 mb-3">
+              <span className="h-2 w-2 rounded-full bg-teal-400 motion-safe:animate-pulse" />
+              <span>System Operational &amp; Healthy</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-heading">
               Welcome, {user?.name || "Administrator"}
             </h1>
-            <p className="mt-1 text-sm text-purple-100 max-w-xl">
-              Centralized command center for managing residential hostels, student applications, and allocation rules.
+            <p className="mt-1.5 text-sm text-indigo-100 max-w-xl leading-relaxed">
+              Institutional command center for residential allocations, student compatibility matching, selection windows, and governance.
             </p>
           </div>
-          <div className="flex flex-wrap sm:flex-col gap-2">
-            <Link
-              href="/admin/hostels/new"
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-xs font-bold text-indigo-900 shadow-md hover:bg-purple-50 transition-all"
-            >
-              + Add New Hostel
+
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 self-stretch sm:self-auto shrink-0">
+            <Link href="/admin/hostels/new">
+              <Button variant="primary" size="sm" className="bg-white text-indigo-900 hover:bg-indigo-50 border-0 shadow-md">
+                + Add Hostel
+              </Button>
             </Link>
-            <Link
-              href="/admin/rooms"
-              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/10 border border-white/20 px-4 py-2 text-xs font-semibold text-white hover:bg-white/20 transition-all"
-            >
-              Manage Rooms
+            <Link href="/admin/rooms">
+              <Button variant="secondary" size="sm" className="bg-white/10 text-white hover:bg-white/20 border-white/20">
+                Manage Rooms
+              </Button>
             </Link>
           </div>
         </div>
       </div>
 
-      {/* Live System Stat Cards */}
+      {/* Key Inventory Metrics Grid */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-bold text-slate-900">Live Inventory Metrics</h2>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 font-heading">
+              Live Campus Inventory
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Real-time synchronization across rooms, capacity, and student requests
+            </p>
+          </div>
           {loading && (
-            <span className="text-xs text-indigo-600 animate-pulse">
-              Refreshing metrics...
+            <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 motion-safe:animate-pulse">
+              Syncing live metrics...
             </span>
           )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {statCards.map((stat) => {
-            const Content = (
-              <div
-                key={stat.label}
-                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:border-indigo-300 transition-all"
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-medium text-slate-500">{stat.label}</span>
-                  <div
-                    className={`flex h-9 w-9 items-center justify-center rounded-xl border text-sm ${stat.color}`}
-                  >
-                    {stat.icon}
-                  </div>
-                </div>
-                <div className="text-2xl font-black text-slate-900">
-                  {loading ? "..." : stat.value}
-                </div>
-                {stat.subtext ? (
-                  <p className="text-[11px] text-slate-500 mt-1">{stat.subtext}</p>
-                ) : stat.link ? (
-                  <p className="text-[11px] text-indigo-600 font-semibold mt-1">
-                    Manage &rarr;
-                  </p>
-                ) : null}
+          {/* Hostels */}
+          <Card className="p-4.5 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Total Hostels</span>
+              <div className="h-8 w-8 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/40 flex items-center justify-center text-sm">
+                🏢
               </div>
-            );
-
-            return stat.link ? (
-              <Link href={stat.link} key={stat.label} className="block">
-                {Content}
+            </div>
+            <div className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono">
+              <AnimatedNumber value={totals.hostels || 0} />
+            </div>
+            <div className="mt-2 text-xs text-indigo-600 dark:text-indigo-400 font-medium">
+              <Link href="/admin/hostels" className="hover:underline">
+                View Hostels Directory &rarr;
               </Link>
-            ) : (
-              <div key={stat.label}>{Content}</div>
-            );
-          })}
+            </div>
+          </Card>
+
+          {/* Room Occupancy */}
+          <Card className="p-4.5 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Bed Allocation</span>
+              <div className="h-8 w-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900/40 flex items-center justify-center text-sm">
+                🚪
+              </div>
+            </div>
+            <div className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono">
+              <AnimatedNumber value={totals.occupiedBeds || 0} /> / {totals.totalBeds || 0}
+            </div>
+            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+              {totals.availableBeds || 0} available · {totals.reservedBeds || 0} reserved
+            </p>
+          </Card>
+
+          {/* Students Registered */}
+          <Card className="p-4.5 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Registered Students</span>
+              <div className="h-8 w-8 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-900/40 flex items-center justify-center text-sm">
+                👥
+              </div>
+            </div>
+            <div className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono">
+              <AnimatedNumber value={totals.studentsRegistered || 0} />
+            </div>
+            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+              {totals.studentsWithCompletedPreferences || 0} completed preferences
+            </p>
+          </Card>
+
+          {/* Groups & Requests */}
+          <Card className="p-4.5 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Roommate Groups</span>
+              <div className="h-8 w-8 rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 border border-teal-200 dark:border-teal-900/40 flex items-center justify-center text-sm">
+                🤝
+              </div>
+            </div>
+            <div className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono">
+              <AnimatedNumber value={groupData.complete || 0} /> <span className="text-sm font-normal text-slate-500">complete</span>
+            </div>
+            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+              {groupData.forming || 0} forming · {groupData.pendingJoinRequests || 0} join requests
+            </p>
+          </Card>
+        </div>
+      </div>
+
+      {/* Bed Distribution & Hostel Utilization Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        {/* Overall Bed Usage StackedBar */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading">
+                Overall Bed Usage
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Occupied, reserved claims, and vacant beds
+              </p>
+            </div>
+            <Badge variant="brand" size="sm">
+              {totals.totalBeds || 0} Total Beds
+            </Badge>
+          </div>
+
+          <StackedBar
+            segments={bedSegments}
+            total={totals.totalBeds || 1}
+            height="h-5"
+            className="my-4"
+          />
+
+          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
+            <span>Utilization Rate:</span>
+            <strong className="text-slate-900 dark:text-slate-100 font-mono">
+              {totals.totalBeds
+                ? `${Math.round(((totals.occupiedBeds || 0) / totals.totalBeds) * 100)}%`
+                : "0%"}
+            </strong>
+          </div>
+        </Card>
+
+        {/* Hostel Occupancy HorizontalBars */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading">
+                Hostel Occupancy Sample
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Occupied beds versus capacity across active hostels
+              </p>
+            </div>
+            <Link href="/admin/hostels" className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">
+              View All &rarr;
+            </Link>
+          </div>
+
+          {hostelBars.length > 0 ? (
+            <HorizontalBars data={hostelBars} className="my-2" />
+          ) : (
+            <p className="text-xs text-slate-500 dark:text-slate-400 py-4 text-center">
+              No hostel breakdown data available.
+            </p>
+          )}
+        </Card>
+      </div>
+
+      {/* Quick Actions Strip */}
+      <div className="mb-8">
+        <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 font-heading mb-3">
+          Quick Administrative Actions
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+          <Link href="/admin/allocations" className="block">
+            <Card className="p-4 hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-md transition-all group">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 text-lg border border-indigo-100 dark:border-indigo-900/40 group-hover:scale-105 transition-transform">
+                  ⚡
+                </span>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                    Run Simulation
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Draft &amp; compare matching runs
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </Link>
+
+          <Link href="/admin/selection" className="block">
+            <Card className="p-4 hover:border-teal-400 dark:hover:border-teal-600 hover:shadow-md transition-all group">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-50 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 text-lg border border-teal-100 dark:border-teal-900/40 group-hover:scale-105 transition-transform">
+                  ⏱️
+                </span>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">
+                    Selection Window
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Control FCFS claim windows
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </Link>
+
+          <Link href="/admin/announcements" className="block">
+            <Card className="p-4 hover:border-purple-400 dark:hover:border-purple-600 hover:shadow-md transition-all group">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 text-lg border border-purple-100 dark:border-purple-900/40 group-hover:scale-105 transition-transform">
+                  📢
+                </span>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                    Send Announcement
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Broadcast cohort notifications
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </Link>
+
+          <Link href="/admin/integrity" className="block">
+            <Card className="p-4 hover:border-emerald-400 dark:hover:border-emerald-600 hover:shadow-md transition-all group">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 text-lg border border-emerald-100 dark:border-emerald-900/40 group-hover:scale-105 transition-transform">
+                  🛡️
+                </span>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                    Check Integrity
+                  </h4>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Run database diagnostics
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </Link>
         </div>
       </div>
 
       {/* Admin Modules Grid */}
-      <div className="mb-6">
-        <h2 className="text-lg font-bold text-slate-900">System Modules</h2>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Access core administrative modules and configure allocation controls.
+      <div className="mb-4">
+        <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 font-heading">
+          All Management Modules
+        </h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          Access complete directories and system governance tools
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Hostels - LIVE */}
-        <Link
-          href="/admin/hostels"
-          className="group flex flex-col justify-between rounded-2xl border border-indigo-200 bg-white p-6 shadow-sm hover:shadow-md hover:border-indigo-500 transition-all"
-        >
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-xl border border-indigo-100 group-hover:scale-105 transition-transform">
-                🏢
-              </div>
-              <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-                Active Module
-              </span>
-            </div>
-            <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
-              Hostels
-            </h3>
-            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              Configure campus hostels, blocks, wings, eligibility criteria, and facilities.
-            </p>
-          </div>
-          <div className="mt-6 pt-4 border-t border-slate-100 text-xs font-semibold text-indigo-600 flex items-center justify-between">
-            <span>{totals.hostels} Hostels Configured</span>
-            <span>&rarr;</span>
-          </div>
-        </Link>
-
-        {/* Rooms - LIVE */}
-        <Link
-          href="/admin/rooms"
-          className="group flex flex-col justify-between rounded-2xl border border-blue-200 bg-white p-6 shadow-sm hover:shadow-md hover:border-blue-500 transition-all"
-        >
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-xl border border-blue-100 group-hover:scale-105 transition-transform">
-                🚪
-              </div>
-              <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-                Active Module
-              </span>
-            </div>
-            <h3 className="text-base font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-              Rooms
-            </h3>
-            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              Manage room inventory, bulk creation, capacities, AC/Non-AC types, and maintenance status.
-            </p>
-          </div>
-          <div className="mt-6 pt-4 border-t border-slate-100 text-xs font-semibold text-blue-600 flex items-center justify-between">
-            <span>{totals.rooms} Rooms Active</span>
-            <span>&rarr;</span>
-          </div>
-        </Link>
-
-        {/* Students - LIVE */}
-        <Link
-          href="/admin/students"
-          className="group flex flex-col justify-between rounded-2xl border border-purple-200 bg-white p-6 shadow-sm hover:shadow-md hover:border-purple-500 transition-all"
-        >
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-50 text-xl border border-purple-100 group-hover:scale-105 transition-transform">
-                🎓
-              </div>
-              <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-                Active Module
-              </span>
-            </div>
-            <h3 className="text-base font-bold text-slate-900 group-hover:text-purple-600 transition-colors">
-              Students Directory
-            </h3>
-            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              View registered students, inspect lifestyle questionnaires, filter by background, and manage account statuses.
-            </p>
-          </div>
-          <div className="mt-6 pt-4 border-t border-slate-100 text-xs font-semibold text-purple-600 flex items-center justify-between">
-            <span>{totals.studentsRegistered} Registered ({totals.studentsWithCompletedPreferences || 0} Ready)</span>
-            <span>&rarr;</span>
-          </div>
-        </Link>
-
-        {/* Matching - LIVE */}
-        <Link
-          href="/admin/matching"
-          className="group flex flex-col justify-between rounded-2xl border border-indigo-200 bg-white p-6 shadow-sm hover:shadow-md hover:border-indigo-500 transition-all"
-        >
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-xl border border-indigo-100 group-hover:scale-105 transition-transform">
-                ⚙️
-              </div>
-              <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-                Active Module
-              </span>
-            </div>
-            <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
-              Roommate Matching
-            </h3>
-            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              Configure lifestyle scoring weights, evaluate pairwise compatibility, and check deal-breakers.
-            </p>
-          </div>
-          <div className="mt-6 pt-4 border-t border-slate-100 text-xs font-semibold text-indigo-600 flex items-center justify-between">
-            <span>Algorithm Console</span>
-            <span>&rarr;</span>
-          </div>
-        </Link>
-
-        {/* Roommate Groups - LIVE */}
-        <Link
-          href="/admin/groups"
-          className="group flex flex-col justify-between rounded-2xl border border-indigo-200 bg-white p-6 shadow-sm hover:shadow-md hover:border-indigo-500 transition-all"
-        >
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-xl border border-indigo-100 group-hover:scale-105 transition-transform">
-                👥
-              </div>
-              <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-                Active Module
-              </span>
-            </div>
-            <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
-              Roommate Groups
-            </h3>
-            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              Monitor student-formed roommate groups, track forming vs. complete groups, inspect compatibility, and manage members.
-            </p>
-            {stats?.groups && (
-              <div className="mt-3 grid grid-cols-3 gap-1.5 text-center text-[11px] bg-slate-50 p-2 rounded-xl border border-slate-100">
-                <div>
-                  <span className="block font-bold text-indigo-600">{stats.groups.forming}</span>
-                  <span className="text-slate-400">Forming</span>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* Hostels */}
+        <Link href="/admin/hostels" className="group block">
+          <Card className="h-full p-5 hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-md transition-all flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-xl border border-indigo-100 dark:border-indigo-900/40 group-hover:scale-105 transition-transform">
+                  🏢
                 </div>
-                <div>
-                  <span className="block font-bold text-emerald-600">{stats.groups.complete}</span>
-                  <span className="text-slate-400">Complete</span>
+                <Badge variant="brand" size="sm">Hostels</Badge>
+              </div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors font-heading">
+                Hostels Directory
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed">
+                Configure campus hostels, gender assignments, floor counts, and facility offerings.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center justify-between">
+              <span>{totals.hostels || 0} Hostels</span>
+              <span>&rarr;</span>
+            </div>
+          </Card>
+        </Link>
+
+        {/* Rooms */}
+        <Link href="/admin/rooms" className="group block">
+          <Card className="h-full p-5 hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-md transition-all flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-950/40 text-xl border border-blue-100 dark:border-blue-900/40 group-hover:scale-105 transition-transform">
+                  🚪
                 </div>
-                <div>
-                  <span className="block font-bold text-purple-600">{stats.groups.locked}</span>
-                  <span className="text-slate-400">Locked</span>
+                <Badge variant="info" size="sm">Rooms</Badge>
+              </div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors font-heading">
+                Room Inventory
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed">
+                Manage room capacities, bulk generation, AC/Non-AC types, and maintenance status.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center justify-between">
+              <span>{totals.rooms || 0} Rooms</span>
+              <span>&rarr;</span>
+            </div>
+          </Card>
+        </Link>
+
+        {/* Students */}
+        <Link href="/admin/students" className="group block">
+          <Card className="h-full p-5 hover:border-purple-400 dark:hover:border-purple-600 hover:shadow-md transition-all flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 dark:bg-purple-950/40 text-xl border border-purple-100 dark:border-purple-900/40 group-hover:scale-105 transition-transform">
+                  🎓
                 </div>
+                <Badge variant="brand" size="sm">Students</Badge>
               </div>
-            )}
-            {stats?.groups?.pendingJoinRequests > 0 && (
-              <span className="block text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg mt-2">
-                📩 {stats.groups.pendingJoinRequests} pending join {stats.groups.pendingJoinRequests === 1 ? "request" : "requests"} across groups
-              </span>
-            )}
-          </div>
-          <div className="mt-4 pt-3 border-t border-slate-100 text-xs font-semibold text-indigo-600 flex items-center justify-between">
-            <span>
-              {stats?.groups
-                ? `${stats.groups.studentsInGroups} in groups · ${stats.groups.studentsInAutoPool} auto-pool${stats.groups.singleRoomStudents ? ` · ${stats.groups.singleRoomStudents} single-room` : ""}`
-                : "Manage Groups"}
-            </span>
-            <span>&rarr;</span>
-          </div>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors font-heading">
+                Students Directory
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed">
+                Inspect registered students, questionnaires, room sizes, and account statuses.
+              </p>
+            </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs font-semibold text-purple-600 dark:text-purple-400 flex items-center justify-between">
+              <span>{totals.studentsRegistered || 0} Registered</span>
+              <span>&rarr;</span>
+            </div>
+          </Card>
         </Link>
 
-        {/* Demand & Inventory Analytics - LIVE */}
-        <Link
-          href="/admin/demand"
-          className="group flex flex-col justify-between rounded-2xl border border-blue-200 bg-white p-6 shadow-sm hover:shadow-md hover:border-blue-500 transition-all"
-        >
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-xl border border-blue-100 group-hover:scale-105 transition-transform">
-                📈
+        {/* Matching */}
+        <Link href="/admin/matching" className="group block">
+          <Card className="h-full p-5 hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-md transition-all flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-xl border border-indigo-100 dark:border-indigo-900/40 group-hover:scale-105 transition-transform">
+                  ⚙️
+                </div>
+                <Badge variant="brand" size="sm">Algorithm</Badge>
               </div>
-              <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-                Active Module
-              </span>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors font-heading">
+                Matching Console
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed">
+                Configure lifestyle algorithm weights, inspect pairwise compatibility, and check deal-breakers.
+              </p>
             </div>
-            <h3 className="text-base font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-              Demand &amp; Supply
-            </h3>
-            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              Analyze student first-choice hostel demand, AC vs Non-AC requirements, and floor requests against real capacity.
-            </p>
-          </div>
-          <div className="mt-6 pt-4 border-t border-slate-100 text-xs font-semibold text-blue-600 flex items-center justify-between">
-            <span>Pre-Allocation Analytics</span>
-            <span>&rarr;</span>
-          </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center justify-between">
+              <span>Algorithm Config</span>
+              <span>&rarr;</span>
+            </div>
+          </Card>
         </Link>
 
-        {/* Allocations - Live Simulation, Draft, & Published */}
-        <Link
-          href="/admin/allocations"
-          className="group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all"
-        >
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-50 text-xl text-purple-600 group-hover:scale-105 transition-transform">
-                ⚡
+        {/* Groups */}
+        <Link href="/admin/groups" className="group block">
+          <Card className="h-full p-5 hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-md transition-all flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-xl border border-indigo-100 dark:border-indigo-900/40 group-hover:scale-105 transition-transform">
+                  👥
+                </div>
+                <Badge variant="warning" size="sm">{groupData.forming || 0} Forming</Badge>
               </div>
-              <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-                Live & Published
-              </span>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors font-heading">
+                Roommate Groups
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed">
+                Track forming vs complete groups, inspect compatibility, and manage member requests.
+              </p>
             </div>
-            <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
-              Allocations
-            </h3>
-            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              Execute multi-round simulations, manually edit draft rooms/roommates, publish live allocations, and rollback.
-            </p>
-          </div>
-          <div className="mt-6 pt-4 border-t border-slate-100 text-xs font-semibold text-indigo-600 flex items-center justify-between">
-            <span>
-              {totals.publishedRunsCount || 0} Published · {totals.draftRunsCount || 0} Drafts
-            </span>
-            <span>&rarr;</span>
-          </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center justify-between">
+              <span>{groupData.studentsInGroups || 0} in Groups</span>
+              <span>&rarr;</span>
+            </div>
+          </Card>
         </Link>
 
-        {/* Selection Window - FCFS */}
-        <Link
-          href="/admin/selection"
-          className="group flex flex-col justify-between rounded-2xl border border-indigo-200 bg-white p-6 shadow-sm hover:shadow-md hover:border-indigo-500 transition-all"
-        >
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-xl border border-indigo-100 group-hover:scale-105 transition-transform">
-                ⏱️
+        {/* Demand */}
+        <Link href="/admin/demand" className="group block">
+          <Card className="h-full p-5 hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-md transition-all flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 dark:bg-blue-950/40 text-xl border border-blue-100 dark:border-blue-900/40 group-hover:scale-105 transition-transform">
+                  📈
+                </div>
+                <Badge variant="info" size="sm">Analytics</Badge>
               </div>
-              <span className="inline-flex items-center rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-xs font-semibold text-emerald-700">
-                Active Module
-              </span>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors font-heading">
+                Demand &amp; Supply
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed">
+                Analyze student first-choice hostel demand and AC requirements against real capacity.
+              </p>
             </div>
-            <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
-              Selection Window
-            </h3>
-            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              Open and close first-come first-served room selection windows, monitor real-time claims, and finalize open-seat auto-fill.
-            </p>
-          </div>
-          <div className="mt-6 pt-4 border-t border-slate-100 text-xs font-semibold text-indigo-600 flex items-center justify-between">
-            <span>Manage Window &amp; Claims</span>
-            <span>&rarr;</span>
-          </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center justify-between">
+              <span>Demand Insights</span>
+              <span>&rarr;</span>
+            </div>
+          </Card>
         </Link>
 
-        {/* Integrity Diagnostic - Tools */}
-        <Link
-          href="/admin/integrity"
-          className="group flex flex-col justify-between rounded-2xl border border-slate-200/80 bg-white p-6 shadow-sm hover:shadow-md hover:border-indigo-300 transition-all"
-        >
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-xl text-emerald-600 group-hover:scale-105 transition-transform">
-                🛡️
+        {/* Selection */}
+        <Link href="/admin/selection" className="group block">
+          <Card className="h-full p-5 hover:border-teal-400 dark:hover:border-teal-600 hover:shadow-md transition-all flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-50 dark:bg-teal-950/40 text-xl border border-teal-100 dark:border-teal-900/40 group-hover:scale-105 transition-transform">
+                  ⏱️
+                </div>
+                <Badge variant="success" size="sm">FCFS</Badge>
               </div>
-              <span className="inline-flex items-center rounded-full bg-slate-50 border border-slate-200 px-2.5 py-0.5 text-xs font-semibold text-slate-700">
-                Diagnostics
-              </span>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors font-heading">
+                Selection Window
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed">
+                Control first-come first-served claim windows and auto-fill remaining open seats.
+              </p>
             </div>
-            <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
-              System Integrity
-            </h3>
-            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              Verify database invariants, detect room occupancy discrepancies, and execute self-healing repairs.
-            </p>
-          </div>
-          <div className="mt-6 pt-4 border-t border-slate-100 text-xs font-semibold text-emerald-600 flex items-center justify-between">
-            <span>Run Diagnostics</span>
-            <span>&rarr;</span>
-          </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs font-semibold text-teal-600 dark:text-teal-400 flex items-center justify-between">
+              <span>Manage Window</span>
+              <span>&rarr;</span>
+            </div>
+          </Card>
         </Link>
 
-        {/* Announcements - Live Broadcast & In-App Bulletins */}
-        <Link
-          href="/admin/announcements"
-          className="group flex flex-col justify-between rounded-2xl border border-purple-200 bg-white p-6 shadow-sm hover:shadow-md hover:border-purple-500 transition-all"
-        >
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-purple-50 text-xl text-purple-600 group-hover:scale-105 transition-transform">
-                📢
+        {/* Allocations */}
+        <Link href="/admin/allocations" className="group block">
+          <Card className="h-full p-5 hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-md transition-all flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-xl border border-indigo-100 dark:border-indigo-900/40 group-hover:scale-105 transition-transform">
+                  ⚡
+                </div>
+                <Badge variant="brand" size="sm">
+                  {totals.publishedRunsCount || 0} Published
+                </Badge>
               </div>
-              <span className="inline-flex items-center rounded-full bg-purple-50 border border-purple-200 px-2.5 py-0.5 text-xs font-semibold text-purple-700">
-                Live Broadcast
-              </span>
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors font-heading">
+                Allocations Engine
+              </h3>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1.5 leading-relaxed">
+                Multi-round optimization simulations, draft overrides, publishing, and rollback.
+              </p>
             </div>
-            <h3 className="text-base font-bold text-slate-900 group-hover:text-purple-600 transition-colors">
-              Announcements
-            </h3>
-            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-              Broadcast targeted campus announcements by cohort, gender, year, or hostel with live read tracking.
-            </p>
-          </div>
-          <div className="mt-6 pt-4 border-t border-slate-100 text-xs font-semibold text-purple-600 flex items-center justify-between">
-            <span>
-              {announcementsInfo.total} Sent ·{" "}
-              {announcementsInfo.lastSent
-                ? `Last: ${new Date(announcementsInfo.lastSent.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
-                : "No broadcasts"}
-            </span>
-            <span>&rarr;</span>
-          </div>
+            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs font-semibold text-indigo-600 dark:text-indigo-400 flex items-center justify-between">
+              <span>{totals.draftRunsCount || 0} Drafts</span>
+              <span>&rarr;</span>
+            </div>
+          </Card>
         </Link>
       </div>
-    </div>
+    </PageContainer>
   );
 }

@@ -2,10 +2,23 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/axios";
-import Badge from "@/components/ui/Badge";
-import Button from "@/components/ui/Button";
-import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import Alert from "@/components/ui/Alert";
+import {
+  PageContainer,
+  Card,
+  Badge,
+  Button,
+  ConfirmDialog,
+  Alert,
+  Tabs,
+  ScoreRing,
+  ProgressBar,
+  Avatar,
+} from "@/components/ui";
+import {
+  AdminPageHeader,
+  DonutRing,
+  StatusBadge,
+} from "@/components/admin";
 import { CATEGORY_LABELS } from "@/config/matching";
 
 export default function AdminMatchingPage() {
@@ -71,7 +84,7 @@ export default function AdminMatchingPage() {
       }
     } catch (err) {
       console.error("Failed to fetch settings:", err);
-      setSettingsAlert({ type: "error", message: "Failed to load matching settings" });
+      setSettingsAlert({ type: "danger", message: "Failed to load matching settings" });
     } finally {
       setSettingsLoading(false);
     }
@@ -117,7 +130,7 @@ export default function AdminMatchingPage() {
       }
     } catch (err) {
       setSettingsAlert({
-        type: "error",
+        type: "danger",
         message: err.response?.data?.message || "Failed to save matching settings",
       });
     } finally {
@@ -141,7 +154,7 @@ export default function AdminMatchingPage() {
       }
     } catch (err) {
       setSettingsAlert({
-        type: "error",
+        type: "danger",
         message: err.response?.data?.message || "Failed to reset settings",
       });
     } finally {
@@ -149,9 +162,6 @@ export default function AdminMatchingPage() {
     }
   };
 
-  // ----------------------------------------------------
-  // PAIR EVALUATION
-  // ----------------------------------------------------
   const handleEvaluatePair = async () => {
     if (!selectedStudentA || !selectedStudentB) return;
     setPairEvaluating(true);
@@ -175,9 +185,6 @@ export default function AdminMatchingPage() {
     }
   };
 
-  // ----------------------------------------------------
-  // TOP MATCHES FOR SINGLE STUDENT
-  // ----------------------------------------------------
   const handleFetchSoloTopMatches = async () => {
     if (!selectedSoloStudent) return;
     setSoloTopLoading(true);
@@ -219,49 +226,27 @@ export default function AdminMatchingPage() {
     languageAndCalls: "Common spoken languages for effortless communication & late-night phone call comfort.",
   };
 
-  return (
-    <div className="mx-auto max-w-7xl py-8 px-4 sm:px-6 lg:px-8 space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-              Matching Engine Console
-            </h1>
-            <span className="inline-flex items-center rounded-full bg-purple-100 text-purple-700 px-3 py-0.5 text-xs font-bold">
-              Administrator Access
-            </span>
-          </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Configure algorithm category weights, inspect pairwise compatibility diagnostics, and check student affinities.
-          </p>
-        </div>
+  const matchingTabs = [
+    { id: "settings", label: "Algorithm Weights" },
+    { id: "pairChecker", label: "Pair Checker & Top Matches" },
+  ];
 
-        {/* Tab Switcher */}
-        <div className="inline-flex rounded-xl bg-slate-100 p-1 border border-slate-200">
-          <button
-            type="button"
-            onClick={() => setActiveTab("settings")}
-            className={`rounded-lg px-4 py-2 text-xs font-bold transition-all ${
-              activeTab === "settings"
-                ? "bg-white text-indigo-600 shadow-sm"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            ⚙️ Algorithm Weights
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("pairChecker")}
-            className={`rounded-lg px-4 py-2 text-xs font-bold transition-all ${
-              activeTab === "pairChecker"
-                ? "bg-white text-indigo-600 shadow-sm"
-                : "text-slate-600 hover:text-slate-900"
-            }`}
-          >
-            🔍 Pair Checker & Top Matches
-          </button>
-        </div>
+  return (
+    <PageContainer maxWidth="7xl" className="py-8">
+      {/* Header */}
+      <AdminPageHeader
+        title="Matching Engine Console"
+        description="Configure algorithm category weights, inspect pairwise compatibility diagnostics, and check student affinities."
+        breadcrumbs={[{ label: "Matching" }]}
+      />
+
+      {/* Tabs */}
+      <div className="mb-6">
+        <Tabs
+          tabs={matchingTabs}
+          activeTab={activeTab}
+          onChange={(t) => setActiveTab(t)}
+        />
       </div>
 
       {/* ---------------------------------------------------- */}
@@ -271,61 +256,73 @@ export default function AdminMatchingPage() {
         <div className="space-y-6">
           {settingsAlert && (
             <Alert
-              type={settingsAlert.type}
-              message={settingsAlert.message}
+              variant={settingsAlert.type}
+              title={settingsAlert.type === "success" ? "Success" : "Notice"}
               onClose={() => setSettingsAlert(null)}
-            />
+            >
+              {settingsAlert.message}
+            </Alert>
           )}
 
-          {/* Weights Overview Card */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-4">
+          {/* Weights Overview Card with Donut Ring */}
+          <Card className="p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-100 dark:border-slate-800 gap-6">
               <div>
-                <h3 className="text-base font-bold text-slate-900">Lifestyle Category Weights</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Distribute 100 percentage points across the 7 lifestyle criteria.
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading">
+                  Lifestyle Category Weights
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xl">
+                  Distribute exactly 100 percentage points across the 7 questionnaire criteria. These weights directly govern candidate match percentage calculation.
                 </p>
               </div>
 
-              {/* Total Weight Status Indicator */}
-              <div
-                className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 border font-bold text-xs transition-colors ${
-                  isWeightValid
-                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                    : "bg-rose-50 text-rose-700 border-rose-300"
-                }`}
-              >
-                <span>Total Weight:</span>
-                <span className="text-sm font-extrabold">{currentTotalWeight}% / 100%</span>
-                <span>{isWeightValid ? "✓ (Valid)" : "⚠️ Must equal 100%"}</span>
+              {/* Donut Ring Indicator */}
+              <div className="flex items-center gap-4 bg-slate-50/60 dark:bg-slate-900/40 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 shrink-0">
+                <DonutRing
+                  value={currentTotalWeight}
+                  max={100}
+                  size={84}
+                  strokeWidth={8}
+                  centerValue={`${currentTotalWeight}%`}
+                  centerLabel="Total"
+                  color={isWeightValid ? "#0d9488" : "#e11d48"}
+                />
+                <div>
+                  <span className="text-xs font-bold block text-slate-900 dark:text-slate-100">
+                    {isWeightValid ? "Weights Balanced" : "Imbalanced"}
+                  </span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
+                    {isWeightValid ? "Sum equals 100%" : "Must total exactly 100%"}
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* Weights Grid with Sliders & Inputs */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 my-6">
               {Object.keys(weights).map((key) => (
                 <div
                   key={key}
-                  className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-4 space-y-3"
+                  className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 p-4 space-y-3"
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900">
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                         {CATEGORY_LABELS[key] || key}
                       </h4>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
                         {categoryExplanations[key]}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-1.5 bg-white border border-slate-300 rounded-lg px-2.5 py-1">
+                    <div className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1 shrink-0">
                       <input
                         type="number"
                         min="0"
                         max="100"
                         value={weights[key]}
                         onChange={(e) => handleWeightChange(key, e.target.value)}
-                        className="w-12 text-center text-sm font-bold text-slate-900 focus:outline-none"
+                        className="w-10 text-center text-sm font-bold text-slate-900 dark:text-slate-100 bg-transparent focus:outline-hidden"
                       />
                       <span className="text-xs font-bold text-slate-400">%</span>
                     </div>
@@ -338,24 +335,26 @@ export default function AdminMatchingPage() {
                     step="1"
                     value={weights[key]}
                     onChange={(e) => handleWeightChange(key, e.target.value)}
-                    className="w-full accent-indigo-600 h-2 bg-slate-200 rounded-lg cursor-pointer"
+                    className="w-full accent-indigo-600 dark:accent-indigo-500 h-2 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
                   />
                 </div>
               ))}
             </div>
 
             {/* Academic Year Bonus Section */}
-            <div className="pt-6 border-t border-slate-100 space-y-4">
+            <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
               <div>
-                <h4 className="text-sm font-bold text-slate-900">Academic Year Cohort Bonus</h4>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 font-heading">
+                  Academic Year Cohort Bonus
+                </h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Points added to the base weighted score when students share similar academic standing.
                 </p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="rounded-xl border border-slate-200 bg-slate-50/40 p-3.5 space-y-2">
-                  <label className="text-xs font-semibold text-slate-700 block">
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/40 p-3.5 space-y-2">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
                     Same Academic Year
                   </label>
                   <div className="flex items-center gap-2">
@@ -367,14 +366,14 @@ export default function AdminMatchingPage() {
                       onChange={(e) =>
                         setYearBonus((prev) => ({ ...prev, sameYear: Number(e.target.value) || 0 }))
                       }
-                      className="w-20 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-900"
+                      className="w-20 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-900 dark:text-slate-100"
                     />
-                    <span className="text-xs text-slate-500">bonus pts</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">bonus pts</span>
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 bg-slate-50/40 p-3.5 space-y-2">
-                  <label className="text-xs font-semibold text-slate-700 block">
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/40 p-3.5 space-y-2">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
                     1 Year Apart
                   </label>
                   <div className="flex items-center gap-2">
@@ -389,14 +388,14 @@ export default function AdminMatchingPage() {
                           oneYearApart: Number(e.target.value) || 0,
                         }))
                       }
-                      className="w-20 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-900"
+                      className="w-20 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-900 dark:text-slate-100"
                     />
-                    <span className="text-xs text-slate-500">bonus pts</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">bonus pts</span>
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-slate-200 bg-slate-50/40 p-3.5 space-y-2">
-                  <label className="text-xs font-semibold text-slate-700 block">
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-900/40 p-3.5 space-y-2">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
                     2+ Years Apart
                   </label>
                   <div className="flex items-center gap-2">
@@ -408,18 +407,18 @@ export default function AdminMatchingPage() {
                       onChange={(e) =>
                         setYearBonus((prev) => ({ ...prev, otherwise: Number(e.target.value) || 0 }))
                       }
-                      className="w-20 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-900"
+                      className="w-20 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-900 dark:text-slate-100"
                     />
-                    <span className="text-xs text-slate-500">bonus pts</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">bonus pts</span>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Actions Bar */}
-            <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
+            <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 onClick={() => setResetConfirmOpen(true)}
                 disabled={savingSettings}
@@ -431,13 +430,13 @@ export default function AdminMatchingPage() {
                 variant="primary"
                 size="md"
                 onClick={handleSaveSettings}
-                loading={savingSettings}
+                isLoading={savingSettings}
                 disabled={!isWeightValid || savingSettings}
               >
                 Save Algorithm Configuration
               </Button>
             </div>
-          </div>
+          </Card>
 
           <ConfirmDialog
             isOpen={resetConfirmOpen}
@@ -457,10 +456,12 @@ export default function AdminMatchingPage() {
       {activeTab === "pairChecker" && (
         <div className="space-y-8">
           {/* Pair Evaluation Card */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
+          <Card className="p-6 space-y-6">
             <div>
-              <h3 className="text-base font-bold text-slate-900">Pairwise Compatibility Diagnostic</h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading">
+                Pairwise Compatibility Diagnostic
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Select two students to audit mutual compatibility, deal-breaker violations, and category scores.
               </p>
             </div>
@@ -469,7 +470,7 @@ export default function AdminMatchingPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Student A Selector */}
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                   Student A
                 </label>
                 <input
@@ -477,9 +478,9 @@ export default function AdminMatchingPage() {
                   placeholder="Search by name or reg # (e.g. DEMO-0001)"
                   value={searchStudentA}
                   onChange={(e) => setSearchStudentA(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-medium focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:outline-hidden"
                 />
-                <div className="max-h-36 overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100 bg-slate-50/50">
+                <div className="max-h-36 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                   {filterStudents(searchStudentA).map((s) => (
                     <button
                       key={s._id}
@@ -488,11 +489,11 @@ export default function AdminMatchingPage() {
                         setSelectedStudentA(s);
                         setSearchStudentA(`${s.name} (${s.registrationNumber || s.email})`);
                       }}
-                      className={`w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 transition-colors flex items-center justify-between ${
-                        selectedStudentA?._id === s._id ? "bg-indigo-50/80 font-bold" : ""
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors flex items-center justify-between ${
+                        selectedStudentA?._id === s._id ? "bg-indigo-50/80 dark:bg-indigo-950/60 font-bold" : ""
                       }`}
                     >
-                      <span className="truncate">{s.name}</span>
+                      <span className="truncate text-slate-800 dark:text-slate-200">{s.name}</span>
                       <span className="text-[10px] text-slate-500 uppercase">{s.gender} • Yr {s.year}</span>
                     </button>
                   ))}
@@ -501,7 +502,7 @@ export default function AdminMatchingPage() {
 
               {/* Student B Selector */}
               <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                   Student B
                 </label>
                 <input
@@ -509,9 +510,9 @@ export default function AdminMatchingPage() {
                   placeholder="Search by name or reg # (e.g. DEMO-0002)"
                   value={searchStudentB}
                   onChange={(e) => setSearchStudentB(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-medium focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:outline-hidden"
                 />
-                <div className="max-h-36 overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100 bg-slate-50/50">
+                <div className="max-h-36 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
                   {filterStudents(searchStudentB).map((s) => (
                     <button
                       key={s._id}
@@ -520,11 +521,11 @@ export default function AdminMatchingPage() {
                         setSelectedStudentB(s);
                         setSearchStudentB(`${s.name} (${s.registrationNumber || s.email})`);
                       }}
-                      className={`w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 transition-colors flex items-center justify-between ${
-                        selectedStudentB?._id === s._id ? "bg-indigo-50/80 font-bold" : ""
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors flex items-center justify-between ${
+                        selectedStudentB?._id === s._id ? "bg-indigo-50/80 dark:bg-indigo-950/60 font-bold" : ""
                       }`}
                     >
-                      <span className="truncate">{s.name}</span>
+                      <span className="truncate text-slate-800 dark:text-slate-200">{s.name}</span>
                       <span className="text-[10px] text-slate-500 uppercase">{s.gender} • Yr {s.year}</span>
                     </button>
                   ))}
@@ -537,7 +538,7 @@ export default function AdminMatchingPage() {
                 variant="primary"
                 size="md"
                 onClick={handleEvaluatePair}
-                loading={pairEvaluating}
+                isLoading={pairEvaluating}
                 disabled={!selectedStudentA || !selectedStudentB || pairEvaluating}
               >
                 Evaluate Pair Compatibility
@@ -545,42 +546,51 @@ export default function AdminMatchingPage() {
             </div>
 
             {/* Pair Diagnostic Result Box */}
-            {pairError && <Alert type="error" message={pairError} />}
+            {pairError && <Alert variant="danger" title="Error">{pairError}</Alert>}
 
             {pairResult && (
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-6 space-y-6 animate-in fade-in">
-                {/* Result Status Banner */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold text-slate-900">
-                        {pairResult.eligible ? "Eligible Pairing" : "Ineligible / Excluded"}
-                      </span>
-                      <Badge
-                        variant={pairResult.eligible ? "emerald" : "rose"}
-                        size="md"
-                      >
-                        {pairResult.eligible ? `${pairResult.score}% ${pairResult.label}` : "Excluded"}
-                      </Badge>
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-900/40 p-6 space-y-6">
+                {/* Result Status Banner with ScoreRing */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pb-5 border-b border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center gap-4">
+                    {pairResult.eligible ? (
+                      <ScoreRing score={pairResult.score} size={68} strokeWidth={6} />
+                    ) : (
+                      <div className="h-16 w-16 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center text-2xl font-bold">
+                        ⛔
+                      </div>
+                    )}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-bold text-slate-900 dark:text-slate-100 font-heading">
+                          {pairResult.eligible ? "Eligible Pairing" : "Ineligible / Excluded"}
+                        </span>
+                        <Badge
+                          variant={pairResult.eligible ? "success" : "danger"}
+                          size="md"
+                        >
+                          {pairResult.eligible ? `${pairResult.score}% ${pairResult.label}` : "Excluded"}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                        {pairResult.message || `Score: ${pairResult.score}% (Base: ${pairResult.baseScore}%, Year Bonus: +${pairResult.yearBonus}%)`}
+                      </p>
                     </div>
-                    <p className="text-xs text-slate-600 mt-1">
-                      {pairResult.message || `Score: ${pairResult.score}% (Base: ${pairResult.baseScore}%, Year Bonus: +${pairResult.yearBonus}%)`}
-                    </p>
                   </div>
 
                   {pairResult.sharedLanguages?.length > 0 && (
                     <div className="text-right">
-                      <span className="text-[11px] font-bold text-slate-400 uppercase">Shared Languages</span>
-                      <span className="text-xs font-bold text-indigo-700 block">
+                      <span className="text-[11px] font-bold text-slate-400 uppercase block">Shared Languages</span>
+                      <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 block mt-0.5">
                         {pairResult.sharedLanguages.join(", ")}
                       </span>
                     </div>
                   )}
                 </div>
 
-                {/* Room Size Mismatch Amber Note */}
+                {/* Room Size Mismatch Note */}
                 {pairResult.note && (
-                  <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-amber-900 text-xs font-medium flex items-center gap-2">
+                  <div className="rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3.5 text-amber-900 dark:text-amber-300 text-xs font-medium flex items-center gap-2">
                     <span>⚠️</span>
                     <span>{pairResult.note}</span>
                   </div>
@@ -588,13 +598,13 @@ export default function AdminMatchingPage() {
 
                 {/* Exclusions / Deal-Breaker Violations */}
                 {pairResult.violations?.length > 0 && (
-                  <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 space-y-2">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-rose-800">
+                  <div className="rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/30 p-4 space-y-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-rose-800 dark:text-rose-300 font-heading">
                       Deal-Breaker Violations Detected
                     </h4>
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                       {pairResult.violations.map((v, i) => (
-                        <div key={i} className="text-xs text-rose-900 flex items-center gap-2">
+                        <div key={i} className="text-xs text-rose-900 dark:text-rose-200 flex items-center gap-2">
                           <span>❌</span>
                           <span>
                             Triggered by <strong>Student {v.by}</strong> on criterion:{" "}
@@ -609,46 +619,40 @@ export default function AdminMatchingPage() {
                 {/* Breakdown Progress Bars if Eligible */}
                 {pairResult.breakdown?.length > 0 && (
                   <div className="space-y-3">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 font-heading">
                       Category Breakdown
                     </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                       {pairResult.breakdown.map((cat) => (
                         <div
                           key={cat.key}
-                          className="rounded-xl border border-slate-200 bg-white p-3 space-y-1"
+                          className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-3.5 space-y-2"
                         >
                           <div className="flex items-center justify-between text-xs">
-                            <span className="font-semibold text-slate-800">{cat.label}</span>
-                            <span className="font-bold text-slate-900">{cat.percent}%</span>
+                            <span className="font-semibold text-slate-800 dark:text-slate-200">{cat.label}</span>
+                            <span className="font-bold text-slate-900 dark:text-slate-100 font-mono">{cat.percent}%</span>
                           </div>
-                          <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full ${
-                                cat.percent >= 75
-                                  ? "bg-emerald-500"
-                                  : cat.percent >= 50
-                                  ? "bg-indigo-500"
-                                  : "bg-amber-500"
-                              }`}
-                              style={{ width: `${cat.percent}%` }}
-                            />
-                          </div>
+                          <ProgressBar
+                            value={cat.percent}
+                            max={100}
+                            color={cat.percent >= 75 ? "success" : cat.percent >= 50 ? "brand" : "warning"}
+                            size="sm"
+                          />
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* Friendly Reasons & Warnings */}
+                {/* Affinities & Warnings */}
                 {pairResult.reasons?.length > 0 && (
                   <div className="space-y-1.5">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-800">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-teal-800 dark:text-teal-300 font-heading">
                       Affinities
                     </h4>
                     {pairResult.reasons.map((r, i) => (
-                      <p key={i} className="text-xs text-slate-700 flex items-center gap-2">
-                        <span className="text-emerald-500 font-bold">✓</span> {r}
+                      <p key={i} className="text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                        <span className="text-teal-600 font-bold">✓</span> {r}
                       </p>
                     ))}
                   </div>
@@ -656,11 +660,11 @@ export default function AdminMatchingPage() {
 
                 {pairResult.warnings?.length > 0 && (
                   <div className="space-y-1.5">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-amber-800">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300 font-heading">
                       Warnings
                     </h4>
                     {pairResult.warnings.map((w, i) => (
-                      <p key={i} className="text-xs text-amber-900 flex items-center gap-2">
+                      <p key={i} className="text-xs text-amber-900 dark:text-amber-300 flex items-center gap-2">
                         <span>⚠️</span> {w}
                       </p>
                     ))}
@@ -668,13 +672,15 @@ export default function AdminMatchingPage() {
                 )}
               </div>
             )}
-          </div>
+          </Card>
 
-          {/* Top Matches for Any Student */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
+          {/* Top Matches Inspector */}
+          <Card className="p-6 space-y-6">
             <div>
-              <h3 className="text-base font-bold text-slate-900">Student Top Matches Inspector</h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading">
+                Student Top Matches Inspector
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Inspect the top 10 recommended roommates for any specific student in the system.
               </p>
             </div>
@@ -686,9 +692,9 @@ export default function AdminMatchingPage() {
                   placeholder="Search student (e.g. DEMO-0001)"
                   value={searchSoloStudent}
                   onChange={(e) => setSearchSoloStudent(e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 px-3.5 py-2 text-xs font-medium focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-900 dark:text-slate-100 focus:border-indigo-500 focus:outline-hidden"
                 />
-                <div className="max-h-32 overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100 bg-slate-50/50 mt-1">
+                <div className="max-h-32 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800 divide-y divide-slate-100 dark:divide-slate-800 bg-slate-50/50 dark:bg-slate-900/50 mt-1">
                   {filterStudents(searchSoloStudent).map((s) => (
                     <button
                       key={s._id}
@@ -697,10 +703,10 @@ export default function AdminMatchingPage() {
                         setSelectedSoloStudent(s);
                         setSearchSoloStudent(`${s.name} (${s.registrationNumber || s.email})`);
                       }}
-                      className="w-full text-left px-3 py-1.5 text-xs hover:bg-indigo-50 flex items-center justify-between"
+                      className="w-full text-left px-3 py-1.5 text-xs hover:bg-indigo-50 dark:hover:bg-indigo-950/40 flex items-center justify-between text-slate-800 dark:text-slate-200"
                     >
-                      <span>{s.name}</span>
-                      <span className="text-[10px] text-slate-500">{s.gender} • Year {s.year}</span>
+                      <span className="truncate">{s.name}</span>
+                      <span className="text-[10px] text-slate-500">{s.gender} • Yr {s.year}</span>
                     </button>
                   ))}
                 </div>
@@ -710,68 +716,50 @@ export default function AdminMatchingPage() {
                 variant="primary"
                 size="md"
                 onClick={handleFetchSoloTopMatches}
-                loading={soloTopLoading}
+                isLoading={soloTopLoading}
                 disabled={!selectedSoloStudent || soloTopLoading}
               >
-                Fetch Top Matches
+                Inspect Top Matches
               </Button>
             </div>
 
-            {soloTopError && <Alert type="error" message={soloTopError} />}
+            {soloTopError && <Alert variant="danger" title="Error">{soloTopError}</Alert>}
 
             {soloTopResult && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between text-xs text-slate-500 pb-2 border-b border-slate-100">
-                  <span>
-                    Top matches for <strong>{selectedSoloStudent?.name}</strong> ({soloTopResult.studentGender} pool)
-                  </span>
-                  <span>{soloTopResult.matches?.length || 0} candidate(s) evaluated</span>
-                </div>
+              <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 font-heading">
+                  Top Recommended Candidates for {soloTopResult.student?.name}
+                </h4>
 
-                <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden bg-white">
+                <div className="divide-y divide-slate-100 dark:divide-slate-800 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                   {soloTopResult.matches?.map((m, idx) => (
                     <div
-                      key={m.id}
-                      className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/70 transition-colors"
+                      key={m.student?._id || idx}
+                      className="p-3.5 bg-white dark:bg-slate-900 flex items-center justify-between gap-4"
                     >
                       <div className="flex items-center gap-3">
-                        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 text-xs font-extrabold text-slate-700">
-                          #{idx + 1}
-                        </span>
+                        <Avatar name={m.student?.name} size="sm" />
                         <div>
-                          <h4 className="text-sm font-bold text-slate-900">{m.name}</h4>
-                          <p className="text-xs text-slate-500">
-                            {m.course} • Year {m.year}
-                          </p>
+                          <span className="font-bold text-slate-900 dark:text-slate-100 text-xs block">
+                            {m.student?.name}
+                          </span>
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono block">
+                            {m.student?.registrationNumber} • Year {m.student?.year}
+                          </span>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-3">
-                        {m.sharedLanguages?.length > 0 && (
-                          <span className="text-[11px] text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
-                            🗣️ {m.sharedLanguages.join(", ")}
-                          </span>
-                        )}
-                        <span
-                          className={`text-sm font-extrabold px-3 py-1 rounded-xl border ${
-                            m.score >= 85
-                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                              : m.score >= 70
-                              ? "bg-indigo-50 text-indigo-700 border-indigo-200"
-                              : "bg-amber-50 text-amber-800 border-amber-200"
-                          }`}
-                        >
-                          {m.score}% ({m.label})
-                        </span>
+                        <ScoreRing score={m.score} size={42} strokeWidth={4} />
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-          </div>
+          </Card>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

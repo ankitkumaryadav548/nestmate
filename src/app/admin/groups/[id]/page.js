@@ -4,9 +4,20 @@ import { useState, useEffect, useCallback, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import axios from "@/lib/axios";
-import Button from "@/components/ui/Button";
-import Badge from "@/components/ui/Badge";
-import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import {
+  PageContainer,
+  Card,
+  Badge,
+  Button,
+  Avatar,
+  ConfirmDialog,
+  Alert,
+  ScoreRing,
+} from "@/components/ui";
+import {
+  AdminPageHeader,
+  StatusBadge,
+} from "@/components/admin";
 
 export default function AdminGroupDetailPage({ params: paramsPromise }) {
   const params = use(paramsPromise);
@@ -108,51 +119,43 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
     }
   };
 
-  const getStatusBadge = (grpStatus) => {
+  const getGroupStatusBadge = (grpStatus) => {
     switch (grpStatus) {
       case "forming":
-        return <Badge variant="info">Forming</Badge>;
+        return <Badge variant="warning" size="sm" dot>Forming</Badge>;
       case "complete":
-        return <Badge variant="success">Complete</Badge>;
+        return <Badge variant="success" size="sm" dot>Complete</Badge>;
       case "locked":
-        return <Badge variant="purple">Locked</Badge>;
+        return <Badge variant="brand" size="sm" dot>Locked</Badge>;
       case "disbanded":
-        return <Badge variant="neutral">Disbanded</Badge>;
+        return <Badge variant="neutral" size="sm">Disbanded</Badge>;
       default:
-        return <Badge variant="neutral">{grpStatus}</Badge>;
+        return <Badge variant="neutral" size="sm">{grpStatus}</Badge>;
     }
-  };
-
-  const getScoreColor = (score) => {
-    if (score === null || score === undefined) return "text-slate-400";
-    if (score >= 80) return "text-emerald-700 bg-emerald-50 border-emerald-200";
-    if (score >= 60) return "text-blue-700 bg-blue-50 border-blue-200";
-    if (score >= 40) return "text-amber-700 bg-amber-50 border-amber-200";
-    return "text-rose-700 bg-rose-50 border-rose-200";
   };
 
   if (loading) {
     return (
-      <div className="flex-1 py-16 px-4 max-w-7xl mx-auto w-full text-center">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-r-transparent"></div>
-        <p className="mt-3 text-xs font-semibold text-slate-500">Loading group diagnostics...</p>
-      </div>
+      <PageContainer maxWidth="7xl" className="py-8">
+        <div className="h-64 animate-pulse rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800" />
+      </PageContainer>
     );
   }
 
   if (error || !group) {
     return (
-      <div className="flex-1 py-12 px-4 max-w-4xl mx-auto w-full">
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-6 text-center">
-          <p className="text-sm font-bold text-rose-800">{error || "Group not found"}</p>
-          <Link
-            href="/admin/groups"
-            className="mt-4 inline-flex items-center gap-1.5 rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white shadow-xs"
-          >
-            &larr; Back to Groups List
+      <PageContainer maxWidth="7xl" className="py-8">
+        <Alert variant="danger" title="Group Not Found">
+          {error || "Group does not exist or has been disbanded."}
+        </Alert>
+        <div className="mt-4">
+          <Link href="/admin/groups">
+            <Button variant="secondary" size="sm">
+              &larr; Back to Groups List
+            </Button>
           </Link>
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
@@ -161,53 +164,49 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
   const leaderId = group.leader?._id?.toString() || group.leader?.toString();
 
   return (
-    <div className="flex-1 py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-      {/* Top Breadcrumb & Actions Bar */}
-      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <Link
-            href="/admin/groups"
-            className="text-xs font-semibold text-slate-500 hover:text-indigo-600 transition-colors"
-          >
-            &larr; Back to Groups
-          </Link>
-          <div className="flex items-center gap-3 mt-1">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-              Group #{group._id.slice(-6).toUpperCase()}
-            </h1>
-            {getStatusBadge(group.status)}
+    <PageContainer maxWidth="7xl" className="py-8">
+      {/* Header */}
+      <AdminPageHeader
+        title={
+          <div className="flex items-center gap-3 flex-wrap">
+            <span>Group #{group._id.slice(-6).toUpperCase()}</span>
+            {getGroupStatusBadge(group.status)}
             {group.isDemo && (
-              <span className="rounded-full bg-slate-100 border border-slate-200 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+              <Badge variant="warning" size="xs">
                 Demo
-              </span>
+              </Badge>
             )}
           </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Created on {new Date(group.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-          </p>
-        </div>
-
-        {/* Admin Overrides */}
-        <div className="flex items-center gap-2">
-          {!isLocked && !isDisbanded && (
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={() => setIsDisbandOpen(true)}
-            >
-              Disband Group
-            </Button>
-          )}
-        </div>
-      </div>
+        }
+        description={`Created on ${new Date(group.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} • Target Size: ${group.targetSize}-Bed • Gender: ${group.gender}`}
+        breadcrumbs={[
+          { href: "/admin/groups", label: "Groups" },
+          { label: `#${group._id.slice(-6).toUpperCase()}` },
+        ]}
+        actions={
+          <div className="flex items-center gap-2">
+            {!isLocked && !isDisbanded && (
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => setIsDisbandOpen(true)}
+              >
+                Disband Group
+              </Button>
+            )}
+          </div>
+        }
+      />
 
       {/* Locked Notice */}
       {isLocked && (
-        <div className="mb-6 rounded-2xl border border-purple-200 bg-purple-50 p-4 text-purple-900 flex items-start gap-3">
+        <div className="mb-6 rounded-2xl border border-purple-200 dark:border-purple-900/50 bg-purple-50 dark:bg-purple-950/30 p-4 text-purple-900 dark:text-purple-300 flex items-start gap-3">
           <span className="text-xl">🔒</span>
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-purple-950">Group is Locked</h3>
-            <p className="text-xs text-purple-800 mt-0.5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-purple-950 dark:text-purple-200">
+              Group is Locked
+            </h3>
+            <p className="text-xs text-purple-800 dark:text-purple-300/80 mt-0.5">
               A residential hostel room has already been officially allocated to this group. To modify or remove members, the room allocation must be cancelled or released first in the Allocation console.
             </p>
           </div>
@@ -216,11 +215,13 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
 
       {/* Disbanded Notice */}
       {isDisbanded && (
-        <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-100 p-4 text-slate-800 flex items-start gap-3">
+        <div className="mb-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 p-4 text-slate-800 dark:text-slate-300 flex items-start gap-3">
           <span className="text-xl">⚠️</span>
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900">Group Disbanded</h3>
-            <p className="text-xs text-slate-600 mt-0.5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-200">
+              Group Disbanded
+            </h3>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
               This group was disbanded on {new Date(group.disbandedAt || group.updatedAt).toLocaleDateString()}. Its seats are no longer active.
             </p>
           </div>
@@ -229,19 +230,19 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
 
       {/* Selected Room Banner (FCFS claim) */}
       {group.selectedRoom && (
-        <div className="mb-6 rounded-2xl border border-indigo-200 bg-indigo-50/80 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
-          <div className="flex items-start gap-3">
+        <Card className="mb-6 p-5 border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/40 dark:bg-indigo-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5">
             <span className="text-2xl">🔑</span>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-indigo-900 bg-indigo-200/80 px-2 py-0.5 rounded-md">
+                <Badge variant="brand" size="xs">
                   FCFS Selected Room
-                </span>
-                <h3 className="text-sm font-bold text-indigo-950">
+                </Badge>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 font-heading">
                   Room #{group.selectedRoom?.roomNumber || group.selectedRoom}
                 </h3>
               </div>
-              <p className="text-xs text-indigo-800 mt-0.5">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                 Claimed on {group.roomClaimedAt ? new Date(group.roomClaimedAt).toLocaleString() : "During Selection Window"}
               </p>
             </div>
@@ -253,56 +254,54 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
           >
             Release Room (Admin Override)
           </Button>
-        </div>
+        </Card>
       )}
 
       {/* Key Metrics Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-          <span className="text-xs text-slate-500 font-medium">Beds Capacity</span>
-          <div className="text-xl font-black text-slate-900 mt-1">
+        <Card className="p-4">
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Beds Capacity</span>
+          <div className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono">
             {group.members?.length || 0} / {group.targetSize} Filled
           </div>
           <span className="text-[11px] text-slate-400 capitalize">{group.gender} wing</span>
-        </div>
+        </Card>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-          <span className="text-xs text-slate-500 font-medium">Group Average Score</span>
-          <div className="text-xl font-black text-indigo-600 mt-1">
+        <Card className="p-4">
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Average Compatibility</span>
+          <div className="text-xl font-bold text-indigo-600 dark:text-indigo-400 mt-1 font-mono">
             {group.averageScore !== null && group.averageScore !== undefined
               ? `${group.averageScore}%`
               : "N/A"}
           </div>
           <span className="text-[11px] text-slate-400">Pairwise mean</span>
-        </div>
+        </Card>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-          <span className="text-xs text-slate-500 font-medium">Lowest Pair Score</span>
-          <div className="text-xl font-black text-slate-900 mt-1">
+        <Card className="p-4">
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Lowest Pair Score</span>
+          <div className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono">
             {group.lowestPairScore !== null && group.lowestPairScore !== undefined
               ? `${group.lowestPairScore}%`
               : "N/A"}
           </div>
-          <span className="text-[11px] text-slate-400">Bottleneck tolerance</span>
-        </div>
+          <span className="text-[11px] text-slate-400">Bottleneck score</span>
+        </Card>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-          <span className="text-xs text-slate-500 font-medium">Engine Version</span>
-          <div className="text-xl font-black text-slate-900 mt-1 font-mono">
+        <Card className="p-4">
+          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Engine Version</span>
+          <div className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-1 font-mono">
             {group.engineVersion || "1.0"}
           </div>
-          <span className="text-[11px] text-slate-400">Algorithm build</span>
-        </div>
+          <span className="text-[11px] text-slate-400">Pure module build</span>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Members List (2 Cols) */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold text-slate-900">
-              Members Roster ({group.members?.length || 0} of {group.targetSize})
-            </h2>
-          </div>
+          <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading">
+            Members Roster ({group.members?.length || 0} of {group.targetSize})
+          </h2>
 
           <div className="space-y-3">
             {group.members?.map((m) => {
@@ -310,30 +309,30 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
               const isGroupLeader = u._id?.toString() === leaderId;
 
               return (
-                <div
+                <Card
                   key={u._id}
-                  className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                 >
                   <div className="flex items-start gap-3.5">
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700 font-extrabold text-sm border border-indigo-100">
-                      {u.name?.charAt(0) || "S"}
-                    </div>
+                    <Avatar name={u.name} size="md" />
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-slate-900">{u.name}</span>
+                        <span className="text-sm font-bold text-slate-900 dark:text-slate-100 font-heading">
+                          {u.name}
+                        </span>
                         {isGroupLeader && (
-                          <span className="rounded bg-amber-100 text-amber-900 px-1.5 py-0.5 text-[10px] font-bold">
-                            Leader
-                          </span>
+                          <Badge variant="warning" size="xs">
+                            👑 Leader
+                          </Badge>
                         )}
                       </div>
-                      <p className="text-xs text-slate-500 font-mono mt-0.5">
-                        {u.registrationNumber || "Reg No N/A"} · {u.email}
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+                        {u.registrationNumber || "No Reg"} • {u.email}
                       </p>
-                      <p className="text-xs text-slate-600 mt-1">
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
                         {u.course || "No Course"} • {u.department || "General"} {u.year ? `• Year ${u.year}` : ""}
                       </p>
-                      <span className="text-[11px] text-slate-400 mt-1 block">
+                      <span className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 block">
                         Joined: {new Date(m.joinedAt).toLocaleDateString()}
                       </span>
                     </div>
@@ -342,8 +341,8 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
                   {/* Actions for member */}
                   <div className="flex sm:flex-col items-end gap-2 shrink-0">
                     <Link
-                      href={`/admin/students`}
-                      className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                      href="/admin/students"
+                      className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
                     >
                       View Student &rarr;
                     </Link>
@@ -354,51 +353,88 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
                           setMemberToRemove(m);
                           setIsRemoveOpen(true);
                         }}
-                        className="text-xs font-bold text-rose-600 hover:text-rose-800 hover:underline"
+                        className="text-xs font-bold text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
                       >
                         Remove from Group
                       </button>
                     )}
                   </div>
-                </div>
+                </Card>
               );
             })}
           </div>
 
           {/* Empty Seats Visualizer */}
           {group.members?.length < group.targetSize && (
-            <div className="rounded-2xl border-2 border-dashed border-slate-200 p-6 text-center bg-slate-50/50">
+            <div className="rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 p-8 text-center bg-slate-50/50 dark:bg-slate-900/40">
               <span className="text-2xl text-slate-400">🛏️</span>
-              <p className="text-xs font-bold text-slate-600 mt-1">
+              <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mt-2 font-heading">
                 {group.targetSize - group.members.length} Unfilled Bed(s) Remaining
               </p>
-              <p className="text-[11px] text-slate-400">
-                Group status is currently <span className="font-semibold text-indigo-600">forming</span>. Leader can invite candidates.
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Group status is currently <span className="font-semibold text-indigo-600 dark:text-indigo-400">forming</span>.
               </p>
             </div>
+          )}
+
+          {/* Join Requests Panel */}
+          {group.joinRequests && group.joinRequests.length > 0 && (
+            <Card className="p-5 space-y-3">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 font-heading">
+                Join Requests ({group.joinRequests.length})
+              </h3>
+              <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                {group.joinRequests.map((req) => (
+                  <div key={req._id} className="py-3 flex items-center justify-between gap-3">
+                    <div>
+                      <span className="font-bold text-slate-900 dark:text-slate-100 block">
+                        {req.student?.name || "Candidate"}
+                      </span>
+                      <span className="text-[11px] text-slate-400 font-mono block">
+                        Status: {req.status} • Sent: {new Date(req.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    {req.status === "pending" && (
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => handleAdminCancelRequest(req._id)}
+                        isLoading={cancellingReqId === req._id}
+                        className="text-rose-600 dark:text-rose-400"
+                      >
+                        Cancel Request
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Card>
           )}
         </div>
 
         {/* Pairwise Scores Diagnostics & Room Preferences (1 Col) */}
         <div className="lg:col-span-1 space-y-6">
           {/* Room Preferences Diagnostics */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h2 className="text-base font-bold text-slate-900">Room Preferences</h2>
+          <Card className="p-5 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading">
+                Room Preferences
+              </h2>
               {group.preferencesNeedReview ? (
-                <span className="text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full animate-pulse">
-                  ⚠️ Review Required
-                </span>
+                <Badge variant="warning" size="xs">
+                  Review Required
+                </Badge>
               ) : (
-                <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
-                  ✓ Validated
-                </span>
+                <Badge variant="success" size="xs">
+                  Validated
+                </Badge>
               )}
             </div>
 
             <div className="space-y-3 text-xs">
               <div>
-                <span className="text-slate-500 font-semibold block text-[11px] uppercase tracking-wider mb-1.5">
+                <span className="text-slate-500 dark:text-slate-400 font-semibold block text-[11px] uppercase tracking-wider mb-1.5">
                   Preferred Hostels (Priority Order):
                 </span>
                 {group.roomPreferences?.preferredHostels?.length > 0 ? (
@@ -406,13 +442,13 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
                     {group.roomPreferences.preferredHostels.map((h, idx) => (
                       <div
                         key={h._id || idx}
-                        className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-between"
+                        className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between"
                       >
                         <div className="flex items-center gap-2">
                           <span className="bg-indigo-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
                             #{idx + 1}
                           </span>
-                          <span className="font-bold text-slate-900">{h.name || "Hostel"}</span>
+                          <span className="font-bold text-slate-900 dark:text-slate-100">{h.name || "Hostel"}</span>
                         </div>
                         <span className="text-[11px] text-slate-500 font-mono">{h.code}</span>
                       </div>
@@ -423,38 +459,41 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <div>
-                  <span className="text-slate-500 font-semibold block text-[11px] uppercase tracking-wider">
+                  <span className="text-slate-500 dark:text-slate-400 font-semibold block text-[11px] uppercase tracking-wider">
                     AC Preference:
                   </span>
-                  <span className="font-bold text-slate-900 capitalize mt-0.5 block">
+                  <span className="font-bold text-slate-900 dark:text-slate-100 capitalize mt-0.5 block">
                     {group.roomPreferences?.acType || "no-preference"}
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-500 font-semibold block text-[11px] uppercase tracking-wider">
+                  <span className="text-slate-500 dark:text-slate-400 font-semibold block text-[11px] uppercase tracking-wider">
                     Floor Preference:
                   </span>
-                  <span className="font-bold text-slate-900 capitalize mt-0.5 block">
+                  <span className="font-bold text-slate-900 dark:text-slate-100 capitalize mt-0.5 block">
                     {group.roomPreferences?.floorPreference || "any"} floor
                   </span>
                 </div>
               </div>
 
               {group.roomPreferences?.updatedAt && (
-                <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-400">
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400">
                   Last updated: {new Date(group.roomPreferences.updatedAt).toLocaleDateString()}
                 </div>
               )}
             </div>
-          </div>
+          </Card>
 
-          <h2 className="text-base font-bold text-slate-900">Pairwise Compatibility</h2>
+          {/* Pairwise Compatibility */}
+          <Card className="p-5 space-y-4">
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading border-b border-slate-100 dark:border-slate-800 pb-3">
+              Pairwise Compatibility Matrix
+            </h2>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-4">
-            {(!group.pairScores || group.pairScores.length === 0) ? (
-              <p className="text-xs text-slate-500 py-4 text-center">
+            {!group.pairScores || group.pairScores.length === 0 ? (
+              <p className="text-xs text-slate-500 dark:text-slate-400 py-4 text-center">
                 Need at least 2 members to evaluate pairwise compatibility scores.
               </p>
             ) : (
@@ -462,32 +501,26 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
                 {group.pairScores.map((pair, idx) => (
                   <div
                     key={idx}
-                    className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/70 space-y-2"
+                    className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 space-y-2"
                   >
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-slate-800 truncate max-w-[150px]">
+                      <span className="font-bold text-slate-800 dark:text-slate-200 truncate max-w-[150px]">
                         {pair.memberA} &amp; {pair.memberB}
                       </span>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[11px] font-extrabold border ${getScoreColor(
-                          pair.score
-                        )}`}
-                      >
-                        {pair.score}%
-                      </span>
+                      <StatusBadge type="score" score={pair.score} size="sm" />
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px] text-slate-500">
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
                       <span>Label: {pair.label || "Matched"}</span>
                       {pair.excluded ? (
-                        <span className="font-bold text-rose-600">Deal-breaker alert</span>
+                        <span className="font-bold text-rose-600 dark:text-rose-400">Deal-breaker alert</span>
                       ) : (
-                        <span className="font-medium text-emerald-600">Compatible</span>
+                        <span className="font-medium text-teal-600 dark:text-teal-400">Compatible</span>
                       )}
                     </div>
 
                     {pair.violations && pair.violations.length > 0 && (
-                      <div className="mt-1 pt-1 border-t border-slate-200 text-[10px] text-rose-700">
+                      <div className="mt-1 pt-1 border-t border-slate-200 dark:border-slate-800 text-[10px] text-rose-600 dark:text-rose-400">
                         {pair.violations.join(", ")}
                       </div>
                     )}
@@ -495,128 +528,48 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
                 ))}
               </div>
             )}
-          </div>
+          </Card>
         </div>
       </div>
 
-      {/* Join Requests (Admin View) */}
-      <div className="space-y-4">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-600">
-          Join Requests ({group.joinRequests?.length || 0})
-        </h2>
-
-        {(!group.joinRequests || group.joinRequests.length === 0) ? (
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-xs text-slate-500">
-            No join requests have been sent to this group.
-          </div>
-        ) : (
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-xs">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-100">
-                <tr>
-                  <th className="p-3.5">Requester</th>
-                  <th className="p-3.5">Program / Year</th>
-                  <th className="p-3.5">Message</th>
-                  <th className="p-3.5">Status</th>
-                  <th className="p-3.5">Dates</th>
-                  <th className="p-3.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
-                {group.joinRequests.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50/50">
-                    <td className="p-3.5 font-semibold text-slate-900">
-                      {r.requester?.name}
-                      <span className="block text-[11px] font-normal text-slate-500">
-                        {r.requester?.email}
-                      </span>
-                    </td>
-                    <td className="p-3.5">
-                      {r.requester?.course} {r.requester?.year ? `• Yr ${r.requester.year}` : ""}
-                    </td>
-                    <td className="p-3.5 max-w-xs truncate italic">
-                      {r.message ? `"${r.message}"` : "—"}
-                    </td>
-                    <td className="p-3.5">
-                      <Badge
-                        variant={
-                          r.status === "approved"
-                            ? "emerald"
-                            : r.status === "pending"
-                            ? "amber"
-                            : r.status === "rejected"
-                            ? "danger"
-                            : "default"
-                        }
-                        size="sm"
-                      >
-                        {r.status.toUpperCase()}
-                      </Badge>
-                      {r.closeReason && (
-                        <span className="block text-[10px] text-slate-400 mt-0.5">
-                          {r.closeReason}
-                        </span>
-                      )}
-                    </td>
-                    <td className="p-3.5 text-slate-500 text-[11px]">
-                      Created: {new Date(r.createdAt).toLocaleDateString()}
-                    </td>
-                    <td className="p-3.5 text-right">
-                      {r.status === "pending" && (
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          loading={cancellingReqId === r.id}
-                          disabled={cancellingReqId === r.id}
-                          onClick={() => handleAdminCancelRequest(r.id)}
-                        >
-                          Cancel
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Remove Member Confirmation Dialog */}
+      {/* Remove Member Dialog */}
       <ConfirmDialog
         isOpen={isRemoveOpen}
-        onClose={() => setIsRemoveOpen(false)}
+        onClose={() => {
+          setIsRemoveOpen(false);
+          setMemberToRemove(null);
+        }}
         onConfirm={handleConfirmRemove}
-        title="Remove Member from Group"
-        message={`Are you sure you want to remove ${memberToRemove?.user?.name || "this student"} from this group? If this is the leader, leadership will pass to the next member or disband if empty.`}
+        title={`Remove ${memberToRemove?.user?.name || "Member"}?`}
+        message={`Are you sure you want to administratively remove ${memberToRemove?.user?.name} from this roommate group? The group's target size will remain ${group.targetSize}, and a slot will open.`}
         confirmText="Remove Member"
-        confirmVariant="danger"
-        loading={removing}
+        variant="danger"
+        isLoading={removing}
       />
 
-      {/* Disband Group Confirmation Dialog */}
+      {/* Disband Group Dialog */}
       <ConfirmDialog
         isOpen={isDisbandOpen}
         onClose={() => setIsDisbandOpen(false)}
         onConfirm={handleConfirmDisband}
-        title="Disband Roommate Group"
-        message="Are you sure you want to disband this group? All members will be freed to form new groups or choose auto-assignment, and all pending invitations will be cancelled immediately."
+        title="Disband Roommate Group?"
+        message="Are you sure you want to administratively disband this group? All active members will be released and returned to the individual candidate pool."
         confirmText="Disband Group"
-        confirmVariant="danger"
-        loading={disbanding}
+        variant="danger"
+        isLoading={disbanding}
       />
 
-      {/* Release Room Confirmation Dialog */}
+      {/* Release Room Dialog */}
       <ConfirmDialog
         isOpen={isReleaseRoomOpen}
         onClose={() => setIsReleaseRoomOpen(false)}
         onConfirm={handleConfirmReleaseRoom}
-        title="Release Selected Room"
-        message="Are you sure you want to release this group's selected room? Active student allocations for this room will be deleted, and the room will immediately become available again for selection or auto-allocation."
+        title="Release FCFS Selected Room?"
+        message="Are you sure you want to administratively release this group's claimed room? The room will immediately become available for other groups to select."
         confirmText="Release Room"
-        confirmVariant="danger"
-        loading={releasingRoom}
+        variant="danger"
+        isLoading={releasingRoom}
       />
-    </div>
+    </PageContainer>
   );
 }

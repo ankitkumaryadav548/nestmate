@@ -2,6 +2,28 @@
 
 import { useState, useEffect, useCallback } from "react";
 import axios from "@/lib/axios";
+import {
+  PageContainer,
+  Card,
+  Button,
+  Input,
+  Textarea,
+  Select,
+  Badge,
+  ProgressBar,
+  Modal,
+  ConfirmDialog,
+  Alert,
+  Table,
+  TableHeader,
+  TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
+  TableSkeleton,
+  Pagination,
+} from "@/components/ui";
+import { AdminPageHeader } from "@/components/admin";
 import { TITLE_MAX, MESSAGE_MAX } from "@/config/notifications";
 
 const SAFE_LINKS = [
@@ -209,568 +231,529 @@ export default function AdminAnnouncementsPage() {
   };
 
   return (
-    <div className="flex-1 py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-600 text-white shadow-md shadow-purple-600/20 text-xl">
-            📢
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Campus Announcements & Bulletins
-            </h1>
-            <p className="text-sm text-slate-500 mt-0.5">
-              Broadcast high-priority in-app announcements targeted to specific student demographics,
-              academic cohorts, or residential groups.
-            </p>
-          </div>
-        </div>
-      </div>
+    <PageContainer maxWidth="7xl">
+      <div className="space-y-6">
+        {/* Header */}
+        <AdminPageHeader
+          title="Campus Announcements"
+          description="Broadcast high-priority announcements targeted to specific student cohorts, hostels, or groups."
+          breadcrumbs={[
+            { label: "Admin", href: "/admin" },
+            { label: "Announcements" },
+          ]}
+          actions={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchHistory}
+            >
+              🔄 Refresh
+            </Button>
+          }
+        />
 
-      {/* Action alerts */}
-      {actionSuccess && (
-        <div className="mb-6 rounded-2xl border border-emerald-200 bg-emerald-50/90 p-4 text-emerald-950 flex items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <span>✅</span>
+        {/* Action alerts */}
+        {actionSuccess && (
+          <Alert variant="success" className="flex items-center justify-between">
             <span>{actionSuccess}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setActionSuccess(null)}
-            className="text-emerald-700 hover:text-emerald-900 text-xs font-bold"
-          >
-            ✕
-          </button>
-        </div>
-      )}
+            <button
+              type="button"
+              onClick={() => setActionSuccess(null)}
+              className="text-xs font-bold hover:opacity-80"
+            >
+              ✕
+            </button>
+          </Alert>
+        )}
 
-      {actionError && (
-        <div className="mb-6 rounded-2xl border border-rose-200 bg-rose-50/90 p-4 text-rose-950 flex items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <span>⚠️</span>
+        {actionError && (
+          <Alert variant="danger" className="flex items-center justify-between">
             <span>{actionError}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setActionError(null)}
-            className="text-rose-700 hover:text-rose-900 text-xs font-bold"
-          >
-            ✕
-          </button>
-        </div>
-      )}
+            <button
+              type="button"
+              onClick={() => setActionError(null)}
+              className="text-xs font-bold hover:opacity-80"
+            >
+              ✕
+            </button>
+          </Alert>
+        )}
 
-      {/* Compose Form Card */}
-      <div className="mb-12 rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-sm">
-        <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
-          <span>✍️</span> Compose New Announcement
-        </h2>
-
-        <form onSubmit={handleOpenSend} className="space-y-6">
-          {/* Title input with live counter */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label htmlFor="announcement-title" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Title <span className="text-rose-500">*</span>
-              </label>
-              <span
-                className={`text-xs font-semibold ${
-                  title.length > TITLE_MAX ? "text-rose-600" : "text-slate-400"
-                }`}
-              >
-                {title.length} / {TITLE_MAX}
-              </span>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* Compose Form Card */}
+          <Card className="lg:col-span-5 p-5 sm:p-6 space-y-5">
+            <div className="border-b border-[var(--border)] pb-3">
+              <h2 className="text-base font-bold text-[var(--foreground)] flex items-center gap-2">
+                <span>✍️</span> Compose New Announcement
+              </h2>
+              <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                Target notifications to individual cohorts or the whole student body.
+              </p>
             </div>
-            <input
-              id="announcement-title"
-              type="text"
-              value={title}
-              maxLength={TITLE_MAX}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Allocation Round 2 Finalized & Published"
-              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              required
-            />
-          </div>
 
-          {/* Message textarea with live counter */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label htmlFor="announcement-message" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Message <span className="text-rose-500">*</span>
-              </label>
-              <span
-                className={`text-xs font-semibold ${
-                  message.length > MESSAGE_MAX ? "text-rose-600" : "text-slate-400"
-                }`}
-              >
-                {message.length} / {MESSAGE_MAX}
-              </span>
-            </div>
-            <textarea
-              id="announcement-message"
-              rows={3}
-              value={message}
-              maxLength={MESSAGE_MAX}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Enter plain text announcement message. Privacy guarantee: Never include personal phone numbers, emails, or deal-breaker details."
-              className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-              required
-            />
-          </div>
-
-          {/* Safe Internal Link Selector */}
-          <div>
-            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-              Call-to-Action Link <span className="text-slate-400 font-normal">(Optional internal path)</span>
-            </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <form onSubmit={handleOpenSend} className="space-y-4">
+              {/* Title input with live counter */}
               <div>
-                <select
-                  value={isCustomLink ? "custom" : selectedLink}
-                  onChange={(e) => {
-                    if (e.target.value === "custom") {
-                      setIsCustomLink(true);
-                    } else {
-                      setIsCustomLink(false);
-                      setSelectedLink(e.target.value);
-                    }
-                  }}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                >
-                  {SAFE_LINKS.map((link) => (
-                    <option key={link.value} value={link.value}>
-                      {link.label}
-                    </option>
-                  ))}
-                  <option value="custom">Custom internal path...</option>
-                </select>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label htmlFor="announcement-title" className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
+                    Title <span className="text-rose-500">*</span>
+                  </label>
+                  <span
+                    className={`text-xs font-semibold ${
+                      title.length > TITLE_MAX ? "text-rose-600" : "text-[var(--muted-foreground)]"
+                    }`}
+                  >
+                    {title.length} / {TITLE_MAX}
+                  </span>
+                </div>
+                <Input
+                  id="announcement-title"
+                  type="text"
+                  value={title}
+                  maxLength={TITLE_MAX}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Allocation Round 2 Finalized & Published"
+                  required
+                />
               </div>
 
-              {isCustomLink && (
-                <div>
-                  <input
-                    type="text"
-                    value={customLink}
-                    onChange={(e) => setCustomLink(e.target.value)}
-                    placeholder="Must start with single '/' (e.g. /dashboard/profile)"
-                    className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Audience Selector */}
-          <div className="pt-2 border-t border-slate-100">
-            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-2">
-              Target Audience Cohort <span className="text-rose-500">*</span>
-            </label>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Message textarea with live counter */}
               <div>
-                <label className="text-xs text-slate-500 font-medium block mb-1">
-                  Audience Type
+                <div className="flex items-center justify-between mb-1.5">
+                  <label htmlFor="announcement-message" className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider">
+                    Message <span className="text-rose-500">*</span>
+                  </label>
+                  <span
+                    className={`text-xs font-semibold ${
+                      message.length > MESSAGE_MAX ? "text-rose-600" : "text-[var(--muted-foreground)]"
+                    }`}
+                  >
+                    {message.length} / {MESSAGE_MAX}
+                  </span>
+                </div>
+                <Textarea
+                  id="announcement-message"
+                  rows={3}
+                  value={message}
+                  maxLength={MESSAGE_MAX}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Enter message text. Privacy guarantee: Never include personal phone numbers, emails, or deal-breaker details."
+                  required
+                />
+              </div>
+
+              {/* Safe Internal Link Selector */}
+              <div>
+                <label className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider block mb-1.5">
+                  Call-to-Action Link <span className="text-[var(--muted-foreground)] font-normal">(Optional)</span>
                 </label>
-                <select
-                  value={audienceType}
-                  onChange={(e) => setAudienceType(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 font-semibold focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                >
-                  <option value="all_students">All Students</option>
-                  <option value="gender">By Gender</option>
-                  <option value="year">By Academic Year</option>
-                  <option value="hostel">By Allocated Hostel</option>
-                  <option value="allocated">All Allocated Students</option>
-                  <option value="not_allocated">All Unallocated Students</option>
-                  <option value="group_status">By Group Status</option>
-                </select>
-              </div>
-
-              {/* Dynamic Extra Field: Gender */}
-              {audienceType === "gender" && (
-                <div>
-                  <label className="text-xs text-slate-500 font-medium block mb-1">
-                    Select Gender
-                  </label>
-                  <select
-                    value={genderVal}
-                    onChange={(e) => setGenderVal(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 capitalize focus:border-indigo-500 focus:outline-none"
+                <div className="space-y-2">
+                  <Select
+                    value={isCustomLink ? "custom" : selectedLink}
+                    onChange={(e) => {
+                      if (e.target.value === "custom") {
+                        setIsCustomLink(true);
+                      } else {
+                        setIsCustomLink(false);
+                        setSelectedLink(e.target.value);
+                      }
+                    }}
                   >
-                    <option value="female">Female</option>
-                    <option value="male">Male</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-              )}
-
-              {/* Dynamic Extra Field: Year */}
-              {audienceType === "year" && (
-                <div>
-                  <label className="text-xs text-slate-500 font-medium block mb-1">
-                    Select Academic Year
-                  </label>
-                  <select
-                    value={yearVal}
-                    onChange={(e) => setYearVal(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none"
-                  >
-                    <option value="1">Year 1 (Freshmen)</option>
-                    <option value="2">Year 2 (Sophomores)</option>
-                    <option value="3">Year 3 (Juniors)</option>
-                    <option value="4">Year 4 (Seniors)</option>
-                    <option value="5">Year 5</option>
-                    <option value="6">Year 6</option>
-                  </select>
-                </div>
-              )}
-
-              {/* Dynamic Extra Field: Hostel */}
-              {audienceType === "hostel" && (
-                <div className="sm:col-span-2">
-                  <label className="text-xs text-slate-500 font-medium block mb-1">
-                    Select Assigned Hostel
-                  </label>
-                  <select
-                    value={hostelVal}
-                    onChange={(e) => setHostelVal(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none"
-                  >
-                    {hostels.map((h) => (
-                      <option key={h._id} value={h._id}>
-                        {h.name} ({h.gender} · {h.type})
+                    {SAFE_LINKS.map((link) => (
+                      <option key={link.value} value={link.value}>
+                        {link.label}
                       </option>
                     ))}
-                  </select>
+                    <option value="custom">Custom internal path...</option>
+                  </Select>
+
+                  {isCustomLink && (
+                    <Input
+                      type="text"
+                      value={customLink}
+                      onChange={(e) => setCustomLink(e.target.value)}
+                      placeholder="Must start with '/' (e.g. /dashboard/profile)"
+                    />
+                  )}
                 </div>
-              )}
+              </div>
 
-              {/* Dynamic Extra Field: Group Status */}
-              {audienceType === "group_status" && (
-                <div>
-                  <label className="text-xs text-slate-500 font-medium block mb-1">
-                    Group Status
-                  </label>
-                  <select
-                    value={groupStatusVal}
-                    onChange={(e) => setGroupStatusVal(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none"
-                  >
-                    <option value="forming">Forming Groups</option>
-                    <option value="complete">Complete Groups</option>
-                    <option value="locked">Locked Groups</option>
-                    <option value="none">Students With No Group</option>
-                  </select>
-                </div>
-              )}
-            </div>
+              {/* Audience Selector */}
+              <div className="pt-2 border-t border-[var(--border)] space-y-3">
+                <label className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider block">
+                  Target Audience Cohort <span className="text-rose-500">*</span>
+                </label>
 
-            {/* Preview Box */}
-            <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-200">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={handlePreview}
-                  disabled={previewing}
-                  className="rounded-xl border border-indigo-200 bg-indigo-50 px-3.5 py-2 text-xs font-bold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50 transition-colors"
-                >
-                  {previewing ? "Calculating..." : "🔍 Preview Recipients"}
-                </button>
-
-                {preview && (
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
-                      {preview.count} {preview.count === 1 ? "student" : "students"}
-                    </span>
-                    <span className="text-xs font-medium text-slate-600">
-                      ({preview.audienceLabel})
-                    </span>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs text-[var(--muted-foreground)] font-medium block mb-1">
+                      Audience Type
+                    </label>
+                    <Select
+                      value={audienceType}
+                      onChange={(e) => setAudienceType(e.target.value)}
+                    >
+                      <option value="all_students">All Students</option>
+                      <option value="gender">By Gender</option>
+                      <option value="year">By Academic Year</option>
+                      <option value="hostel">By Allocated Hostel</option>
+                      <option value="allocated">All Allocated Students</option>
+                      <option value="not_allocated">All Unallocated Students</option>
+                      <option value="group_status">By Group Status</option>
+                    </Select>
                   </div>
-                )}
 
-                {previewError && (
-                  <span className="text-xs font-semibold text-rose-600">
-                    ⚠️ {previewError}
+                  {/* Dynamic Extra Field: Gender */}
+                  {audienceType === "gender" && (
+                    <div>
+                      <label className="text-xs text-[var(--muted-foreground)] font-medium block mb-1">
+                        Select Gender
+                      </label>
+                      <Select
+                        value={genderVal}
+                        onChange={(e) => setGenderVal(e.target.value)}
+                      >
+                        <option value="female">Female</option>
+                        <option value="male">Male</option>
+                        <option value="other">Other</option>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Dynamic Extra Field: Year */}
+                  {audienceType === "year" && (
+                    <div>
+                      <label className="text-xs text-[var(--muted-foreground)] font-medium block mb-1">
+                        Select Academic Year
+                      </label>
+                      <Select
+                        value={yearVal}
+                        onChange={(e) => setYearVal(e.target.value)}
+                      >
+                        <option value="1">Year 1 (Freshmen)</option>
+                        <option value="2">Year 2 (Sophomores)</option>
+                        <option value="3">Year 3 (Juniors)</option>
+                        <option value="4">Year 4 (Seniors)</option>
+                        <option value="5">Year 5</option>
+                        <option value="6">Year 6</option>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Dynamic Extra Field: Hostel */}
+                  {audienceType === "hostel" && (
+                    <div>
+                      <label className="text-xs text-[var(--muted-foreground)] font-medium block mb-1">
+                        Select Assigned Hostel
+                      </label>
+                      <Select
+                        value={hostelVal}
+                        onChange={(e) => setHostelVal(e.target.value)}
+                      >
+                        {hostels.map((h) => (
+                          <option key={h._id} value={h._id}>
+                            {h.name} ({h.gender} · {h.type})
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Dynamic Extra Field: Group Status */}
+                  {audienceType === "group_status" && (
+                    <div>
+                      <label className="text-xs text-[var(--muted-foreground)] font-medium block mb-1">
+                        Group Status
+                      </label>
+                      <Select
+                        value={groupStatusVal}
+                        onChange={(e) => setGroupStatusVal(e.target.value)}
+                      >
+                        <option value="forming">Forming Groups</option>
+                        <option value="complete">Complete Groups</option>
+                        <option value="locked">Locked Groups</option>
+                        <option value="none">Students With No Group</option>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+
+                {/* Preview Box */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-[var(--muted)]/50 border border-[var(--border)]">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handlePreview}
+                      disabled={previewing}
+                      className="text-xs py-1 h-auto"
+                    >
+                      {previewing ? "Calculating..." : "🔍 Preview Recipients"}
+                    </Button>
+
+                    {preview && (
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="teal" size="sm">
+                          {preview.count} {preview.count === 1 ? "student" : "students"}
+                        </Badge>
+                        <span className="text-[11px] text-[var(--muted-foreground)]">
+                          ({preview.audienceLabel})
+                        </span>
+                      </div>
+                    )}
+
+                    {previewError && (
+                      <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">
+                        ⚠️ {previewError}
+                      </span>
+                    )}
+                  </div>
+
+                  <span className="text-[10px] text-[var(--muted-foreground)]">
+                    Max: 5,000
                   </span>
-                )}
+                </div>
               </div>
 
-              <span className="text-[11px] text-slate-400">
-                Max fan-out limit: 5,000 recipients
-              </span>
+              {/* Form Actions */}
+              <div className="pt-3 border-t border-[var(--border)] flex items-center justify-end">
+                <Button
+                  type="submit"
+                  className="bg-brand-600 hover:bg-brand-700 text-white font-bold"
+                >
+                  <span>Send Announcement</span>
+                  <span className="ml-1.5">&rarr;</span>
+                </Button>
+              </div>
+            </form>
+          </Card>
+
+          {/* Announcements History Card & Table */}
+          <Card className="lg:col-span-7 overflow-hidden">
+            <div className="border-b border-[var(--border)] bg-[var(--muted)]/40 p-4 sm:px-6 sm:py-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-[var(--foreground)]">Announcement History</h2>
+                <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+                  Showing {history.length} of {historyTotal} announcements dispatched
+                </p>
+              </div>
             </div>
+
+            {loadingHistory ? (
+              <TableSkeleton rows={6} columns={6} />
+            ) : history.length === 0 ? (
+              <div className="p-12 text-center text-sm text-[var(--muted-foreground)]">
+                No announcements have been broadcast yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title & Details</TableHead>
+                      <TableHead>Audience</TableHead>
+                      <TableHead className="text-center">Sent</TableHead>
+                      <TableHead>Read Rate</TableHead>
+                      <TableHead className="text-center">Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {history.map((item) => {
+                      const readRate =
+                        item.recipientCount > 0
+                          ? Math.round((item.readCount / item.recipientCount) * 100)
+                          : 0;
+
+                      return (
+                        <TableRow key={item._id}>
+                          <TableCell className="font-semibold text-[var(--foreground)] max-w-[200px]">
+                            <div className="truncate">{item.title}</div>
+                            {item.link && (
+                              <span className="block text-[10px] font-normal text-brand-600 dark:text-brand-400 truncate mt-0.5">
+                                🔗 {item.link}
+                              </span>
+                            )}
+                            <div className="text-[10px] text-[var(--muted-foreground)] mt-0.5 font-normal">
+                              {new Date(item.createdAt).toLocaleString(undefined, {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-[var(--muted-foreground)] text-xs font-medium">
+                            {item.audienceLabel}
+                          </TableCell>
+                          <TableCell className="text-center font-bold text-[var(--foreground)]">
+                            {item.recipientCount}
+                          </TableCell>
+                          <TableCell className="min-w-[120px]">
+                            <div className="flex items-center justify-between text-xs mb-1">
+                              <span className="font-semibold text-[var(--foreground)]">{item.readCount}</span>
+                              <span className="text-[11px] text-[var(--muted-foreground)]">{readRate}%</span>
+                            </div>
+                            <ProgressBar value={readRate} max={100} size="sm" tone={readRate > 50 ? "teal" : "brand"} />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {item.status === "withdrawn" ? (
+                              <Badge variant="default" size="sm">
+                                Withdrawn
+                              </Badge>
+                            ) : (
+                              <Badge variant="teal" size="sm">
+                                Active
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setViewItem(item)}
+                                className="text-xs py-1 px-2 h-auto"
+                              >
+                                View
+                              </Button>
+                              {item.status !== "withdrawn" && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setWithdrawItem(item)}
+                                  className="text-xs py-1 px-2 h-auto text-rose-600 hover:text-rose-700"
+                                >
+                                  Withdraw
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            {/* History Pagination */}
+            {historyTotalPages > 1 && (
+              <div className="p-4 border-t border-[var(--border)]">
+                <Pagination
+                  currentPage={historyPage}
+                  totalPages={historyTotalPages}
+                  onPageChange={(p) => setHistoryPage(p)}
+                />
+              </div>
+            )}
+          </Card>
+        </div>
+
+        {/* Confirmation Modal for Send Announcement */}
+        <Modal
+          isOpen={confirmSendOpen}
+          onClose={() => !sending && setConfirmSendOpen(false)}
+          title="Confirm Broadcast Dispatch"
+          description="High-priority broadcast sent directly to matching student notifications."
+          maxWidth="max-w-lg"
+        >
+          <div className="space-y-3 text-xs sm:text-sm text-[var(--foreground)]">
+            <div className="rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 p-3 space-y-1.5">
+              <div>
+                <span className="font-bold text-[var(--foreground)]">Target Cohort:</span>{" "}
+                <span className="font-semibold text-purple-900 dark:text-purple-200">
+                  {preview?.audienceLabel || "Selected Audience"}
+                </span>
+              </div>
+              <div>
+                <span className="font-bold text-[var(--foreground)]">Recipients Count:</span>{" "}
+                <Badge variant="purple" size="sm">
+                  {preview?.count ?? "Will be resolved"} students
+                </Badge>
+              </div>
+            </div>
+
+            <div>
+              <span className="font-bold text-[var(--foreground)] block mb-0.5">Title:</span>
+              <p className="rounded-xl bg-[var(--muted)]/50 p-2.5 font-medium text-[var(--foreground)] border border-[var(--border)]">
+                {title}
+              </p>
+            </div>
+
+            <div>
+              <span className="font-bold text-[var(--foreground)] block mb-0.5">Message:</span>
+              <p className="rounded-xl bg-[var(--muted)]/50 p-2.5 text-[var(--foreground)] border border-[var(--border)] whitespace-pre-wrap">
+                {message}
+              </p>
+            </div>
+
+            {getEffectiveLink() && (
+              <div>
+                <span className="font-bold text-[var(--foreground)]">Action Link:</span>{" "}
+                <code className="text-brand-600 dark:text-brand-400 text-xs">{getEffectiveLink()}</code>
+              </div>
+            )}
           </div>
 
-          {/* Form Actions */}
-          <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-3">
-            <button
-              type="submit"
-              className="rounded-xl bg-purple-600 px-6 py-2.5 text-sm font-bold text-white shadow-md shadow-purple-600/20 hover:bg-purple-700 transition-all flex items-center gap-2"
+          <div className="mt-5 flex items-center justify-end gap-3 border-t border-[var(--border)] pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmSendOpen(false)}
+              disabled={sending}
             >
-              <span>Send Announcement</span>
-              <span>&rarr;</span>
-            </button>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleConfirmSend}
+              disabled={sending}
+              className="bg-brand-600 hover:bg-brand-700 text-white font-bold"
+            >
+              {sending ? "Broadcasting..." : "Confirm & Send"}
+            </Button>
           </div>
-        </form>
-      </div>
+        </Modal>
 
-      {/* Announcements History Table */}
-      <div className="rounded-3xl border border-slate-200/80 bg-white p-6 sm:p-8 shadow-sm">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-lg font-bold text-slate-900">Announcement History</h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Showing {history.length} of {historyTotal} announcements dispatched
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={fetchHistory}
-            className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+        {/* View Details Modal */}
+        {viewItem && (
+          <Modal
+            isOpen={Boolean(viewItem)}
+            onClose={() => setViewItem(null)}
+            title="Announcement Details"
+            maxWidth="max-w-lg"
           >
-            🔄 Refresh
-          </button>
-        </div>
-
-        {loadingHistory ? (
-          <div className="py-12 text-center text-sm text-slate-400">
-            Loading announcements history...
-          </div>
-        ) : history.length === 0 ? (
-          <div className="py-12 text-center text-sm text-slate-400">
-            No announcements have been broadcast yet.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs sm:text-sm">
-              <thead className="border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider bg-slate-50/50">
-                <tr>
-                  <th className="py-3 px-4">Title & Details</th>
-                  <th className="py-3 px-4">Audience</th>
-                  <th className="py-3 px-4 text-center">Recipients</th>
-                  <th className="py-3 px-4 text-center">Read Count</th>
-                  <th className="py-3 px-4">Dispatched At</th>
-                  <th className="py-3 px-4 text-center">Status</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {history.map((item) => {
-                  const readRate =
-                    item.recipientCount > 0
-                      ? Math.round((item.readCount / item.recipientCount) * 100)
-                      : 0;
-
-                  return (
-                    <tr key={item._id} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3.5 px-4 font-semibold text-slate-900 max-w-[200px] truncate">
-                        {item.title}
-                        {item.link && (
-                          <span className="block text-[10px] font-normal text-indigo-600 truncate mt-0.5">
-                            🔗 {item.link}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-600 font-medium">
-                        {item.audienceLabel}
-                      </td>
-                      <td className="py-3.5 px-4 text-center font-bold text-slate-800">
-                        {item.recipientCount}
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <span className="font-semibold text-slate-800">{item.readCount}</span>
-                        <span className="text-[10px] text-slate-400 ml-1">({readRate}%)</span>
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-500 text-xs whitespace-nowrap">
-                        {new Date(item.createdAt).toLocaleString(undefined, {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        {item.status === "withdrawn" ? (
-                          <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
-                            Withdrawn
-                          </span>
-                        ) : (
-                          <span className="inline-flex rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
-                            Active
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setViewItem(item)}
-                            className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                          >
-                            View
-                          </button>
-                          {item.status !== "withdrawn" && (
-                            <button
-                              type="button"
-                              onClick={() => setWithdrawItem(item)}
-                              className="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 hover:bg-rose-100"
-                            >
-                              Withdraw
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* History Pagination */}
-        {historyTotalPages > 1 && (
-          <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
-            <button
-              type="button"
-              onClick={() => setHistoryPage((p) => Math.max(1, p - 1))}
-              disabled={historyPage <= 1}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
-            >
-              &larr; Previous
-            </button>
-            <span className="text-xs text-slate-500">
-              Page {historyPage} of {historyTotalPages}
-            </span>
-            <button
-              type="button"
-              onClick={() => setHistoryPage((p) => Math.min(historyTotalPages, p + 1))}
-              disabled={historyPage >= historyTotalPages}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40"
-            >
-              Next &rarr;
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Confirmation Modal for Send Announcement */}
-      {confirmSendOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 shadow-2xl">
-            <div className="flex items-center gap-3 text-purple-600 mb-4">
-              <span className="text-2xl">📢</span>
-              <h3 className="text-lg font-bold text-slate-900">
-                Confirm Broadcast Dispatch
-              </h3>
-            </div>
-
-            <div className="space-y-3 text-xs sm:text-sm text-slate-600 leading-relaxed">
-              <div className="rounded-2xl bg-purple-50/70 border border-purple-100 p-4 space-y-2">
-                <div>
-                  <span className="font-bold text-slate-700">Target Cohort:</span>{" "}
-                  <span className="font-semibold text-purple-900">
-                    {preview?.audienceLabel || "Selected Audience"}
-                  </span>
-                </div>
-                <div>
-                  <span className="font-bold text-slate-700">Recipients Count:</span>{" "}
-                  <span className="rounded-full bg-purple-200/80 px-2 py-0.5 font-bold text-purple-900">
-                    {preview?.count ?? "Will be resolved"} students
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <span className="font-bold text-slate-700 block mb-0.5">Title:</span>
-                <p className="rounded-xl bg-slate-50 p-2.5 font-medium text-slate-800 border border-slate-200/60">
-                  {title}
-                </p>
-              </div>
-
-              <div>
-                <span className="font-bold text-slate-700 block mb-0.5">Message:</span>
-                <p className="rounded-xl bg-slate-50 p-2.5 text-slate-700 border border-slate-200/60 whitespace-pre-wrap">
-                  {message}
-                </p>
-              </div>
-
-              {getEffectiveLink() && (
-                <div>
-                  <span className="font-bold text-slate-700">Action Link:</span>{" "}
-                  <code className="text-indigo-600 text-xs">{getEffectiveLink()}</code>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6 flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
-              <button
-                type="button"
-                onClick={() => setConfirmSendOpen(false)}
-                disabled={sending}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmSend}
-                disabled={sending}
-                className="rounded-xl bg-purple-600 px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-purple-700 disabled:opacity-50"
-              >
-                {sending ? "Broadcasting..." : "Confirm & Send"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* View Details Modal */}
-      {viewItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 sm:p-7 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-              <h3 className="text-base font-bold text-slate-900">
-                Announcement Details
-              </h3>
-              <button
-                type="button"
-                onClick={() => setViewItem(null)}
-                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
             <div className="space-y-3 text-xs sm:text-sm">
               <div>
-                <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">
+                <span className="text-[var(--muted-foreground)] text-xs font-bold uppercase tracking-wider block">
                   Title
                 </span>
-                <span className="text-slate-900 font-bold text-base mt-0.5 block">
+                <span className="text-[var(--foreground)] font-bold text-base mt-0.5 block">
                   {viewItem.title}
                 </span>
               </div>
 
               <div>
-                <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">
+                <span className="text-[var(--muted-foreground)] text-xs font-bold uppercase tracking-wider block">
                   Message
                 </span>
-                <p className="mt-1 rounded-xl bg-slate-50 p-3 text-slate-700 border border-slate-200/60 leading-relaxed whitespace-pre-wrap">
+                <p className="mt-1 rounded-xl bg-[var(--muted)]/50 p-3 text-[var(--foreground)] border border-[var(--border)] leading-relaxed whitespace-pre-wrap">
                   {viewItem.message}
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <div className="rounded-xl bg-slate-50 p-3 border border-slate-200/60">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase">Target Audience</span>
-                  <p className="font-semibold text-slate-800 mt-0.5">{viewItem.audienceLabel}</p>
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div className="rounded-xl bg-[var(--muted)]/40 p-3 border border-[var(--border)]">
+                  <span className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase">Target Audience</span>
+                  <p className="font-semibold text-[var(--foreground)] mt-0.5">{viewItem.audienceLabel}</p>
                 </div>
-                <div className="rounded-xl bg-slate-50 p-3 border border-slate-200/60">
-                  <span className="text-[11px] font-bold text-slate-400 uppercase">Deliveries</span>
-                  <p className="font-semibold text-slate-800 mt-0.5">
+                <div className="rounded-xl bg-[var(--muted)]/40 p-3 border border-[var(--border)]">
+                  <span className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase">Deliveries</span>
+                  <p className="font-semibold text-[var(--foreground)] mt-0.5">
                     {viewItem.recipientCount} recipients · {viewItem.readCount} read
                   </p>
                 </div>
@@ -778,63 +761,37 @@ export default function AdminAnnouncementsPage() {
 
               {viewItem.link && (
                 <div>
-                  <span className="text-slate-400 text-xs font-bold uppercase tracking-wider block">
+                  <span className="text-[var(--muted-foreground)] text-xs font-bold uppercase tracking-wider block">
                     Action Link
                   </span>
-                  <code className="text-indigo-600 text-xs block mt-0.5">{viewItem.link}</code>
+                  <code className="text-brand-600 dark:text-brand-400 text-xs block mt-0.5">{viewItem.link}</code>
                 </div>
               )}
             </div>
 
-            <div className="mt-6 flex justify-end">
-              <button
+            <div className="mt-5 flex justify-end">
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setViewItem(null)}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
               >
                 Close
-              </button>
+              </Button>
             </div>
-          </div>
-        </div>
-      )}
+          </Modal>
+        )}
 
-      {/* Confirmation Modal for Withdraw Announcement */}
-      {withdrawItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-            <div className="flex items-center gap-3 text-rose-600 mb-3">
-              <span className="text-2xl">⚠️</span>
-              <h3 className="text-base font-bold text-slate-900">
-                Withdraw Announcement?
-              </h3>
-            </div>
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-              Withdrawing this announcement will mark it as withdrawn and{" "}
-              <strong>permanently delete all delivered copies</strong> from every recipient student&apos;s
-              notification center.
-            </p>
-            <div className="mt-6 flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setWithdrawItem(null)}
-                disabled={withdrawing}
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirmWithdraw}
-                disabled={withdrawing}
-                className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-rose-700 disabled:opacity-50"
-              >
-                {withdrawing ? "Withdrawing..." : "Yes, Withdraw"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+        {/* Confirmation Modal for Withdraw Announcement */}
+        <ConfirmDialog
+          isOpen={Boolean(withdrawItem)}
+          title="Withdraw Announcement?"
+          message="Withdrawing this announcement will mark it as withdrawn and permanently delete all delivered copies from every recipient student's notification center."
+          confirmLabel={withdrawing ? "Withdrawing..." : "Yes, Withdraw"}
+          isDestructive={true}
+          onConfirm={handleConfirmWithdraw}
+          onCancel={() => setWithdrawItem(null)}
+        />
+      </div>
+    </PageContainer>
   );
 }

@@ -974,6 +974,121 @@ All new shared components are barrel-exported from `src/components/ui/index.js`:
     - Severity-tinted icon circles, pulsing unread indicator dot, relative timestamps, and hover actions (Mark as read, Delete).
     - Bulk action toolbar with `ConfirmDialog` protection for clearing read items.
 
+---
+
+## 🏛️ Phase UI-3: Admin Command Center & Full-App Polish
+
+Phase UI-3 completes the visual redesign by transforming all administrative portals under `/admin` into high-density command consoles adhering strictly to the design system tokens, pure SVG charts, dark mode contrast, and typed confirmation safeguards.
+
+### 1. Administrative Status Semantics (`src/components/ui/StatusTones.js`)
+
+All status indicators across admin screens map to calibrated status palettes with WCAG AA compliance (contrast ratio ≥ 4.5:1) in both light and dark themes:
+
+| Status Category | Value | Tone | Light Style | Dark Style |
+| :--- | :--- | :--- | :--- | :--- |
+| **Room Status** | `available` | `teal` | `bg-teal-50 text-teal-800 border-teal-200` | `dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800` |
+| | `claimed` / `reserved` | `amber` | `bg-amber-50 text-amber-800 border-amber-200` | `dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800` |
+| | `occupied` / `full` | `brand` | `bg-brand-50 text-brand-800 border-brand-200` | `dark:bg-brand-950/40 dark:text-brand-300 dark:border-brand-800` |
+| | `maintenance` | `rose` | `bg-rose-50 text-rose-800 border-rose-200` | `dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800` |
+| **Allocation Run** | `draft` | `amber` | `bg-amber-50 text-amber-800 border-amber-200` | `dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800` |
+| | `publishing` | `blue` | `bg-blue-50 text-blue-800 border-blue-200` | `dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800` |
+| | `published` | `teal` | `bg-teal-50 text-teal-800 border-teal-200` | `dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800` |
+| | `rolled_back` | `slate` | `bg-slate-100 text-slate-700 border-slate-200` | `dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700` |
+| | `failed` | `rose` | `bg-rose-50 text-rose-800 border-rose-200` | `dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800` |
+| **Selection Window** | `open` | `teal` | `bg-teal-50 text-teal-800 border-teal-200` (live pulse) | `dark:bg-teal-950/40 dark:text-teal-300 dark:border-teal-800` |
+| | `scheduled` | `blue` | `bg-blue-50 text-blue-800 border-blue-200` | `dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800` |
+| | `closed` | `amber` | `bg-amber-50 text-amber-800 border-amber-200` | `dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800` |
+| | `finalized` | `slate` | `bg-slate-100 text-slate-700 border-slate-200` | `dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700` |
+
+### 2. Admin Specialized Components (`src/components/admin/`)
+
+To keep admin pages clean, consistent, and maintainable, dedicated administrative components are exported from `src/components/admin/index.js`:
+
+- **`AdminPageHeader`**: Standardized administrative header with title, descriptive subtitle, dynamic breadcrumb trail, and top-right action slots.
+- **`FilterBar`**: High-density query bar supporting live text search, dynamic dropdown filters, active filter detection, and a 1-click "Clear filters" action.
+- **`DataTable`**: Responsive table abstraction with built-in empty states, skeleton loading states, zebra-row styling, and unified pagination controls.
+- **`StatusBadge`**: Universal status pill supporting `type="room" | "run" | "window" | "score"` mapping to the calibrated design tokens.
+- **`ConfirmTypeDialog`**: High-security destructive modal requiring exact typed phrase verification (`PUBLISH`, `ROLLBACK`, `FINALIZE`) before enabling the primary confirmation action.
+- **`HorizontalBars`**: Pure CSS/SVG horizontal bar chart with labels, percentage completion, and customizable track colors.
+- **`StackedBar`**: Pure CSS multi-segment progress bar displaying proportional splits with color-coded legend items and accessibility attributes.
+- **`DonutRing`**: Lightweight inline SVG circle gauge with center values, labels, and customizable stroke widths.
+- **`Sparkline`**: Zero-dependency SVG trendline visualizer for compact time-series tracking.
+
+### 3. Restyled Admin Pages Under `/admin`
+
+1. **Admin Overview Command Centre (`/admin`)**:
+   - Hero operational banner with live system status indicator.
+   - Core KPI stat cards with `AnimatedNumber` (Hostels, Bed Capacity, Occupancy Rate, Total Students, Placed Students, Forming Groups).
+   - Global bed occupancy breakdown with `StackedBar` (Occupied, Claimed, Available, Maintenance).
+   - Per-hostel capacity vs occupancy meters via `HorizontalBars`.
+   - Quick action dispatch cards and administrative workflow modules.
+2. **Hostels Management (`/admin/hostels` & details)**:
+   - Directory with `FilterBar` (search, gender, type, campus) and occupancy `ProgressBar`.
+   - Detail view (`/admin/hostels/[id]`) featuring 4-state room legend and room tiles grouped by floor with `getRoomStatusClasses`.
+   - Live occupant roster inspector with student avatars.
+   - Creation (`/admin/hostels/new`) and edit (`/admin/hostels/[id]/edit`) wizards with facility checkboxes and rule textareas.
+3. **Room Inventory (`/admin/rooms`)**:
+   - Comprehensive rooms `DataTable` with multi-filter bar (hostel, floor, capacity, AC status, room status, free beds).
+   - Occupancy `ProgressBar` with free bed counters.
+   - Room status toggle modal and bulk deletion safeguarded with `ConfirmDialog`.
+4. **Student Directory (`/admin/students` & details)**:
+   - High-density `DataTable` with student avatars, registration numbers, academic year, and active status toggles.
+   - Student detail page (`/admin/students/[id]`) with Profile, Origin, Emergency Contact, Group, Room, and lifestyle questionnaire breakdown highlighting deal-breakers.
+5. **Matching Engine Configuration (`/admin/matching`)**:
+   - Underline `Tabs` for "Engine Weights & Settings" and "Pair Compatibility Diagnostic".
+   - Weight sliders with live total `DonutRing` gauge (teal at 100%, rose when imbalanced).
+   - Interactive pair checker with dual student selector, `ScoreRing` gauge, category scores, and top matches inspector.
+6. **Roommate Groups Console (`/admin/groups` & details)**:
+   - Group directory with size dots, member count badges, and average compatibility scores.
+   - Detail view (`/admin/groups/[id]`) with member roster, admin remove action, pairwise score matrix, FCFS room claim banner, and join requests panel.
+7. **Demand & Preference Analytics (`/admin/demand`)**:
+   - High-level demand cards (AC Demand Ratio with `DonutRing`, Room Size demand split).
+   - First-choice hostel demand ranking using `HorizontalBars`.
+   - Supply vs Demand balance sheet table per hostel and room type.
+8. **FCFS Room Selection Administration (`/admin/selection`)**:
+   - Live selection window status hero with pulsing dot and `CountdownBadge`.
+   - Key selection metrics (Claimed Rooms, Claimed Beds, Completed Groups).
+   - Active claims table with instant admin release action.
+   - Schedule window modal, extend modal, and finalization modal safeguarded with `ConfirmTypeDialog` (`FINALIZE`).
+9. **Allocation Runs & Results (`/admin/allocations` & `[id]`)**:
+   - Historical runs directory with draft-only safety banner and simulation launch modal.
+   - Run results dashboard (`/admin/allocations/[id]`) with lifecycle status banners, metric cards, Monte Carlo Random vs Algorithm comparison via `HorizontalBars`, preference satisfaction `StackedBar`, hostel utilization bars, waitlist reasons, and assignments `DataTable`.
+   - Official publish and rollback workflows protected by `ConfirmTypeDialog` (`PUBLISH`, `ROLLBACK`).
+10. **Announcements & Notifications (`/admin/announcements` & `/admin/notifications`)**:
+    - Compose card with character counter, target demographic selector, link builder, and live recipient preview.
+    - Dispatch history `DataTable` with read-rate progress bars and withdraw modal.
+    - Dedicated notifications console (`/admin/notifications`) wrapping unified `NotificationsCenter`.
+11. **System Integrity Diagnostic (`/admin/integrity`)**:
+    - Full system diagnostic hero (healthy teal vs discrepancy rose).
+    - Invariant scan cards with `AnimatedNumber`.
+    - Discrepancy problem list with code badges and severity tags.
+    - One-click room occupancy repair tool protected by `ConfirmDialog`.
+12. **Design System Showcase (`/design-system`)**:
+    - Interactive gallery in development environments showcasing all shared UI-1, UI-2, and UI-3 admin components, charts, and typed confirmation dialogs.
+    - Excluded automatically in production builds (`notFound()`).
+
+---
+
+## 📋 Pre-Deployment Quality Checklist
+
+Before deploying HostelMatch to production, verify the following gates:
+
+- [x] **Zero Protected File Changes**: Confirm that backend models (`src/models`), services (`src/services`), API routes (`src/app/api`), and test scripts (`scripts`) remain untouched.
+- [x] **8/8 Passing Test Suites**: Execute all test suites to confirm algorithmic and domain integrity:
+  - `npm run test:matching` (12 tests)
+  - `npm run test:groups` (5 tests)
+  - `npm run test:roomprefs` (22 tests)
+  - `npm run test:roomsize` (13 tests)
+  - `npm run test:allocation` (56 tests)
+  - `npm run test:notifications` (10 tests)
+  - `npm run test:selection` (11 tests)
+  - `npm run test:joinrequests` (17 tests)
+- [x] **Database Invariants**: `npm run integrity:check` reports 0 discrepancies and a clean database state.
+- [x] **Next.js Production Build**: `npm run build` succeeds with 0 compile errors and generates all static/dynamic routes.
+- [x] **WCAG AA Compliance**: All text and status tone pairs meet or exceed the 4.5:1 contrast ratio across both light and dark modes.
+- [x] **Typed Confirmations Preserved**: Destructive actions strictly require exact keyword entries (`PUBLISH`, `ROLLBACK`, `FINALIZE`).
+
+
 
 
 

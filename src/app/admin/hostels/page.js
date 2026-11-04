@@ -3,12 +3,19 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import axios from "@/lib/axios";
-import Badge from "@/components/ui/Badge";
-import Button from "@/components/ui/Button";
-import Pagination from "@/components/ui/Pagination";
-import ConfirmDialog from "@/components/ui/ConfirmDialog";
-import EmptyState from "@/components/ui/EmptyState";
-import Alert from "@/components/ui/Alert";
+import {
+  PageContainer,
+  Card,
+  Badge,
+  Button,
+  Pagination,
+  ConfirmDialog,
+  EmptyState,
+  Alert,
+  ProgressBar,
+  Select,
+} from "@/components/ui";
+import { AdminPageHeader, FilterBar } from "@/components/admin";
 
 export default function AdminHostelsPage() {
   const [hostels, setHostels] = useState([]);
@@ -85,112 +92,102 @@ export default function AdminHostelsPage() {
     }
   };
 
+  const hasActiveFilters = Boolean(search || genderFilter);
+
+  const handleClearFilters = () => {
+    setSearch("");
+    setGenderFilter("");
+    setPage(1);
+  };
+
   return (
-    <div className="flex-1 py-10 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+    <PageContainer maxWidth="7xl" className="py-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
-            <Link href="/admin" className="hover:text-indigo-600">Admin</Link>
-            <span>/</span>
-            <span className="text-slate-800">Hostels</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
-            Hostel Management
-          </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Manage residential blocks, capacity allocations, and student eligibility.
-          </p>
-        </div>
-        <div>
-          <Link
-            href="/admin/hostels/new"
-            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 transition-all"
-          >
-            + Add Hostel
+      <AdminPageHeader
+        title="Hostel Management"
+        description="Manage residential blocks, capacity allocations, room configurations, and student eligibility."
+        breadcrumbs={[{ label: "Hostels" }]}
+        actions={
+          <Link href="/admin/hostels/new">
+            <Button variant="primary" size="sm">
+              + Add Hostel
+            </Button>
           </Link>
-        </div>
-      </div>
+        }
+      />
 
       {/* Notifications */}
       {successMsg && (
-        <div className="mb-4">
-          <Alert type="success" message={successMsg} onClose={() => setSuccessMsg(null)} />
+        <div className="mb-6">
+          <Alert variant="success" title="Success" onClose={() => setSuccessMsg(null)}>
+            {successMsg}
+          </Alert>
         </div>
       )}
       {error && (
-        <div className="mb-4">
-          <Alert type="error" message={error} onClose={() => setError(null)} />
+        <div className="mb-6">
+          <Alert variant="danger" title="Error" onClose={() => setError(null)}>
+            {error}
+          </Alert>
         </div>
       )}
 
       {/* Search & Filters */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs mb-6">
-        <div className="flex flex-col sm:flex-row items-center gap-3">
-          <div className="relative flex-1 w-full">
-            <input
-              type="text"
-              placeholder="Search by name, code (e.g. BH1), or campus location..."
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 py-2 pl-3 pr-8 text-xs text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearch("");
-                  setPage(1);
-                }}
-                className="absolute right-2.5 top-2.5 text-xs text-slate-400 hover:text-slate-600"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <select
-              value={genderFilter}
-              onChange={(e) => {
-                setGenderFilter(e.target.value);
-                setPage(1);
-              }}
-              className="rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-xs font-medium text-slate-700 focus:border-indigo-500 focus:bg-white focus:outline-none"
-            >
-              <option value="">All Genders</option>
-              <option value="boys">Boys Only</option>
-              <option value="girls">Girls Only</option>
-              <option value="mixed">Mixed / Co-ed</option>
-            </select>
-          </div>
+      <FilterBar
+        search={search}
+        onSearchChange={(val) => {
+          setSearch(val);
+          setPage(1);
+        }}
+        searchPlaceholder="Search by name, code (e.g. BH1), or location..."
+        hasActiveFilters={hasActiveFilters}
+        onClear={handleClearFilters}
+      >
+        <div className="w-full sm:w-44">
+          <Select
+            value={genderFilter}
+            onChange={(val) => {
+              setGenderFilter(val);
+              setPage(1);
+            }}
+            options={[
+              { value: "", label: "All Genders" },
+              { value: "boys", label: "Boys Only" },
+              { value: "girls", label: "Girls Only" },
+              { value: "mixed", label: "Mixed / Co-ed" },
+            ]}
+          />
         </div>
-      </div>
+      </FilterBar>
 
-      {/* Hostels Grid / Table */}
+      {/* Hostels Grid */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div
               key={i}
-              className="h-56 animate-pulse rounded-2xl border border-slate-200 bg-slate-50"
+              className="h-60 animate-pulse rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"
             />
           ))}
         </div>
       ) : hostels.length === 0 ? (
-        <EmptyState
-          title="No hostels found"
-          message={
-            search || genderFilter
-              ? "No hostels match your current search or filter criteria."
-              : "Get started by adding your first residential hostel block."
-          }
-          actionLabel="Add Hostel"
-          onAction={() => (window.location.href = "/admin/hostels/new")}
-        />
+        <Card className="p-12 text-center">
+          <EmptyState
+            title="No hostels found"
+            description={
+              hasActiveFilters
+                ? "No hostels match your current search or filter criteria."
+                : "Get started by adding your first residential hostel block."
+            }
+            action={
+              <Link href="/admin/hostels/new">
+                <Button variant="primary" size="sm">
+                  Add First Hostel
+                </Button>
+              </Link>
+            }
+          />
+        </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {hostels.map((hostel) => {
@@ -199,16 +196,19 @@ export default function AdminHostelsPage() {
                 ? Math.round((hostel.occupiedBeds / hostel.totalCapacity) * 100)
                 : 0;
 
+            const progressColor =
+              occupancyPct >= 100 ? "danger" : occupancyPct > 80 ? "warning" : "brand";
+
             return (
-              <div
+              <Card
                 key={hostel._id}
-                className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:border-indigo-300 hover:shadow-md transition-all group"
+                className="flex flex-col justify-between p-5 hover:border-indigo-400 dark:hover:border-indigo-600 hover:shadow-md transition-all group"
               >
                 <div>
                   {/* Top bar: Code & Gender Badge */}
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div className="flex items-center gap-2">
-                      <span className="flex h-8 w-12 items-center justify-center rounded-lg bg-indigo-50 font-mono text-xs font-black text-indigo-700 border border-indigo-200">
+                      <span className="flex h-8 w-12 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-950/40 font-mono text-xs font-black text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60">
                         {hostel.code}
                       </span>
                       {getGenderBadge(hostel.gender)}
@@ -219,37 +219,33 @@ export default function AdminHostelsPage() {
                   </div>
 
                   {/* Title & Location */}
-                  <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors font-heading">
                     <Link href={`/admin/hostels/${hostel._id}`}>{hostel.name}</Link>
                   </h3>
-                  <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1">
                     {hostel.location || `${hostel.totalFloors} habitable floors`}
                   </p>
 
                   {/* Capacity & Occupancy Bar */}
-                  <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-3">
-                    <div className="flex items-center justify-between text-xs mb-1.5">
-                      <span className="font-medium text-slate-600">Occupancy</span>
-                      <span className="font-bold text-slate-900">
+                  <div className="mt-4 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 p-3.5 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-600 dark:text-slate-400">Occupancy</span>
+                      <span className="font-bold text-slate-900 dark:text-slate-100 font-mono">
                         {hostel.occupiedBeds} / {hostel.totalCapacity} beds ({occupancyPct}%)
                       </span>
                     </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                      <div
-                        className={`h-full transition-all duration-300 ${
-                          occupancyPct >= 100
-                            ? "bg-rose-500"
-                            : occupancyPct > 80
-                            ? "bg-amber-500"
-                            : "bg-indigo-600"
-                        }`}
-                        style={{ width: `${Math.min(100, occupancyPct)}%` }}
-                      />
-                    </div>
-                    <div className="mt-2.5 flex items-center justify-between text-[11px] text-slate-500">
-                      <span>Floors: {hostel.totalFloors}</span>
-                      <span>Rooms: {hostel.totalRooms}</span>
-                      <span className="font-semibold text-emerald-600">
+
+                    <ProgressBar
+                      value={occupancyPct}
+                      max={100}
+                      color={progressColor}
+                      size="sm"
+                    />
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-1">
+                      <span>Floors: <strong className="text-slate-700 dark:text-slate-300">{hostel.totalFloors}</strong></span>
+                      <span>Rooms: <strong className="text-slate-700 dark:text-slate-300">{hostel.totalRooms}</strong></span>
+                      <span className="font-semibold text-teal-600 dark:text-teal-400">
                         {hostel.availableBeds} free beds
                       </span>
                     </div>
@@ -257,41 +253,47 @@ export default function AdminHostelsPage() {
                 </div>
 
                 {/* Actions bottom bar */}
-                <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <div className="mt-5 pt-3.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
                   <Link
                     href={`/admin/hostels/${hostel._id}`}
-                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                    className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 transition-colors flex items-center gap-1"
                   >
-                    View Rooms &rarr;
+                    <span>View Rooms</span>
+                    <span>&rarr;</span>
                   </Link>
+
                   <div className="flex items-center gap-2">
-                    <Link
-                      href={`/admin/hostels/${hostel._id}/edit`}
-                      className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                    >
-                      Edit
+                    <Link href={`/admin/hostels/${hostel._id}/edit`}>
+                      <Button variant="secondary" size="xs">
+                        Edit
+                      </Button>
                     </Link>
-                    <button
-                      type="button"
+                    <Button
+                      variant="outline"
+                      size="xs"
                       onClick={() => setDeleteTarget(hostel)}
-                      className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 hover:border-rose-200"
+                      className="text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/30"
                     >
                       Delete
-                    </button>
+                    </Button>
                   </div>
                 </div>
-              </div>
+              </Card>
             );
           })}
         </div>
       )}
 
       {/* Pagination */}
-      <Pagination
-        currentPage={pagination.page}
-        totalPages={pagination.totalPages}
-        onPageChange={(p) => setPage(p)}
-      />
+      {pagination.totalPages > 1 && (
+        <div className="mt-8 flex justify-center">
+          <Pagination
+            currentPage={pagination.page}
+            totalPages={pagination.totalPages}
+            onPageChange={(p) => setPage(p)}
+          />
+        </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
@@ -303,11 +305,11 @@ export default function AdminHostelsPage() {
             : `Are you sure you want to delete ${deleteTarget?.name}? This will permanently remove the hostel and all ${deleteTarget?.totalRooms || 0} associated rooms.`
         }
         confirmText={deleteTarget?.occupiedBeds > 0 ? "Understood" : "Delete Hostel"}
-        confirmVariant="danger"
-        loading={deleting}
-        onCancel={() => setDeleteTarget(null)}
+        variant="danger"
+        isLoading={deleting}
+        onClose={() => setDeleteTarget(null)}
         onConfirm={deleteTarget?.occupiedBeds > 0 ? () => setDeleteTarget(null) : handleDelete}
       />
-    </div>
+    </PageContainer>
   );
 }
