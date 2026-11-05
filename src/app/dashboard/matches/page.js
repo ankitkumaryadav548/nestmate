@@ -147,10 +147,18 @@ export default function StudentMatchesPage() {
 
         if (res.data?.success) {
           const data = res.data.data;
-          setOpenGroups(data.groups || []);
+          const groups = data.groups || [];
+          setOpenGroups(groups);
           setGroupsTotal(data.total || 0);
           setGroupsPage(data.page || 1);
           setGroupsTotalPages(data.totalPages || 1);
+
+          const pendingIds = groups
+            .filter((g) => g.userHasPendingRequest || g.requestStatus === "pending")
+            .map((g) => g.id || g.groupId);
+          if (pendingIds.length > 0) {
+            setRequestedGroupIds((prev) => new Set([...prev, ...pendingIds]));
+          }
         }
       } catch (err) {
         console.error("Failed to load open groups:", err);
@@ -184,19 +192,24 @@ export default function StudentMatchesPage() {
   };
 
   const handleOpenGroupModal = async (groupItem) => {
+    const targetGroupId = groupItem.id || groupItem.groupId || groupItem._id;
+    if (!targetGroupId) {
+      showToast("Group ID missing", "error");
+      return;
+    }
     setIsGroupModalOpen(true);
     setGroupModalLoading(true);
     setJoinMessage("");
     try {
-      const res = await api.get(`/groups/open/${groupItem.id}`);
+      const res = await api.get(`/groups/open/${targetGroupId}`);
       if (res.data?.success) {
         setSelectedGroup(res.data.data);
       } else {
-        setSelectedGroup(groupItem);
+        setSelectedGroup({ ...groupItem, id: targetGroupId, groupId: targetGroupId });
       }
     } catch (err) {
       console.error("Failed to load group details:", err);
-      setSelectedGroup(groupItem);
+      setSelectedGroup({ ...groupItem, id: targetGroupId, groupId: targetGroupId });
     } finally {
       setGroupModalLoading(false);
     }
@@ -210,19 +223,24 @@ export default function StudentMatchesPage() {
 
   const handleSendJoinRequest = async () => {
     if (!selectedGroup) return;
+    const targetGroupId = selectedGroup.id || selectedGroup.groupId || selectedGroup._id;
+    if (!targetGroupId) {
+      showToast("Group ID missing", "error");
+      return;
+    }
     setSendingJoinRequest(true);
     try {
-      const res = await api.post(`/groups/open/${selectedGroup.id}/join-requests`, {
+      const res = await api.post(`/groups/open/${targetGroupId}/join-requests`, {
         message: joinMessage.trim(),
       });
       if (res.data?.success) {
-        setRequestedGroupIds((prev) => new Set([...prev, selectedGroup.id]));
+        setRequestedGroupIds((prev) => new Set([...prev, targetGroupId]));
         showToast("Join request sent to group leader!", "success");
         handleCloseGroupModal();
         fetchOpenGroups(groupsPage);
       }
     } catch (err) {
-      showToast(err.response?.data?.message || "Failed to send join request", "error");
+      showToast(err.response?.data?.message || err.message || "Failed to send join request", "error");
     } finally {
       setSendingJoinRequest(false);
     }
@@ -579,6 +597,16 @@ export default function StudentMatchesPage() {
                               {isInvited ? "Invited ✓" : "+ Invite"}
                             </Button>
                           )}
+
+                          {!canInvite && isCandidateInMultiGroup && groupInfo?.groupId && (
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => handleOpenGroupModal({ id: groupInfo.groupId, groupId: groupInfo.groupId })}
+                            >
+                              Join Group &rarr;
+                            </Button>
+                          )}
                         </div>
                       </Card>
                     );
@@ -633,12 +661,18 @@ export default function StudentMatchesPage() {
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {openGroups.map((group) => {
-                    const avgScore = group.averageScoreWithUser || 0;
-                    const isRequested = requestedGroupIds.has(group.id) || group.userHasPendingRequest;
+                    const grpId = group.id || group.groupId || group._id;
+                    const avgScore = group.averageScoreWithUser ?? group.average ?? 0;
+                    const isRequested = requestedGroupIds.has(grpId) || group.requestStatus === "pending" || group.userHasPendingRequest;
+                    const leaderDisplayName = group.leaderName || group.members?.[0]?.name || "Group";
+                    const seatsFilled = group.seatsFilled ?? group.filledSeats ?? (group.members?.length || 1);
+                    const targetSize = group.targetSize || 2;
+                    const roomInfo = group.claimedRoom || group.room;
+                    const canReq = group.canRequest !== false && !isRequested;
 
                     return (
                       <Card
-                        key={group.id}
+                        key={grpId}
                         variant="interactive"
                         className="p-5 flex flex-col justify-between"
                       >
@@ -647,10 +681,10 @@ export default function StudentMatchesPage() {
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading">
-                                {group.leaderName}&apos;s Group
+                                {leaderDisplayName}&apos;s Group
                               </h3>
                               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                {group.targetSize}-Bed Room Group
+                                {targetSize}-Bed Room Group
                               </p>
                             </div>
                             <ScoreRing score={avgScore} size={48} strokeWidth={4} />
@@ -671,26 +705,26 @@ export default function StudentMatchesPage() {
 
                             {/* Seat dots */}
                             <div className="flex items-center gap-1.5">
-                              {Array.from({ length: group.targetSize || 2 }).map((_, idx) => (
+                              {Array.from({ length: targetSize }).map((_, idx) => (
                                 <span
                                   key={idx}
                                   className={`w-3 h-3 rounded-full border ${
-                                    idx < (group.seatsFilled || 1)
+                                    idx < seatsFilled
                                       ? "bg-teal-500 border-teal-600"
                                       : "bg-slate-200 dark:bg-slate-800 border-dashed border-slate-300 dark:border-slate-700"
                                   }`}
-                                  title={idx < (group.seatsFilled || 1) ? "Filled seat" : "Open seat"}
+                                  title={idx < seatsFilled ? "Filled seat" : "Open seat"}
                                 />
                               ))}
                             </div>
                           </div>
 
                           {/* Claimed Room Line */}
-                          {group.claimedRoom && (
+                          {roomInfo && (
                             <div className="mt-3.5 p-2 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 text-xs text-indigo-900 dark:text-indigo-200 flex items-center gap-2">
                               <IconBed className="w-4 h-4 text-indigo-600 dark:text-indigo-400 shrink-0" />
                               <span className="truncate">
-                                Room #{group.claimedRoom.roomNumber} ({group.claimedRoom.hostelName})
+                                Room #{roomInfo.roomNumber} ({roomInfo.hostelName})
                               </span>
                             </div>
                           )}
@@ -873,6 +907,20 @@ export default function StudentMatchesPage() {
                       {isSelInvited ? "Invited ✓" : "+ Invite to Group"}
                     </Button>
                   )}
+
+                  {!selCanInvite && selIsCandidateInMultiGroup && selGroupInfo?.groupId && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedMatch(null);
+                        setIsModalOpen(false);
+                        handleOpenGroupModal({ id: selGroupInfo.groupId, groupId: selGroupInfo.groupId });
+                      }}
+                    >
+                      Request to Join Group &rarr;
+                    </Button>
+                  )}
                 </div>
               </div>
             );
@@ -883,109 +931,141 @@ export default function StudentMatchesPage() {
         <Modal
           isOpen={isGroupModalOpen}
           onClose={handleCloseGroupModal}
-          title={selectedGroup ? `${selectedGroup.leaderName}'s Group Details` : "Group Details"}
+          title={selectedGroup ? `${selectedGroup.leaderName || "Group"}'s Group Details` : "Group Details"}
           size="lg"
         >
-          {selectedGroup && (
-            <div className="space-y-6">
-              {/* Group Hero */}
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40">
-                <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading">
-                    {selectedGroup.leaderName}&apos;s Group
-                  </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                    {selectedGroup.targetSize}-Bed Room • {selectedGroup.seatsFilled} of {selectedGroup.targetSize} seats filled
-                  </p>
-                </div>
-                <ScoreRing score={selectedGroup.averageScoreWithUser} size={56} strokeWidth={5} />
-              </div>
+          {groupModalLoading ? (
+            <div className="p-8 flex flex-col items-center justify-center space-y-3">
+              <Spinner size="lg" />
+              <p className="text-xs text-slate-500">Loading group details...</p>
+            </div>
+          ) : selectedGroup && (() => {
+            const grpId = selectedGroup.id || selectedGroup.groupId || selectedGroup._id;
+            const avgScore = selectedGroup.averageScoreWithUser ?? selectedGroup.average ?? 0;
+            const seatsFilled = selectedGroup.seatsFilled ?? selectedGroup.filledSeats ?? (selectedGroup.members?.length || 1);
+            const targetSize = selectedGroup.targetSize || 2;
+            const leaderName = selectedGroup.leaderName || selectedGroup.members?.[0]?.name || "Group Leader";
+            const isRequested = requestedGroupIds.has(grpId) || selectedGroup.requestStatus === "pending" || selectedGroup.userHasPendingRequest;
+            const canReq = selectedGroup.canRequest !== false && !isRequested;
 
-              {/* Impact Preview */}
-              {selectedGroup.impact && (
-                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs">
-                  <span className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                    Group Compatibility Impact
-                  </span>
-                  <div className="flex items-center gap-4 text-slate-600 dark:text-slate-400">
-                    <div>
-                      Current Average: <strong className="text-slate-900 dark:text-slate-100">{selectedGroup.impact.beforeScore}%</strong>
-                    </div>
-                    <div>&rarr;</div>
-                    <div>
-                      Projected After Join: <strong className="text-teal-600 dark:text-teal-400">{selectedGroup.impact.afterScore}%</strong>
+            return (
+              <div className="space-y-6">
+                {/* Group Hero */}
+                <div className="flex items-center justify-between p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading">
+                      {leaderName}&apos;s Group
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      {targetSize}-Bed Room • {seatsFilled} of {targetSize} seats filled
+                    </p>
+                  </div>
+                  <ScoreRing score={avgScore} size={56} strokeWidth={5} />
+                </div>
+
+                {/* Status Notice if already requested or cannot request */}
+                {isRequested && (
+                  <Alert variant="info" title="Request Pending">
+                    You have already sent a join request to this group. The group leader will review your request and decide whether to approve it.
+                  </Alert>
+                )}
+
+                {!isRequested && !canReq && selectedGroup.canRequestReason && (
+                  <Alert variant="warning" title="Cannot Join Group">
+                    {selectedGroup.canRequestReason}
+                  </Alert>
+                )}
+
+                {/* Impact Preview */}
+                {selectedGroup.impact && (
+                  <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs">
+                    <span className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Group Compatibility Impact
+                    </span>
+                    <div className="flex items-center gap-4 text-slate-600 dark:text-slate-400">
+                      <div>
+                        Current Average: <strong className="text-slate-900 dark:text-slate-100">{selectedGroup.impact.beforeScore}%</strong>
+                      </div>
+                      <div>&rarr;</div>
+                      <div>
+                        Projected After Join: <strong className="text-teal-600 dark:text-teal-400">{selectedGroup.impact.afterScore}%</strong>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Members List */}
-              <div className="space-y-2.5">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Current Roommates
-                </h4>
-                <div className="space-y-2">
-                  {selectedGroup.members?.map((m, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 text-xs"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Avatar name={m.name} size="sm" />
-                        <div>
-                          <span className="font-bold text-slate-900 dark:text-slate-100">
-                            {m.name} {m.isLeader && "👑 (Leader)"}
-                          </span>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                            {[m.course, m.year ? `Year ${m.year}` : null].filter(Boolean).join(" • ")}
-                          </p>
+                {/* Members List */}
+                <div className="space-y-2.5">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Current Roommates
+                  </h4>
+                  <div className="space-y-2">
+                    {selectedGroup.members?.map((m, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 text-xs"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Avatar name={m.name} size="sm" />
+                          <div>
+                            <span className="font-bold text-slate-900 dark:text-slate-100">
+                              {m.name} {m.isLeader && "👑 (Leader)"}
+                            </span>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                              {[m.course, m.year ? `Year ${m.year}` : null].filter(Boolean).join(" • ")}
+                            </p>
+                          </div>
                         </div>
+
+                        {m.scoreWithUser !== undefined && (
+                          <Badge variant={getScoreTone(m.scoreWithUser)} size="sm">
+                            {m.scoreWithUser}% Match
+                          </Badge>
+                        )}
                       </div>
+                    ))}
+                  </div>
+                </div>
 
-                      {m.scoreWithUser !== undefined && (
-                        <Badge variant={getScoreTone(m.scoreWithUser)} size="sm">
-                          {m.scoreWithUser}% Match
-                        </Badge>
-                      )}
+                {/* Join Request Message Box */}
+                {canReq && (
+                  <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+                      Optional Note to Leader
+                    </label>
+                    <textarea
+                      value={joinMessage}
+                      onChange={(e) => setJoinMessage(e.target.value.slice(0, 200))}
+                      placeholder="Introduce yourself or mention why you'd like to join this group..."
+                      rows={3}
+                      className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                    />
+                    <div className="flex justify-between text-[11px] text-slate-400">
+                      <span>Leader will review your compatibility before approving.</span>
+                      <span>{joinMessage.length}/200</span>
                     </div>
-                  ))}
+                  </div>
+                )}
+
+                {/* Modal Actions */}
+                <div className="flex items-center justify-end gap-3 pt-3">
+                  <Button variant="secondary" onClick={handleCloseGroupModal}>
+                    {canReq ? "Cancel" : "Close"}
+                  </Button>
+                  {canReq && (
+                    <Button
+                      variant="primary"
+                      onClick={handleSendJoinRequest}
+                      loading={sendingJoinRequest}
+                      disabled={sendingJoinRequest}
+                    >
+                      Send Join Request &rarr;
+                    </Button>
+                  )}
                 </div>
               </div>
-
-              {/* Join Request Message Box */}
-              <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
-                  Optional Note to Leader
-                </label>
-                <textarea
-                  value={joinMessage}
-                  onChange={(e) => setJoinMessage(e.target.value.slice(0, 200))}
-                  placeholder="Introduce yourself or mention why you'd like to join this group..."
-                  rows={3}
-                  className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 p-3 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
-                />
-                <div className="flex justify-between text-[11px] text-slate-400">
-                  <span>Leader will review your compatibility before approving.</span>
-                  <span>{joinMessage.length}/200</span>
-                </div>
-              </div>
-
-              {/* Modal Actions */}
-              <div className="flex items-center justify-end gap-3 pt-3">
-                <Button variant="secondary" onClick={handleCloseGroupModal}>
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={handleSendJoinRequest}
-                  loading={sendingJoinRequest}
-                  disabled={sendingJoinRequest}
-                >
-                  Send Join Request &rarr;
-                </Button>
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </Modal>
 
       </div>

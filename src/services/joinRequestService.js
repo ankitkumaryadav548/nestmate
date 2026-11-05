@@ -303,19 +303,27 @@ export async function listOpenGroups(userId, query = {}) {
       weights: settings.weights,
     });
 
+    const leaderUser = groupMembers.find((m) => m.id === g.leader?.toString()) || groupMembers[0];
+    const leaderName = leaderUser?.name || "Group Leader";
+
     eligibleGroups.push({
+      id: g._id.toString(),
       groupId: g._id.toString(),
       leaderId: g.leader?.toString() || "",
+      leaderName,
       members: groupMembers.map((m) => ({
         name: m.name,
         course: m.course,
         department: m.department,
         year: m.year,
+        isLeader: m.id === g.leader?.toString(),
       })),
       filledSeats,
+      seatsFilled: filledSeats,
       targetSize,
       openSeats,
       average: fit.average,
+      averageScoreWithUser: fit.average,
       lowest: fit.lowest,
       perMemberScores: fit.perMemberScores.map((s, idx) => ({
         memberName: groupMembers[idx]?.name || "Roommate",
@@ -325,8 +333,10 @@ export async function listOpenGroups(userId, query = {}) {
       sharedLanguages: sharedLangs,
       sameYearCount,
       room: roomInfo,
+      claimedRoom: roomInfo,
       requestStatus: existingReq?.status || null,
       requestId: existingReq?._id?.toString() || null,
+      userHasPendingRequest: existingReq?.status === "pending",
       canRequest: canReqCheck.allowed,
       canRequestCode: canReqCheck.code || null,
       canRequestReason: canReqCheck.reason || null,
@@ -505,19 +515,27 @@ export async function getOpenGroup(userId, groupId) {
     weights: settings.weights,
   });
 
+  const leaderUser = groupMembers.find((m) => m.id === group.leader?.toString()) || groupMembers[0];
+  const leaderName = leaderUser?.name || "Group Leader";
+
   return {
+    id: group._id.toString(),
     groupId: group._id.toString(),
     leaderId: group.leader?.toString() || "",
+    leaderName,
     targetSize,
     filledSeats,
+    seatsFilled: filledSeats,
     openSeats,
     members: groupMembers.map((m) => ({
       name: m.name,
       course: m.course,
       department: m.department,
       year: m.year,
+      isLeader: m.id === group.leader?.toString(),
     })),
     average: fit.average,
+    averageScoreWithUser: fit.average,
     lowest: fit.lowest,
     impact,
     perMemberScores,
@@ -525,8 +543,10 @@ export async function getOpenGroup(userId, groupId) {
     reasons: Array.from(reasonsSet),
     warnings: Array.from(warningsSet),
     room: roomInfo,
+    claimedRoom: roomInfo,
     requestStatus: existingReq?.status || null,
     requestId: existingReq?._id?.toString() || null,
+    userHasPendingRequest: existingReq?.status === "pending",
     canRequest: canReqCheck.allowed,
     canRequestCode: canReqCheck.code || null,
     canRequestReason: canReqCheck.reason || null,
