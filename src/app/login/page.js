@@ -4,12 +4,14 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
 import { IconShield, IconSparkles, IconCheck, IconBed, IconLock } from "@/components/ui/Icons";
 
 function LoginForm() {
+  useDocumentTitle("Sign In");
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = searchParams.get("next");
@@ -132,9 +134,9 @@ function LoginForm() {
           <div className="max-w-md w-full mx-auto space-y-6">
             {/* Header */}
             <div>
-              <h3 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
+              <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
                 {isStudent ? "Student Sign In" : "Administrator Sign In"}
-              </h3>
+              </h1>
               <p className="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                 {isStudent
                   ? "Access your lifestyle matches, group, and room allocation"

@@ -6,8 +6,10 @@ import axios from "@/lib/axios";
 import { PageContainer, Card } from "@/components/ui";
 import { AdminPageHeader } from "@/components/admin";
 import HostelForm from "@/components/hostels/HostelForm";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 
 export default function NewHostelPage() {
+  useDocumentTitle("New Hostel", true);
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);

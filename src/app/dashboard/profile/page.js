@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "@/lib/axios";
 import { useToast } from "@/context/ToastContext";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 import {
   Card,
   CardHeader,
@@ -74,6 +75,7 @@ const TIMEZONE_OPTIONS = [
 ];
 
 export default function StudentProfilePage() {
+  useDocumentTitle("Student Profile");
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

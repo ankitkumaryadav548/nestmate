@@ -71,7 +71,7 @@ export default function DesignSystemClient() {
   const [filterSelect, setFilterSelect] = useState("all");
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0b0f19] py-10 transition-colors">
+    <div className="min-h-screen bg-slate-50 dark:bg-[var(--bg-page)] py-10 transition-colors">
       <PageContainer maxWidth="max-w-6xl">
         <SectionHeader
           title="Design System & UI Components Showcase"

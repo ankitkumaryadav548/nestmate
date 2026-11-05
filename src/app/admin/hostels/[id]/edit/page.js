@@ -1,38 +1,42 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import axios from "@/lib/axios";
-import { PageContainer, Card, Alert } from "@/components/ui";
+import { PageContainer, Card, Alert, Button } from "@/components/ui";
 import { AdminPageHeader } from "@/components/admin";
 import HostelForm from "@/components/hostels/HostelForm";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 
 export default function EditHostelPage() {
   const { id } = useParams();
   const router = useRouter();
 
   const [hostel, setHostel] = useState(null);
+  useDocumentTitle(hostel ? `Edit ${hostel.name}` : "Edit Hostel", true);
   const [fetching, setFetching] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    async function loadHostel() {
-      try {
-        setFetching(true);
-        const res = await axios.get(`/api/hostels/${id}`);
-        if (res.data?.success) {
-          setHostel(res.data.data);
-        }
-      } catch (err) {
-        console.error("Failed to fetch hostel:", err);
-        setError(err.response?.data?.message || "Failed to load hostel details.");
-      } finally {
-        setFetching(false);
+  const loadHostel = useCallback(async () => {
+    try {
+      setFetching(true);
+      setError(null);
+      const res = await axios.get(`/api/hostels/${id}`);
+      if (res.data?.success) {
+        setHostel(res.data.data);
       }
+    } catch (err) {
+      console.error("Failed to fetch hostel:", err);
+      setError(err.response?.data?.message || "Failed to load hostel details.");
+    } finally {
+      setFetching(false);
     }
-    if (id) loadHostel();
   }, [id]);
+
+  useEffect(() => {
+    if (id) loadHostel();
+  }, [id, loadHostel]);
 
   const handleUpdateHostel = async (formData) => {
     try {
@@ -54,6 +58,29 @@ export default function EditHostelPage() {
     return (
       <PageContainer maxWidth="4xl" className="py-8">
         <div className="h-64 animate-pulse rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800" />
+      </PageContainer>
+    );
+  }
+
+  if (error && !hostel) {
+    return (
+      <PageContainer maxWidth="4xl" className="py-8">
+        <Alert
+          variant="danger"
+          title="Error Loading Hostel"
+          action={
+            <Button variant="outline" size="sm" onClick={loadHostel}>
+              Try again
+            </Button>
+          }
+        >
+          {error}
+        </Alert>
+        <div className="mt-4">
+          <Button variant="secondary" onClick={() => router.push("/admin/hostels")}>
+            &larr; Back to Hostels
+          </Button>
+        </div>
       </PageContainer>
     );
   }

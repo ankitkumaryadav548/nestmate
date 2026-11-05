@@ -23,12 +23,14 @@ import {
 import { getRoomStatusClasses } from "@/components/ui/StatusTones";
 import RoomModal from "@/components/rooms/RoomModal";
 import BulkRoomModal from "@/components/rooms/BulkRoomModal";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 
 export default function HostelDetailPage() {
   const { id } = useParams();
   const router = useRouter();
 
   const [hostel, setHostel] = useState(null);
+  useDocumentTitle(hostel ? hostel.name : "Hostel Details", true);
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -173,7 +175,15 @@ export default function HostelDetailPage() {
   if (error && !hostel) {
     return (
       <PageContainer maxWidth="7xl" className="py-8">
-        <Alert variant="danger" title="Not Found">
+        <Alert
+          variant="danger"
+          title="Error Loading Hostel"
+          action={
+            <Button variant="outline" size="sm" onClick={loadData}>
+              Try again
+            </Button>
+          }
+        >
           {error}
         </Alert>
         <div className="mt-4">
@@ -205,7 +215,7 @@ export default function HostelDetailPage() {
             </Badge>
           </div>
         }
-        description={`${hostel?.location || "Campus Residential Block"} • ${hostel?.totalFloors} habitable floors • Gender: ${hostel?.gender}`}
+        description={`${hostel?.location || "Campus Residential Block"} â€¢ ${hostel?.totalFloors} habitable floors â€¢ Gender: ${hostel?.gender}`}
         breadcrumbs={[
           { href: "/admin/hostels", label: "Hostels" },
           { label: hostel?.code || "Details" },
@@ -424,7 +434,7 @@ export default function HostelDetailPage() {
                         {/* Badges: Type & Capacity with Bed SVGs */}
                         <div className="flex items-center gap-1.5 mb-2">
                           <span
-                            className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold border ${
+                            className={`rounded-md px-1.5 py-0.5 text-[11px] font-bold border ${
                               room.roomType === "AC"
                                 ? "bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800/60"
                                 : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700"
@@ -448,11 +458,11 @@ export default function HostelDetailPage() {
                           </span>{" "}
                           / {room.capacity} occupied
                           {room.currentOccupancy > 0 && (
-                            <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-semibold block mt-0.5">
+                            <span className="text-[11px] text-indigo-600 dark:text-indigo-400 font-semibold block mt-0.5">
                               View Occupants &rarr;
                             </span>
                           )}
-                          <span className="block text-[10px] text-teal-600 dark:text-teal-400 font-medium mt-0.5">
+                          <span className="block text-[11px] text-teal-600 dark:text-teal-400 font-medium mt-0.5">
                             {freeBeds} free
                           </span>
                         </div>
@@ -538,7 +548,7 @@ export default function HostelDetailPage() {
         isOpen={Boolean(occupantsModalRoom)}
         onClose={() => setOccupantsModalRoom(null)}
         title={`Room #${occupantsModalRoom?.roomNumber} Occupants`}
-        description={`${occupantsModalRoom?.roomType} room • Floor ${occupantsModalRoom?.floor} • ${occupantsModalRoom?.currentOccupancy} of ${occupantsModalRoom?.capacity} beds occupied`}
+        description={`${occupantsModalRoom?.roomType} room â€¢ Floor ${occupantsModalRoom?.floor} â€¢ ${occupantsModalRoom?.currentOccupancy} of ${occupantsModalRoom?.capacity} beds occupied`}
         maxWidth="max-w-lg"
       >
         {loadingOccupants ? (
@@ -567,10 +577,10 @@ export default function HostelDetailPage() {
                         {s.name}
                       </span>
                       <span className="text-slate-500 dark:text-slate-400 block font-mono text-[11px]">
-                        {s.registrationNumber || "No Reg"} • Year {s.year} • {s.course}
+                        {s.registrationNumber || "No Reg"} â€¢ Year {s.year} â€¢ {s.course}
                       </span>
                       <span className="text-slate-400 dark:text-slate-500 block text-[11px] mt-0.5">
-                        {s.email} {s.phone ? `• ${s.phone}` : ""}
+                        {s.email} {s.phone ? `â€¢ ${s.phone}` : ""}
                       </span>
                     </div>
                   </div>

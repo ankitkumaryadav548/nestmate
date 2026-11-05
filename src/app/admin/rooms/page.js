@@ -28,8 +28,10 @@ import {
 } from "@/components/admin";
 import RoomModal from "@/components/rooms/RoomModal";
 import BulkRoomModal from "@/components/rooms/BulkRoomModal";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 
 export default function AdminRoomsPage() {
+  useDocumentTitle("Room Inventory", true);
   const [rooms, setRooms] = useState([]);
   const [hostels, setHostels] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -181,7 +183,16 @@ export default function AdminRoomsPage() {
       )}
       {error && (
         <div className="mb-6">
-          <Alert variant="danger" title="Error" onClose={() => setError(null)}>
+          <Alert
+            variant="danger"
+            title="Error"
+            onClose={() => setError(null)}
+            action={
+              <Button variant="outline" size="sm" onClick={fetchRooms}>
+                Try again
+              </Button>
+            }
+          >
             {error}
           </Alert>
         </div>
@@ -272,7 +283,7 @@ export default function AdminRoomsPage() {
       {/* Rooms DataTable */}
       <DataTable
         isLoading={loading}
-        isEmpty={rooms.length === 0}
+        isEmpty={!error && rooms.length === 0}
         emptyTitle="No rooms found"
         emptyDescription={
           hasActiveFilters
@@ -343,7 +354,7 @@ export default function AdminRoomsPage() {
                 <TableCell>
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                      {room.hostel?.code || "—"}
+                      {room.hostel?.code || "â€”"}
                     </span>
                     <span className="text-slate-500 dark:text-slate-400 text-[11px] truncate max-w-[120px]">
                       {room.hostel?.name}
@@ -361,7 +372,7 @@ export default function AdminRoomsPage() {
                 {/* Type */}
                 <TableCell>
                   <span
-                    className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold border ${
+                    className={`rounded-md px-1.5 py-0.5 text-[11px] font-bold border ${
                       room.roomType === "AC"
                         ? "bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border-cyan-200 dark:border-cyan-800/60"
                         : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700"
@@ -406,7 +417,7 @@ export default function AdminRoomsPage() {
                 {/* Notes */}
                 <TableCell>
                   <span className="text-slate-400 dark:text-slate-500 text-[11px] truncate max-w-[140px] block">
-                    {room.notes || "—"}
+                    {room.notes || "â€”"}
                   </span>
                 </TableCell>
 

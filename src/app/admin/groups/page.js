@@ -26,8 +26,10 @@ import {
   DataTable,
   StatusBadge,
 } from "@/components/admin";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 
 export default function AdminGroupsPage() {
+  useDocumentTitle("Roommate Groups", true);
   const [groups, setGroups] = useState([]);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -144,7 +146,16 @@ export default function AdminGroupsPage() {
       {/* Error state */}
       {error && (
         <div className="mb-6">
-          <Alert variant="danger" title="Error" onClose={() => setError(null)}>
+          <Alert
+            variant="danger"
+            title="Error"
+            onClose={() => setError(null)}
+            action={
+              <Button variant="outline" size="sm" onClick={() => fetchGroups(pagination.page)}>
+                Try again
+              </Button>
+            }
+          >
             {error}
           </Alert>
         </div>
@@ -206,7 +217,7 @@ export default function AdminGroupsPage() {
       {/* Groups DataTable */}
       <DataTable
         isLoading={loading}
-        isEmpty={groups.length === 0}
+        isEmpty={!error && groups.length === 0}
         emptyTitle="No roommate groups found"
         emptyDescription="No groups match your current filter parameters or none have been formed yet."
         emptyAction={

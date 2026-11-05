@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 import Button from "@/components/ui/Button";
 import { IconShield, IconArrowRight } from "@/components/ui/Icons";
 
 export default function UnauthorizedPage() {
+  useDocumentTitle("Access Restricted");
   const { user, logout } = useAuth();
 
   return (

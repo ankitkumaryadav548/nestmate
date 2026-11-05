@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import axios from "@/lib/axios";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 import {
   Card,
   CardHeader,
@@ -29,7 +30,9 @@ import {
 } from "@/components/ui";
 
 export default function StudentDashboard() {
+  useDocumentTitle("Dashboard");
   const { user } = useAuth();
+  const [error, setError] = useState(null);
   const [status, setStatus] = useState({
     profileCompleted: false,
     preferencesCompleted: false,
@@ -42,30 +45,33 @@ export default function StudentDashboard() {
   const [recentNotifications, setRecentNotifications] = useState([]);
   const [loadingStatus, setLoadingStatus] = useState(true);
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        setLoadingStatus(true);
-        const [statusRes, groupRes, invRes, allocRes, notifRes, countRes] = await Promise.all([
-          axios.get("/api/students/me/status").catch(() => ({ data: { data: null } })),
-          axios.get("/api/groups/me").catch(() => ({ data: { data: null } })),
-          axios.get("/api/invitations/me").catch(() => ({ data: { data: null } })),
-          axios.get("/api/allocation/me").catch(() => ({ data: { data: null } })),
-          axios.get("/api/notifications?limit=3").catch(() => ({ data: { data: null } })),
-          axios.get("/api/join-requests/counts").catch(() => ({ data: { data: null } })),
-        ]);
-        if (statusRes.data?.data) setStatus(statusRes.data.data);
-        if (groupRes.data?.data) setGroupInfo(groupRes.data.data);
-        if (invRes.data?.data?.pending) setPendingInvitesCount(invRes.data.data.pending.length);
-        if (allocRes.data?.data) setAllocation(allocRes.data.data);
-        if (notifRes.data?.data?.notifications) setRecentNotifications(notifRes.data.data.notifications);
-        if (countRes.data?.data) setJoinRequestCounts(countRes.data.data);
-      } catch (err) {
-        console.error("Failed to load student status:", err);
-      } finally {
-        setLoadingStatus(false);
-      }
+  const loadData = async () => {
+    try {
+      setLoadingStatus(true);
+      setError(null);
+      const [statusRes, groupRes, invRes, allocRes, notifRes, countRes] = await Promise.all([
+        axios.get("/api/students/me/status"),
+        axios.get("/api/groups/me").catch(() => ({ data: { data: null } })),
+        axios.get("/api/invitations/me").catch(() => ({ data: { data: null } })),
+        axios.get("/api/allocation/me").catch(() => ({ data: { data: null } })),
+        axios.get("/api/notifications?limit=3").catch(() => ({ data: { data: null } })),
+        axios.get("/api/join-requests/counts").catch(() => ({ data: { data: null } })),
+      ]);
+      if (statusRes.data?.data) setStatus(statusRes.data.data);
+      if (groupRes.data?.data) setGroupInfo(groupRes.data.data);
+      if (invRes.data?.data?.pending) setPendingInvitesCount(invRes.data.data.pending.length);
+      if (allocRes.data?.data) setAllocation(allocRes.data.data);
+      if (notifRes.data?.data?.notifications) setRecentNotifications(notifRes.data.data.notifications);
+      if (countRes.data?.data) setJoinRequestCounts(countRes.data.data);
+    } catch (err) {
+      console.error("Failed to load student status:", err);
+      setError(err.response?.data?.message || err.message || "Failed to load dashboard data. Please try again.");
+    } finally {
+      setLoadingStatus(false);
     }
+  };
+
+  useEffect(() => {
     loadData();
   }, []);
 
@@ -96,6 +102,22 @@ export default function StudentDashboard() {
       <div className="flex-1 py-6 sm:py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-6 sm:space-y-8">
         
         {/* Incomplete Checklist Alert */}
+        {error && (
+          <Reveal direction="down">
+            <Alert
+              variant="danger"
+              title="Connection Error"
+              action={
+                <Button variant="outline" size="sm" onClick={loadData}>
+                  Try again
+                </Button>
+              }
+            >
+              {error}
+            </Alert>
+          </Reveal>
+        )}
+
         {!loadingStatus && hasIncompleteSteps && (
           <Reveal direction="down">
             <Alert
@@ -168,7 +190,7 @@ export default function StudentDashboard() {
 
               <div className="flex flex-row md:flex-col items-center md:items-end gap-3 shrink-0">
                 <div className="rounded-xl bg-white/10 border border-white/15 px-3.5 py-2 backdrop-blur-md text-left md:text-right">
-                  <span className="block text-[10px] uppercase font-bold tracking-wider text-indigo-200">
+                  <span className="block text-[11px] uppercase font-bold tracking-wider text-indigo-200">
                     Registration No
                   </span>
                   <span className="text-sm font-mono font-bold text-white">
@@ -213,7 +235,7 @@ export default function StudentDashboard() {
                             : "bg-white/10 text-white/60"
                         }`}
                       >
-                        {isDone ? "✓" : idx + 1}
+                        {isDone ? "âœ“" : idx + 1}
                       </span>
                       <span className="text-xs font-semibold truncate group-hover:underline">
                         {s.title}
@@ -254,8 +276,8 @@ export default function StudentDashboard() {
               <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
                   <div className="flex items-center gap-2.5">
-                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                      {status.profileCompleted ? "✅" : "⏳"}
+                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                      {status.profileCompleted ? "âœ…" : "â³"}
                     </span>
                     <span className="font-semibold text-slate-800 dark:text-slate-200">Student Profile</span>
                   </div>
@@ -266,8 +288,8 @@ export default function StudentDashboard() {
 
                 <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
                   <div className="flex items-center gap-2.5">
-                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                      {status.preferencesCompleted ? "✅" : "⏳"}
+                    <span className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                      {status.preferencesCompleted ? "âœ…" : "â³"}
                     </span>
                     <span className="font-semibold text-slate-800 dark:text-slate-200">Lifestyle Questionnaire</span>
                   </div>
@@ -302,7 +324,7 @@ export default function StudentDashboard() {
                         Full Name
                       </dt>
                       <dd className="text-slate-900 dark:text-slate-100 font-semibold mt-0.5">
-                        {user?.name || "—"}
+                        {user?.name || "â€”"}
                       </dd>
                     </div>
                     <div>
@@ -310,7 +332,7 @@ export default function StudentDashboard() {
                         Institutional Email
                       </dt>
                       <dd className="text-slate-900 dark:text-slate-100 font-semibold mt-0.5 break-all">
-                        {user?.email || "—"}
+                        {user?.email || "â€”"}
                       </dd>
                     </div>
                     <div>
@@ -318,7 +340,7 @@ export default function StudentDashboard() {
                         Gender
                       </dt>
                       <dd className="text-slate-900 dark:text-slate-100 font-semibold capitalize mt-0.5">
-                        {user?.gender || "—"}
+                        {user?.gender || "â€”"}
                       </dd>
                     </div>
                     <div>
@@ -326,7 +348,7 @@ export default function StudentDashboard() {
                         Course & Department
                       </dt>
                       <dd className="text-slate-900 dark:text-slate-100 font-semibold mt-0.5">
-                        {[user?.course, user?.department].filter(Boolean).join(" • ") || "Not specified"}
+                        {[user?.course, user?.department].filter(Boolean).join(" â€¢ ") || "Not specified"}
                       </dd>
                     </div>
                     <div>
@@ -342,7 +364,7 @@ export default function StudentDashboard() {
                   <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800">
                     <Link href="/dashboard/profile">
                       <Button variant="secondary" size="sm" className="w-full">
-                        ✏️ Edit Profile Details
+                        âœï¸ Edit Profile Details
                       </Button>
                     </Link>
                   </div>
@@ -448,7 +470,7 @@ export default function StudentDashboard() {
                       </div>
                     </div>
                     <Badge variant={status.preferencesCompleted ? "success" : "warning"} size="sm">
-                      {status.preferencesCompleted ? "✓ Completed" : "Pending"}
+                      {status.preferencesCompleted ? "âœ“ Completed" : "Pending"}
                     </Badge>
                   </div>
                   <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold text-indigo-600 dark:text-indigo-400">
@@ -528,7 +550,7 @@ export default function StudentDashboard() {
                   {pendingInvitesCount > 0 && (
                     <Link href="/dashboard/invitations">
                       <Badge variant="warning" size="sm" pulse>
-                        ✉️ {pendingInvitesCount} Invite{pendingInvitesCount > 1 ? "s" : ""}
+                        âœ‰ï¸ {pendingInvitesCount} Invite{pendingInvitesCount > 1 ? "s" : ""}
                       </Badge>
                     </Link>
                   )}
@@ -563,7 +585,7 @@ export default function StudentDashboard() {
                       {joinRequestCounts.pendingIncoming > 0 && groupInfo.isLeader && (
                         <Link href="/dashboard/group">
                           <Badge variant="warning" size="sm" pulse>
-                            📩 {joinRequestCounts.pendingIncoming} Pending Join Request{joinRequestCounts.pendingIncoming === 1 ? "" : "s"}
+                            ðŸ“© {joinRequestCounts.pendingIncoming} Pending Join Request{joinRequestCounts.pendingIncoming === 1 ? "" : "s"}
                           </Badge>
                         </Link>
                       )}
@@ -651,7 +673,7 @@ export default function StudentDashboard() {
                       size="sm"
                     >
                       {allocation?.status === "allocated"
-                        ? "✓ ALLOCATED"
+                        ? "âœ“ ALLOCATED"
                         : allocation?.status === "waitlisted"
                         ? "WAITLISTED"
                         : "PENDING"}

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 /**
  * Stepper Component
@@ -69,7 +69,7 @@ export default function Stepper({
                     {step.label}
                   </p>
                   {step.description && (
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                    <p className="text-[11px] text-slate-400 dark:text-slate-500">
                       {step.description}
                     </p>
                   )}

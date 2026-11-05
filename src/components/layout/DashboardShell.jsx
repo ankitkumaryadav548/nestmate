@@ -124,7 +124,7 @@ export default function DashboardShell({ children }) {
           label: "Invitations",
           icon: <IconMail />,
           badge: pendingInvitesCount > 0 ? (
-            <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[10px] font-bold text-white bg-amber-500 rounded-full animate-pulse">
+            <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1.5 text-[11px] font-bold text-white bg-amber-500 rounded-full animate-pulse">
               {pendingInvitesCount}
             </span>
           ) : null,
@@ -214,7 +214,7 @@ export default function DashboardShell({ children }) {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 transition-colors">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-[var(--bg-page)] text-slate-900 dark:text-slate-100 transition-colors">
       {/* =====================================================================
           DESKTOP LEFT SIDEBAR
           ===================================================================== */}
@@ -236,7 +236,7 @@ export default function DashboardShell({ children }) {
                 <span className="text-base font-extrabold tracking-tight text-slate-900 dark:text-slate-50 truncate">
                   {appName}
                 </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 -mt-0.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 -mt-0.5">
                   {isAdmin ? "Admin Console" : "Campus Housing"}
                 </span>
               </div>
@@ -267,7 +267,7 @@ export default function DashboardShell({ children }) {
           {navGroups.map((group, gIdx) => (
             <div key={gIdx} className="space-y-1">
               {!isCollapsed && (
-                <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
+                <p className="px-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">
                   {group.label}
                 </p>
               )}
@@ -316,7 +316,7 @@ export default function DashboardShell({ children }) {
                 <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
                   {user?.name}
                 </p>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 truncate">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 truncate">
                   {user?.role}
                 </p>
               </div>
@@ -356,7 +356,7 @@ export default function DashboardShell({ children }) {
             <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
               {navGroups.map((group, gIdx) => (
                 <div key={gIdx} className="space-y-1">
-                  <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">
+                  <p className="px-3 text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-1.5">
                     {group.label}
                   </p>
                   {group.items.map((item) => {
@@ -460,7 +460,7 @@ export default function DashboardShell({ children }) {
                   <span className="text-xs font-bold text-slate-800 dark:text-slate-200 max-w-[120px] truncate">
                     {user?.name}
                   </span>
-                  <span className="text-[10px] font-semibold text-slate-400 dark:text-slate-500 uppercase mt-0.5">
+                  <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase mt-0.5">
                     {user?.role}
                   </span>
                 </div>

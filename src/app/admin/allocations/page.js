@@ -25,8 +25,10 @@ import {
   StatusBadge,
 } from "@/components/admin";
 import { PRIORITY_MODES, PRIORITY_MODE_DETAILS } from "@/config/allocation";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 
 export default function AdminAllocationsPage() {
+  useDocumentTitle("Allocation Runs", true);
   const [runs, setRuns] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 1 });
   const [loading, setLoading] = useState(true);
@@ -152,7 +154,16 @@ export default function AdminAllocationsPage() {
 
       {error && (
         <div className="mb-6">
-          <Alert variant="danger" title="Error" onClose={() => setError(null)}>
+          <Alert
+            variant="danger"
+            title="Error"
+            onClose={() => setError(null)}
+            action={
+              <Button variant="outline" size="sm" onClick={() => fetchRuns(pagination.page)}>
+                Try again
+              </Button>
+            }
+          >
             {error}
           </Alert>
         </div>
@@ -161,7 +172,7 @@ export default function AdminAllocationsPage() {
       {/* Runs DataTable */}
       <DataTable
         isLoading={loading}
-        isEmpty={runs.length === 0}
+        isEmpty={!error && runs.length === 0}
         emptyTitle="No allocation simulations executed yet"
         emptyDescription="Launch your first draft simulation to cluster students, place groups by priority rounds, and evaluate satisfaction metrics."
         emptyAction={

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import Avatar from './Avatar';
@@ -25,7 +25,7 @@ export default function SeatTile({
     const subtext = [
       member.academic?.branch || member.branch || member.department,
       member.academic?.year ? `Year ${member.academic.year}` : (member.year ? `Year ${member.year}` : null),
-    ].filter(Boolean).join(' • ');
+    ].filter(Boolean).join(' â€¢ ');
 
     return (
       <div
@@ -39,22 +39,22 @@ export default function SeatTile({
         {isLeader && (
           <div
             title="Group Leader"
-            className="absolute -top-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1 animate-scale-in"
+            className="absolute -top-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1 animate-scale-in"
           >
-            <span>👑</span> Leader
+            <span>ðŸ‘‘</span> Leader
           </div>
         )}
 
         {/* Current User Pill */}
         {isCurrentUser && (
-          <span className="absolute top-2.5 right-2.5 text-[10px] font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded-md">
+          <span className="absolute top-2.5 right-2.5 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-1.5 py-0.5 rounded-md">
             You
           </span>
         )}
 
         <div className="mt-2 relative">
           <Avatar name={displayName} size="lg" className="ring-2 ring-white dark:ring-slate-900 shadow-sm" />
-          <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-600 dark:text-slate-300 flex items-center justify-center">
+          <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-600 dark:text-slate-300 flex items-center justify-center">
             #{seatNumber}
           </span>
         </div>

@@ -17,6 +17,7 @@ import {
   Modal,
   Pagination,
   EmptyState,
+  ErrorState,
   Tabs,
   Avatar,
   ProgressBar,
@@ -32,11 +33,14 @@ import {
   IconCheck,
 } from "@/components/ui";
 import { getScoreTone, getScoreClasses } from "@/components/ui/ScoreTone";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 
 export default function StudentMatchesPage() {
+  useDocumentTitle("Roommate Matches");
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState("students"); // "students" | "groups"
   const [loading, setLoading] = useState(true);
+  const [matchesError, setMatchesError] = useState(null);
   const [matches, setMatches] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -54,6 +58,7 @@ export default function StudentMatchesPage() {
   const [groupsPage, setGroupsPage] = useState(1);
   const [groupsTotalPages, setGroupsTotalPages] = useState(1);
   const [groupsLoading, setGroupsLoading] = useState(false);
+  const [groupsError, setGroupsError] = useState(null);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [groupModalLoading, setGroupModalLoading] = useState(false);
@@ -73,6 +78,7 @@ export default function StudentMatchesPage() {
   const fetchMatches = useCallback(
     async (currentPage = page) => {
       setLoading(true);
+      setMatchesError(null);
       try {
         const res = await api.get("/matches/me", {
           params: {
@@ -94,12 +100,28 @@ export default function StudentMatchesPage() {
           setPage(data.page || 1);
           setTotalPages(data.totalPages || 1);
           setPreferencesIncomplete(false);
+
+          // Sync pending sent invitations if any
+          try {
+            const groupRes = await api.get("/groups/me");
+            if (groupRes.data?.success && groupRes.data.data?.pendingInvitations) {
+              const pendingIds = groupRes.data.data.pendingInvitations
+                .map((inv) => inv.invitedUser?.id || inv.invitedUser?._id)
+                .filter(Boolean);
+              if (pendingIds.length > 0) {
+                setInvitedUserIds((prev) => new Set([...prev, ...pendingIds]));
+              }
+            }
+          } catch {
+            // Not in group or no pending invites
+          }
         }
       } catch (err) {
         if (err.response?.status === 409 || err.response?.data?.details?.code === "PREFERENCES_INCOMPLETE") {
           setPreferencesIncomplete(true);
         } else {
           console.error("Failed to load roommate matches:", err);
+          setMatchesError(err.response?.data?.message || err.message || "Failed to load roommate matches. Please check your connection.");
         }
       } finally {
         setLoading(false);
@@ -111,6 +133,7 @@ export default function StudentMatchesPage() {
   const fetchOpenGroups = useCallback(
     async (currentPage = groupsPage) => {
       setGroupsLoading(true);
+      setGroupsError(null);
       try {
         const res = await api.get("/groups/open", {
           params: {
@@ -131,6 +154,7 @@ export default function StudentMatchesPage() {
         }
       } catch (err) {
         console.error("Failed to load open groups:", err);
+        setGroupsError(err.response?.data?.message || err.message || "Failed to load open groups. Please check your connection.");
       } finally {
         setGroupsLoading(false);
       }
@@ -139,15 +163,21 @@ export default function StudentMatchesPage() {
   );
 
   const handleInviteToGroup = async (userId) => {
+    if (!userId) {
+      showToast("Candidate ID missing", "error");
+      return;
+    }
     setInvitingId(userId);
     try {
       const res = await api.post("/groups/me/invitations", { userId });
       if (res.data?.success) {
         setInvitedUserIds((prev) => new Set([...prev, userId]));
         showToast("Invitation sent to candidate!", "success");
+        // Re-fetch matches to refresh leaderGroup state
+        fetchMatches();
       }
     } catch (err) {
-      showToast(err.response?.data?.message || "Failed to send invitation", "error");
+      showToast(err.response?.data?.message || err.message || "Failed to send invitation", "error");
     } finally {
       setInvitingId(null);
     }
@@ -428,6 +458,12 @@ export default function StudentMatchesPage() {
                   </Card>
                 ))}
               </div>
+            ) : matchesError ? (
+              <ErrorState
+                title="Failed to Load Matching Students"
+                message={matchesError}
+                onRetry={() => fetchMatches(page)}
+              />
             ) : matches.length === 0 ? (
               <EmptyState
                 icon="🔍"
@@ -450,13 +486,18 @@ export default function StudentMatchesPage() {
               <>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {matches.map((match) => {
-                    const score = match.compatibilityScore || 0;
+                    const candidateId = match.id || match.userId || match._id;
+                    const score = match.score ?? match.compatibilityScore ?? 0;
                     const tone = getScoreTone(score);
-                    const isInvited = invitedUserIds.has(match.userId);
+                    const isInvited = invitedUserIds.has(candidateId);
+                    const groupInfo = match.inGroup || match.groupInfo;
+                    const isCandidateInMultiGroup = groupInfo && ((groupInfo.filledSeats || groupInfo.seatsFilled || 0) > 1);
+                    const leaderHasFreeSeats = !leaderGroup || (leaderGroup.freeSeats > 0 || (leaderGroup.membersCount || 1) < leaderGroup.targetSize);
+                    const canInvite = !singleRoom && leaderHasFreeSeats && !isCandidateInMultiGroup;
 
                     return (
                       <Card
-                        key={match.userId}
+                        key={candidateId}
                         variant="interactive"
                         className="p-5 flex flex-col justify-between"
                       >
@@ -479,10 +520,10 @@ export default function StudentMatchesPage() {
                           </div>
 
                           {/* Group Membership Pill */}
-                          {match.groupInfo && (
+                          {groupInfo && (
                             <div className="mt-3">
                               <Badge variant="neutral" size="sm">
-                                👥 In Group ({match.groupInfo.seatsFilled}/{match.groupInfo.targetSize} beds)
+                                👥 In Group ({groupInfo.filledSeats || groupInfo.seatsFilled}/{groupInfo.targetSize} beds)
                               </Badge>
                             </div>
                           )}
@@ -527,13 +568,13 @@ export default function StudentMatchesPage() {
                             View Details
                           </Button>
 
-                          {leaderGroup && !match.groupInfo && (
+                          {canInvite && (
                             <Button
                               variant="primary"
                               size="sm"
-                              onClick={() => handleInviteToGroup(match.userId)}
-                              loading={invitingId === match.userId}
-                              disabled={isInvited || invitingId === match.userId || leaderGroup.seatsFilled >= leaderGroup.targetSize}
+                              onClick={() => handleInviteToGroup(candidateId)}
+                              loading={invitingId === candidateId}
+                              disabled={isInvited || invitingId === candidateId}
                             >
                               {isInvited ? "Invited ✓" : "+ Invite"}
                             </Button>
@@ -571,6 +612,12 @@ export default function StudentMatchesPage() {
                   </Card>
                 ))}
               </div>
+            ) : groupsError ? (
+              <ErrorState
+                title="Failed to Load Open Groups"
+                message={groupsError}
+                onRetry={() => fetchOpenGroups(groupsPage)}
+              />
             ) : openGroups.length === 0 ? (
               <EmptyState
                 icon="👥"
@@ -705,89 +752,131 @@ export default function StudentMatchesPage() {
           title={selectedMatch ? `${selectedMatch.name}'s Compatibility Profile` : "Match Details"}
           size="lg"
         >
-          {selectedMatch && (
-            <div className="space-y-6">
-              {/* Modal Hero */}
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40">
-                <div className="flex items-center gap-3.5">
-                  <Avatar name={selectedMatch.name} size="xl" />
-                  <div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading">
-                      {selectedMatch.name}
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      {[selectedMatch.course, selectedMatch.year ? `Year ${selectedMatch.year}` : null].filter(Boolean).join(" • ")}
-                    </p>
+          {selectedMatch && (() => {
+            const selCandidateId = selectedMatch.id || selectedMatch.userId || selectedMatch._id;
+            const selScore = selectedMatch.score ?? selectedMatch.compatibilityScore ?? 0;
+            const selGroupInfo = selectedMatch.inGroup || selectedMatch.groupInfo;
+            const selInMultiGroup = selGroupInfo && ((selGroupInfo.filledSeats || selGroupInfo.seatsFilled || 0) > 1);
+            const leaderHasFreeSeats = !leaderGroup || (leaderGroup.freeSeats > 0 || (leaderGroup.membersCount || 1) < leaderGroup.targetSize);
+            const selCanInvite = !singleRoom && leaderHasFreeSeats && !selInMultiGroup;
+            const isSelInvited = invitedUserIds.has(selCandidateId);
+
+            const breakdownItems = Array.isArray(selectedMatch.breakdown)
+              ? selectedMatch.breakdown.map((b) => ({
+                  key: b.key || b.label,
+                  label: b.label || b.key,
+                  score: b.percent ?? (b.similarity != null ? Math.round(b.similarity * 100) : b.points ?? 0),
+                }))
+              : typeof selectedMatch.breakdown === "object" && selectedMatch.breakdown !== null
+              ? Object.entries(selectedMatch.breakdown).map(([k, v]) => ({
+                  key: k,
+                  label: k.replace(/([A-Z])/g, " $1"),
+                  score: typeof v === "number" ? v : v?.percent ?? 0,
+                }))
+              : [];
+
+            return (
+              <div className="space-y-6">
+                {/* Modal Hero */}
+                <div className="flex items-center justify-between p-4 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/40">
+                  <div className="flex items-center gap-3.5">
+                    <Avatar name={selectedMatch.name} size="xl" />
+                    <div>
+                      <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading">
+                        {selectedMatch.name}
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                        {[selectedMatch.course, selectedMatch.year ? `Year ${selectedMatch.year}` : null].filter(Boolean).join(" • ")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <ScoreRing score={selScore} size={56} strokeWidth={5} />
+                    <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 block mt-1">
+                      Overall Match
+                    </span>
                   </div>
                 </div>
 
-                <div className="text-right">
-                  <ScoreRing score={selectedMatch.compatibilityScore} size={56} strokeWidth={5} />
-                  <span className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 block mt-1">
-                    Overall Match
-                  </span>
-                </div>
-              </div>
-
-              {/* Category Breakdown Bars */}
-              {selectedMatch.breakdown && (
-                <div className="space-y-3">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                    Category Breakdown
-                  </h4>
-                  <div className="space-y-2.5">
-                    {Object.entries(selectedMatch.breakdown).map(([category, catScore], i) => (
-                      <div key={category} className="space-y-1">
-                        <div className="flex justify-between text-xs font-semibold">
-                          <span className="capitalize text-slate-700 dark:text-slate-300">{category}</span>
-                          <span className="text-indigo-600 dark:text-indigo-400">{catScore}%</span>
+                {/* Category Breakdown Bars */}
+                {breakdownItems.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      Category Breakdown
+                    </h4>
+                    <div className="space-y-2.5">
+                      {breakdownItems.map((item, i) => (
+                        <div key={item.key || i} className="space-y-1">
+                          <div className="flex justify-between text-xs font-semibold">
+                            <span className="capitalize text-slate-700 dark:text-slate-300">
+                              {item.label}
+                            </span>
+                            <span className="text-indigo-600 dark:text-indigo-400">
+                              {item.score}%
+                            </span>
+                          </div>
+                          <ProgressBar value={item.score} max={100} color="brand" animated />
                         </div>
-                        <ProgressBar value={catScore} max={100} color="brand" animated />
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Reasons & Strengths */}
-              {selectedMatch.reasons?.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400">
-                    Key Harmonious Strengths
-                  </h4>
-                  <ul className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
-                    {selectedMatch.reasons.map((r, i) => (
-                      <li key={i} className="flex items-center gap-2">
-                        <span className="text-teal-600">✓</span> {r}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+                {/* Reasons & Strengths */}
+                {selectedMatch.reasons?.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-teal-700 dark:text-teal-400">
+                      Key Harmonious Strengths
+                    </h4>
+                    <ul className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
+                      {selectedMatch.reasons.map((r, i) => (
+                        <li key={i} className="flex items-center gap-2">
+                          <span className="text-teal-600">✓</span> {r}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-              {/* Differences */}
-              {selectedMatch.warnings?.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
-                    Soft Routine Differences
-                  </h4>
-                  <ul className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
-                    {selectedMatch.warnings.map((w, i) => (
-                      <li key={i} className="flex items-center gap-2">
-                        <span className="text-amber-600">⚠️</span> {w}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+                {/* Differences */}
+                {selectedMatch.warnings?.length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                      Soft Routine Differences
+                    </h4>
+                    <ul className="space-y-1.5 text-xs text-slate-700 dark:text-slate-300">
+                      {selectedMatch.warnings.map((w, i) => (
+                        <li key={i} className="flex items-center gap-2">
+                          <span className="text-amber-600">⚠️</span> {w}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-              {/* Privacy Footer */}
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 flex items-center gap-1.5">
-                <IconShield className="w-3.5 h-3.5 text-slate-400" />
-                Raw answers and contact details are kept strictly private until room assignment.
+                {/* Privacy Footer & Actions */}
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 flex-wrap">
+                  <div className="text-[11px] text-slate-400 flex items-center gap-1.5">
+                    <IconShield className="w-3.5 h-3.5 text-slate-400" />
+                    Raw answers and contact details are kept strictly private until room assignment.
+                  </div>
+
+                  {selCanInvite && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleInviteToGroup(selCandidateId)}
+                      loading={invitingId === selCandidateId}
+                      disabled={isSelInvited || invitingId === selCandidateId}
+                    >
+                      {isSelInvited ? "Invited ✓" : "+ Invite to Group"}
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </Modal>
 
         {/* Modal 2: Group Details & Join Request */}

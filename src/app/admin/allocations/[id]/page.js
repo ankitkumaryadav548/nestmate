@@ -41,12 +41,14 @@ import {
   StackedBar,
 } from "@/components/admin";
 import { WAITLIST_REASONS } from "@/config/allocation";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 
 export default function AdminAllocationResultPage({ params }) {
   const unwrappedParams = use(params);
   const runId = unwrappedParams.id;
 
   const [run, setRun] = useState(null);
+  useDocumentTitle(run ? (run.name || "Allocation Run") : "Allocation Run", true);
   const [loadingRun, setLoadingRun] = useState(true);
   const [runError, setRunError] = useState(null);
 
@@ -361,11 +363,16 @@ export default function AdminAllocationResultPage({ params }) {
           title="Error Loading Allocation Run"
           message={runError || "Run not found"}
           action={
-            <Link href="/admin/allocations">
-              <Button variant="outline" size="sm">
-                &larr; Back to Allocations
+            <div className="flex items-center gap-2">
+              <Button variant="primary" size="sm" onClick={fetchRun}>
+                Try again
               </Button>
-            </Link>
+              <Link href="/admin/allocations">
+                <Button variant="outline" size="sm">
+                  &larr; Back to Allocations
+                </Button>
+              </Link>
+            </div>
           }
         />
       </PageContainer>
@@ -393,7 +400,7 @@ export default function AdminAllocationResultPage({ params }) {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800 p-4 text-teal-900 dark:text-teal-200 shadow-sm">
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-teal-600 text-white font-bold text-lg shadow-sm">
-                ✓
+                âœ“
               </span>
               <div>
                 <p className="text-sm font-bold">Official Published Allocation</p>
@@ -417,7 +424,7 @@ export default function AdminAllocationResultPage({ params }) {
                 className="inline-flex items-center rounded-xl bg-[var(--card)] border border-teal-300 dark:border-teal-700 px-3 py-2 text-xs font-bold text-teal-800 dark:text-teal-200 hover:bg-teal-100 dark:hover:bg-teal-900/60 transition-colors shadow-sm"
                 download
               >
-                <span className="mr-1.5">📥</span> Download CSV
+                <span className="mr-1.5">ðŸ“¥</span> Download CSV
               </a>
               <Button
                 onClick={() => {
@@ -437,7 +444,7 @@ export default function AdminAllocationResultPage({ params }) {
         {isRolledBack && (
           <div className="flex items-center gap-3 rounded-2xl bg-[var(--muted)]/50 border border-[var(--border)] p-4 text-[var(--foreground)] shadow-sm">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-500 text-white font-bold text-lg">
-              ↩
+              â†©
             </span>
             <div className="text-xs sm:text-sm">
               <p className="font-bold">Allocation Rolled Back</p>
@@ -465,7 +472,7 @@ export default function AdminAllocationResultPage({ params }) {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 p-4 text-amber-900 dark:text-amber-200 shadow-sm">
             <div className="flex items-center gap-3">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-600 text-white font-bold text-lg">
-                ✏️
+                âœï¸
               </span>
               <div>
                 <p className="text-sm font-bold">Draft Allocation & Edit Mode</p>
@@ -488,7 +495,7 @@ export default function AdminAllocationResultPage({ params }) {
                 onClick={handleOpenPublishModal}
                 className="bg-teal-600 hover:bg-teal-700 text-white font-bold shadow-md shadow-teal-600/20"
               >
-                <span className="mr-1.5">🚀</span> Publish Allocations
+                <span className="mr-1.5">ðŸš€</span> Publish Allocations
               </Button>
             </div>
           </div>
@@ -528,7 +535,7 @@ export default function AdminAllocationResultPage({ params }) {
         {/* Header with Breadcrumbs */}
         <AdminPageHeader
           title={run.name}
-          description={`Priority: ${run.options?.priorityMode || "groups_first"} • Seed: ${run.options?.seed ?? 42} • Created: ${new Date(run.createdAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}`}
+          description={`Priority: ${run.options?.priorityMode || "groups_first"} â€¢ Seed: ${run.options?.seed ?? 42} â€¢ Created: ${new Date(run.createdAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}`}
           breadcrumbs={[
             { label: "Admin", href: "/admin" },
             { label: "Allocations", href: "/admin/allocations" },
@@ -743,7 +750,7 @@ export default function AdminAllocationResultPage({ params }) {
                       <div>
                         <span className="font-semibold text-[var(--foreground)] block">{meta.label}</span>
                         {meta.description && (
-                          <span className="text-[10px] text-[var(--muted-foreground)]">{meta.description}</span>
+                          <span className="text-[11px] text-[var(--muted-foreground)]">{meta.description}</span>
                         )}
                       </div>
                       <Badge variant="amber" size="sm">
@@ -858,7 +865,7 @@ export default function AdminAllocationResultPage({ params }) {
                             )}
                           </div>
                           {item.waitlistReason && (
-                            <span className="block text-[10px] text-amber-600 dark:text-amber-400 mt-1">
+                            <span className="block text-[11px] text-amber-600 dark:text-amber-400 mt-1">
                               {WAITLIST_REASONS[item.waitlistReason]?.label || item.waitlistReason}
                             </span>
                           )}
@@ -882,7 +889,7 @@ export default function AdminAllocationResultPage({ params }) {
                                 {hostel.code} - Room {room.roomNumber}
                               </span>
                               <span className="text-xs text-[var(--muted-foreground)] block">
-                                Floor {room.floor} • {room.roomType} • {room.capacity} Beds
+                                Floor {room.floor} â€¢ {room.roomType} â€¢ {room.capacity} Beds
                               </span>
                             </div>
                           ) : (
@@ -902,7 +909,7 @@ export default function AdminAllocationResultPage({ params }) {
                               )}
                             </div>
                           ) : (
-                            <span className="text-xs text-[var(--muted-foreground)]">—</span>
+                            <span className="text-xs text-[var(--muted-foreground)]">â€”</span>
                           )}
                         </TableCell>
                         <TableCell>
@@ -915,13 +922,13 @@ export default function AdminAllocationResultPage({ params }) {
                           ) : item.hostelRank === 0 ? (
                             <Badge variant="default" size="sm">Fallback</Badge>
                           ) : (
-                            <span className="text-xs text-[var(--muted-foreground)]">—</span>
+                            <span className="text-xs text-[var(--muted-foreground)]">â€”</span>
                           )}
                         </TableCell>
                         <TableCell className="text-xs">
                           <div className="flex items-center gap-1.5">
                             <span
-                              className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-bold ${
                                 item.acMatch === true
                                   ? "bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300"
                                   : item.acMatch === false
@@ -929,10 +936,10 @@ export default function AdminAllocationResultPage({ params }) {
                                   : "bg-[var(--muted)] text-[var(--muted-foreground)]"
                               }`}
                             >
-                              AC: {item.acMatch === true ? "✓" : item.acMatch === false ? "✗" : "—"}
+                              AC: {item.acMatch === true ? "âœ“" : item.acMatch === false ? "âœ—" : "â€”"}
                             </span>
                             <span
-                              className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                              className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-bold ${
                                 item.floorMatch === true
                                   ? "bg-brand-100 text-brand-800 dark:bg-brand-950 dark:text-brand-300"
                                   : item.floorMatch === false
@@ -940,7 +947,7 @@ export default function AdminAllocationResultPage({ params }) {
                                   : "bg-[var(--muted)] text-[var(--muted-foreground)]"
                               }`}
                             >
-                              Floor: {item.floorMatch === true ? "✓" : item.floorMatch === false ? "✗" : "—"}
+                              Floor: {item.floorMatch === true ? "âœ“" : item.floorMatch === false ? "âœ—" : "â€”"}
                             </span>
                           </div>
                         </TableCell>
@@ -1044,7 +1051,7 @@ export default function AdminAllocationResultPage({ params }) {
                   <div className="max-h-40 overflow-y-auto space-y-1 text-xs">
                     {publishPreview.conflicts.map((c, i) => (
                       <div key={i} className="flex items-start gap-1.5">
-                        <span>•</span>
+                        <span>â€¢</span>
                         <span>{c.message}</span>
                       </div>
                     ))}
@@ -1054,25 +1061,25 @@ export default function AdminAllocationResultPage({ params }) {
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center">
                     <div className="p-2.5 rounded-xl bg-[var(--muted)]/50 border border-[var(--border)]">
-                      <span className="text-[10px] font-bold text-[var(--muted-foreground)] block uppercase">Students</span>
+                      <span className="text-[11px] font-bold text-[var(--muted-foreground)] block uppercase">Students</span>
                       <span className="text-base font-bold text-[var(--foreground)]">
                         {publishPreview.summary?.students}
                       </span>
                     </div>
                     <div className="p-2.5 rounded-xl bg-[var(--muted)]/50 border border-[var(--border)]">
-                      <span className="text-[10px] font-bold text-[var(--muted-foreground)] block uppercase">Rooms</span>
+                      <span className="text-[11px] font-bold text-[var(--muted-foreground)] block uppercase">Rooms</span>
                       <span className="text-base font-bold text-[var(--foreground)]">
                         {publishPreview.summary?.rooms}
                       </span>
                     </div>
                     <div className="p-2.5 rounded-xl bg-[var(--muted)]/50 border border-[var(--border)]">
-                      <span className="text-[10px] font-bold text-[var(--muted-foreground)] block uppercase">Groups Locked</span>
+                      <span className="text-[11px] font-bold text-[var(--muted-foreground)] block uppercase">Groups Locked</span>
                       <span className="text-base font-bold text-[var(--foreground)]">
                         {publishPreview.summary?.groupsLocked}
                       </span>
                     </div>
                     <div className="p-2.5 rounded-xl bg-[var(--muted)]/50 border border-[var(--border)]">
-                      <span className="text-[10px] font-bold text-[var(--muted-foreground)] block uppercase">Overrides</span>
+                      <span className="text-[11px] font-bold text-[var(--muted-foreground)] block uppercase">Overrides</span>
                       <span className="text-base font-bold text-purple-600 dark:text-purple-400">
                         {publishPreview.summary?.overrides}
                       </span>
@@ -1145,16 +1152,16 @@ export default function AdminAllocationResultPage({ params }) {
                             <div>
                               <span className="font-bold text-[var(--foreground)]">Room {r.roomNumber}</span>
                               <span className="text-[11px] text-[var(--muted-foreground)] block">
-                                Floor {r.floor} • {r.roomType}
+                                Floor {r.floor} â€¢ {r.roomType}
                               </span>
                               {r.acMismatch && (
-                                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold block">
-                                  ⚠ AC Mismatch
+                                <span className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold block">
+                                  âš  AC Mismatch
                                 </span>
                               )}
                               {r.floorMismatch && (
-                                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold block">
-                                  ⚠ Floor Mismatch
+                                <span className="text-[11px] text-amber-600 dark:text-amber-400 font-semibold block">
+                                  âš  Floor Mismatch
                                 </span>
                               )}
                             </div>
@@ -1325,7 +1332,7 @@ export default function AdminAllocationResultPage({ params }) {
                   <div className="space-y-1 text-[11px] text-purple-800 dark:text-purple-300">
                     {swapConflictingPairs.map((p, i) => (
                       <div key={i}>
-                        • Mutual conflict between {p.member1?.name} and {p.member2?.name}
+                        â€¢ Mutual conflict between {p.member1?.name} and {p.member2?.name}
                       </div>
                     ))}
                   </div>

@@ -12,6 +12,7 @@ import {
   Badge,
   Button,
   EmptyState,
+  ErrorState,
   Skeleton,
   ConfirmDialog,
   Pagination,
@@ -74,12 +75,14 @@ export default function NotificationsCenter({ portalRole = "student" }) {
     limit: 20,
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
 
   const fetchNotifications = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const params = new URLSearchParams();
       params.set("page", page);
       params.set("limit", 20);
@@ -92,6 +95,7 @@ export default function NotificationsCenter({ portalRole = "student" }) {
       }
     } catch (err) {
       console.error("Failed to load notifications:", err);
+      setError(err.response?.data?.message || err.message || "Failed to load notifications.");
     } finally {
       setLoading(false);
     }
@@ -299,6 +303,12 @@ export default function NotificationsCenter({ portalRole = "student" }) {
               </div>
             ))}
           </div>
+        ) : error ? (
+          <ErrorState
+            title="Failed to Load Notifications"
+            message={error}
+            onRetry={fetchNotifications}
+          />
         ) : data.notifications.length === 0 ? (
           /* Friendly Empty State */
           <Card className="p-12 text-center">

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
@@ -11,6 +12,7 @@ import Alert from "@/components/ui/Alert";
 import { IconShield, IconSparkles, IconCheck, IconBed, IconUser } from "@/components/ui/Icons";
 
 export default function RegisterPage() {
+  useDocumentTitle("Student Registration");
   const router = useRouter();
   const { register } = useAuth();
 
@@ -176,9 +178,9 @@ export default function RegisterPage() {
           <div className="max-w-xl w-full mx-auto space-y-6">
             {/* Header */}
             <div>
-              <h3 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
+              <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
                 Student Registration
-              </h3>
+              </h1>
               <p className="mt-1 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                 Create your student account to apply for hostel rooms and connect with compatible roommates.
               </p>
@@ -229,7 +231,7 @@ export default function RegisterPage() {
                     type="password"
                     required
                     autoComplete="new-password"
-                    placeholder="••••••••"
+                    placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                     value={formData.password}
                     onChange={handleChange}
                     error={fieldErrors.password}
@@ -238,7 +240,7 @@ export default function RegisterPage() {
                   {/* Visual-only Password Strength Meter */}
                   {formData.password && (
                     <div className="space-y-1 pt-1 animate-fade-in">
-                      <div className="flex items-center justify-between text-[10px]">
+                      <div className="flex items-center justify-between text-[11px]">
                         <span className="text-slate-400">Strength:</span>
                         <span className="font-bold text-slate-600 dark:text-slate-300">{strength.label}</span>
                       </div>
@@ -263,7 +265,7 @@ export default function RegisterPage() {
                   type="password"
                   required
                   autoComplete="new-password"
-                  placeholder="••••••••"
+                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   error={fieldErrors.confirmPassword}

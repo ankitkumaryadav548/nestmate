@@ -55,7 +55,7 @@ export default function RootLayout({ children }) {
       </head>
       <body
         suppressHydrationWarning
-        className="flex min-h-full flex-col bg-slate-50 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-600 selection:text-white transition-colors duration-150 page-bg-glow"
+        className="flex min-h-full flex-col bg-slate-50 dark:bg-[var(--bg-page)] text-slate-900 dark:text-slate-100 font-sans selection:bg-indigo-600 selection:text-white transition-colors duration-150 page-bg-glow"
       >
         <ThemeProvider>
           <ToastProvider>

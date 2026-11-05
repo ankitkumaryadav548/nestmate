@@ -16,6 +16,7 @@ import {
   ConfirmDialog,
   Alert,
   EmptyState,
+  ErrorState,
   SeatTile,
   ScoreRing,
   Avatar,
@@ -31,10 +32,13 @@ import {
 } from "@/components/ui";
 import { getScoreTone, getScoreClasses } from "@/components/ui/ScoreTone";
 import RoomPreferencesCard from "@/components/groups/RoomPreferencesCard";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 
 export default function StudentGroupPage() {
+  useDocumentTitle("My Roommate Group");
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [groupError, setGroupError] = useState(null);
   const [group, setGroup] = useState(null);
   const [intent, setIntent] = useState({ mode: "group", preferredRoomSize: 2 });
   const [preferencesIncomplete, setPreferencesIncomplete] = useState(false);
@@ -47,6 +51,7 @@ export default function StudentGroupPage() {
   // Candidates for leader
   const [candidates, setCandidates] = useState([]);
   const [candidatesLoading, setCandidatesLoading] = useState(false);
+  const [candidatesError, setCandidatesError] = useState(null);
   const [candidateFilters, setCandidateFilters] = useState({
     minScore: 0,
     sameYearOnly: false,
@@ -57,6 +62,7 @@ export default function StudentGroupPage() {
   // Incoming join requests for leader
   const [incomingRequests, setIncomingRequests] = useState([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
+  const [requestsError, setRequestsError] = useState(null);
   const [selectedRequestId, setSelectedRequestId] = useState(null);
   const [reviewData, setReviewData] = useState(null);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
@@ -74,6 +80,7 @@ export default function StudentGroupPage() {
 
   const fetchGroupData = useCallback(async () => {
     setLoading(true);
+    setGroupError(null);
     try {
       const [groupRes, intentRes, statusRes, prefRes] = await Promise.all([
         api.get("/groups/me").catch(() => ({ data: { data: null } })),
@@ -99,6 +106,7 @@ export default function StudentGroupPage() {
       }
     } catch (err) {
       console.error("Failed to load group data:", err);
+      setGroupError(err.response?.data?.message || err.message || "Failed to load group information. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -107,6 +115,7 @@ export default function StudentGroupPage() {
   const fetchCandidates = useCallback(async () => {
     if (!group || group.myRole !== "leader" || group.status !== "forming") return;
     setCandidatesLoading(true);
+    setCandidatesError(null);
     try {
       const res = await api.get("/groups/me/candidates", {
         params: {
@@ -120,6 +129,7 @@ export default function StudentGroupPage() {
       }
     } catch (err) {
       console.error("Failed to fetch group candidates:", err);
+      setCandidatesError(err.response?.data?.message || err.message || "Failed to load candidate matches.");
     } finally {
       setCandidatesLoading(false);
     }
@@ -128,6 +138,7 @@ export default function StudentGroupPage() {
   const fetchIncomingRequests = useCallback(async () => {
     if (!group || group.myRole !== "leader" || group.status !== "forming") return;
     setRequestsLoading(true);
+    setRequestsError(null);
     try {
       const res = await api.get("/groups/me/join-requests");
       if (res.data?.success) {
@@ -135,6 +146,7 @@ export default function StudentGroupPage() {
       }
     } catch (err) {
       console.error("Failed to fetch incoming join requests:", err);
+      setRequestsError(err.response?.data?.message || err.message || "Failed to load incoming join requests.");
     } finally {
       setRequestsLoading(false);
     }
@@ -352,6 +364,19 @@ export default function StudentGroupPage() {
               </p>
             </div>
           </Reveal>
+
+          {groupError && (
+            <Alert
+              variant="danger"
+              action={
+                <Button variant="outline" size="sm" onClick={fetchGroupData}>
+                  Try again
+                </Button>
+              }
+            >
+              {groupError}
+            </Alert>
+          )}
 
           {/* Single Room Notice or Option 1 */}
           {userRoomSize === 1 ? (
@@ -681,6 +706,13 @@ export default function StudentGroupPage() {
 
               {requestsLoading ? (
                 <div className="h-24 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 animate-pulse" />
+              ) : requestsError ? (
+                <div className="p-2 space-y-2">
+                  <Alert variant="danger">{requestsError}</Alert>
+                  <Button variant="outline" size="sm" onClick={fetchIncomingRequests}>
+                    Try again
+                  </Button>
+                </div>
               ) : incomingRequests.length === 0 ? (
                 <p className="text-xs text-slate-500 dark:text-slate-400 italic py-2">
                   No students have requested to join your group yet. Compatible students browsing open groups will appear here.
@@ -837,6 +869,13 @@ export default function StudentGroupPage() {
                       <div key={i} className="h-44 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 p-4 animate-pulse" />
                     ))}
                   </div>
+                ) : candidatesError ? (
+                  <div className="p-2 space-y-2">
+                    <Alert variant="danger">{candidatesError}</Alert>
+                    <Button variant="outline" size="sm" onClick={fetchCandidates}>
+                      Try again
+                    </Button>
+                  </div>
                 ) : candidates.length === 0 ? (
                   <EmptyState
                     icon="🔍"
@@ -845,52 +884,61 @@ export default function StudentGroupPage() {
                   />
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {candidates.map((cand) => (
-                      <Card
-                        key={cand.userId}
-                        variant="interactive"
-                        className="p-4 flex flex-col justify-between"
-                      >
-                        <div>
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2.5">
-                              <Avatar name={cand.name} size="md" />
-                              <div className="min-w-0">
-                                <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 font-heading truncate">
-                                  {cand.name}
-                                </h4>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                                  {[cand.course, cand.year ? `Year ${cand.year}` : null].filter(Boolean).join(" • ")}
-                                </p>
+                    {candidates.map((cand) => {
+                      const candidateUser = cand.candidate || cand;
+                      const candidateId = candidateUser.id || candidateUser._id || cand.userId || cand.id;
+                      const candidateName = candidateUser.name || cand.name;
+                      const candidateCourse = candidateUser.course || cand.course;
+                      const candidateYear = candidateUser.year || cand.year;
+                      const fitScore = cand.groupAverage ?? cand.groupFitScore ?? 0;
+
+                      return (
+                        <Card
+                          key={candidateId}
+                          variant="interactive"
+                          className="p-4 flex flex-col justify-between"
+                        >
+                          <div>
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2.5">
+                                <Avatar name={candidateName} size="md" />
+                                <div className="min-w-0">
+                                  <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 font-heading truncate">
+                                    {candidateName}
+                                  </h4>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                    {[candidateCourse, candidateYear ? `Year ${candidateYear}` : null].filter(Boolean).join(" • ")}
+                                  </p>
+                                </div>
                               </div>
+                              <ScoreRing score={fitScore} size={42} strokeWidth={4} />
                             </div>
-                            <ScoreRing score={cand.groupFitScore} size={42} strokeWidth={4} />
+
+                            {cand.reasons?.length > 0 && (
+                              <div className="mt-3 flex flex-wrap gap-1">
+                                {cand.reasons.slice(0, 2).map((r, i) => (
+                                  <Badge key={i} variant="success" size="sm">
+                                    ✓ {r}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
                           </div>
 
-                          {cand.reasons?.length > 0 && (
-                            <div className="mt-3 flex flex-wrap gap-1">
-                              {cand.reasons.slice(0, 2).map((r, i) => (
-                                <Badge key={i} variant="success" size="sm">
-                                  ✓ {r}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            loading={invitingId === cand.userId}
-                            disabled={invitingId === cand.userId}
-                            onClick={() => handleSendInvite(cand.userId)}
-                          >
-                            + Invite to Group
-                          </Button>
-                        </div>
-                      </Card>
-                    ))}
+                          <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              loading={invitingId === candidateId}
+                              disabled={invitingId === candidateId}
+                              onClick={() => handleSendInvite(candidateId)}
+                            >
+                              + Invite to Group
+                            </Button>
+                          </div>
+                        </Card>
+                      );
+                    })}
                   </div>
                 )}
               </Card>

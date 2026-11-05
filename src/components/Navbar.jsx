@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -119,7 +119,7 @@ export default function Navbar() {
             <span className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
               {appName}
             </span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 -mt-1 hidden sm:block">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 -mt-1 hidden sm:block">
               Hostel Allocation System
             </span>
           </div>
@@ -164,7 +164,7 @@ export default function Navbar() {
                   >
                     <span>Invitations</span>
                     {pendingInvitesCount > 0 && (
-                      <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none text-white bg-amber-500 rounded-full animate-pulse">
+                      <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-[11px] font-bold leading-none text-white bg-amber-500 rounded-full animate-pulse">
                         {pendingInvitesCount}
                       </span>
                     )}
@@ -225,7 +225,7 @@ export default function Navbar() {
                         <p className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
                           {user.name}
                         </p>
-                        <p className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 uppercase">
+                        <p className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 uppercase">
                           {user.role}
                         </p>
                       </div>

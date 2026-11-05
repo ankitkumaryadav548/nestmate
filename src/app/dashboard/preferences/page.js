@@ -29,8 +29,10 @@ import {
   LANGUAGE_OPTIONS,
   QUESTIONNAIRE_STEPS,
 } from "@/config/questionnaire";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 
 export default function StudentPreferencesPage() {
+  useDocumentTitle("Lifestyle Preferences");
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

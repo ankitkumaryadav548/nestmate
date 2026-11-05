@@ -13,8 +13,10 @@ import {
   Alert,
 } from "@/components/ui";
 import { AdminPageHeader } from "@/components/admin";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 
 export default function AdminIntegrityPage() {
+  useDocumentTitle("Integrity Diagnostic", true);
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -106,7 +108,14 @@ export default function AdminIntegrityPage() {
         )}
 
         {error && (
-          <Alert variant="danger">
+          <Alert
+            variant="danger"
+            action={
+              <Button variant="outline" size="sm" onClick={fetchIntegrity}>
+                Try again
+              </Button>
+            }
+          >
             {error}
           </Alert>
         )}

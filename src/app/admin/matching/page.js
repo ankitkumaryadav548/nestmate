@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import api from "@/lib/axios";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 import {
   PageContainer,
   Card,
@@ -22,6 +23,7 @@ import {
 import { CATEGORY_LABELS } from "@/config/matching";
 
 export default function AdminMatchingPage() {
+  useDocumentTitle("Matching Configuration", true);
   const [activeTab, setActiveTab] = useState("settings"); // "settings" | "pairChecker"
 
   // ----------------------------------------------------
@@ -285,7 +287,7 @@ export default function AdminMatchingPage() {
                   strokeWidth={8}
                   centerValue={`${currentTotalWeight}%`}
                   centerLabel="Total"
-                  color={isWeightValid ? "#0d9488" : "#e11d48"}
+                  color={isWeightValid ? "var(--accent-teal)" : "var(--accent-rose)"}
                 />
                 <div>
                   <span className="text-xs font-bold block text-slate-900 dark:text-slate-100">
@@ -494,7 +496,7 @@ export default function AdminMatchingPage() {
                       }`}
                     >
                       <span className="truncate text-slate-800 dark:text-slate-200">{s.name}</span>
-                      <span className="text-[10px] text-slate-500 uppercase">{s.gender} • Yr {s.year}</span>
+                      <span className="text-[11px] text-slate-500 uppercase">{s.gender} â€¢ Yr {s.year}</span>
                     </button>
                   ))}
                 </div>
@@ -526,7 +528,7 @@ export default function AdminMatchingPage() {
                       }`}
                     >
                       <span className="truncate text-slate-800 dark:text-slate-200">{s.name}</span>
-                      <span className="text-[10px] text-slate-500 uppercase">{s.gender} • Yr {s.year}</span>
+                      <span className="text-[11px] text-slate-500 uppercase">{s.gender} â€¢ Yr {s.year}</span>
                     </button>
                   ))}
                 </div>
@@ -557,7 +559,7 @@ export default function AdminMatchingPage() {
                       <ScoreRing score={pairResult.score} size={68} strokeWidth={6} />
                     ) : (
                       <div className="h-16 w-16 rounded-full bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center text-2xl font-bold">
-                        ⛔
+                        â›”
                       </div>
                     )}
                     <div>
@@ -591,7 +593,7 @@ export default function AdminMatchingPage() {
                 {/* Room Size Mismatch Note */}
                 {pairResult.note && (
                   <div className="rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3.5 text-amber-900 dark:text-amber-300 text-xs font-medium flex items-center gap-2">
-                    <span>⚠️</span>
+                    <span>âš ï¸</span>
                     <span>{pairResult.note}</span>
                   </div>
                 )}
@@ -605,7 +607,7 @@ export default function AdminMatchingPage() {
                     <div className="space-y-1.5">
                       {pairResult.violations.map((v, i) => (
                         <div key={i} className="text-xs text-rose-900 dark:text-rose-200 flex items-center gap-2">
-                          <span>❌</span>
+                          <span>âŒ</span>
                           <span>
                             Triggered by <strong>Student {v.by}</strong> on criterion:{" "}
                             <strong className="uppercase">{v.key}</strong>
@@ -652,7 +654,7 @@ export default function AdminMatchingPage() {
                     </h4>
                     {pairResult.reasons.map((r, i) => (
                       <p key={i} className="text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                        <span className="text-teal-600 font-bold">✓</span> {r}
+                        <span className="text-teal-600 font-bold">âœ“</span> {r}
                       </p>
                     ))}
                   </div>
@@ -665,7 +667,7 @@ export default function AdminMatchingPage() {
                     </h4>
                     {pairResult.warnings.map((w, i) => (
                       <p key={i} className="text-xs text-amber-900 dark:text-amber-300 flex items-center gap-2">
-                        <span>⚠️</span> {w}
+                        <span>âš ï¸</span> {w}
                       </p>
                     ))}
                   </div>
@@ -706,7 +708,7 @@ export default function AdminMatchingPage() {
                       className="w-full text-left px-3 py-1.5 text-xs hover:bg-indigo-50 dark:hover:bg-indigo-950/40 flex items-center justify-between text-slate-800 dark:text-slate-200"
                     >
                       <span className="truncate">{s.name}</span>
-                      <span className="text-[10px] text-slate-500">{s.gender} • Yr {s.year}</span>
+                      <span className="text-[11px] text-slate-500">{s.gender} â€¢ Yr {s.year}</span>
                     </button>
                   ))}
                 </div>
@@ -744,7 +746,7 @@ export default function AdminMatchingPage() {
                             {m.student?.name}
                           </span>
                           <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono block">
-                            {m.student?.registrationNumber} • Year {m.student?.year}
+                            {m.student?.registrationNumber} â€¢ Year {m.student?.year}
                           </span>
                         </div>
                       </div>

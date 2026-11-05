@@ -21,8 +21,10 @@ import {
   ConfirmTypeDialog,
 } from "@/components/admin";
 import { FINALIZE_CONFIRM_TEXT } from "@/config/selection";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 
 export default function AdminSelectionPage() {
+  useDocumentTitle("Selection Window", true);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -266,7 +268,7 @@ export default function AdminSelectionPage() {
                   onClick={() => setIsExtendOpen(true)}
                   disabled={actionLoading}
                 >
-                  ⏱️ Extend Window
+                  â±ï¸ Extend Window
                 </Button>
                 <Button
                   variant="danger"
@@ -284,7 +286,7 @@ export default function AdminSelectionPage() {
                 onClick={handleOpenNow}
                 isLoading={actionLoading}
               >
-                🚀 Open Window Now
+                ðŸš€ Open Window Now
               </Button>
             ) : (
               <Button
@@ -312,7 +314,7 @@ export default function AdminSelectionPage() {
                 onClick={handleOpenFinalizeModal}
                 disabled={actionLoading}
               >
-                🔒 Finalize Selection &amp; Auto-Fill
+                ðŸ”’ Finalize Selection &amp; Auto-Fill
               </Button>
             )}
           </div>
@@ -333,7 +335,16 @@ export default function AdminSelectionPage() {
 
       {error && (
         <div className="mb-6">
-          <Alert variant="danger" title="Error" onClose={() => setError(null)}>
+          <Alert
+            variant="danger"
+            title="Error"
+            onClose={() => setError(null)}
+            action={
+              <Button variant="outline" size="sm" onClick={() => fetchData(false)}>
+                Try again
+              </Button>
+            }
+          >
             {error}
           </Alert>
         </div>
@@ -372,13 +383,13 @@ export default function AdminSelectionPage() {
             <p className="text-xs sm:text-sm text-white/80 max-w-xl leading-relaxed">
               {windowDoc ? (
                 <>
-                  Starts: <strong>{new Date(windowDoc.startsAt).toLocaleString()}</strong> • Ends:{" "}
+                  Starts: <strong>{new Date(windowDoc.startsAt).toLocaleString()}</strong> â€¢ Ends:{" "}
                   <strong>{new Date(windowDoc.endsAt).toLocaleString()}</strong>
                   {windowDoc.closedAt && (
                     <> (Closed at {new Date(windowDoc.closedAt).toLocaleTimeString()})</>
                   )}
                   {windowDoc.finalizedAt && (
-                    <> • Finalized at {new Date(windowDoc.finalizedAt).toLocaleString()}</>
+                    <> â€¢ Finalized at {new Date(windowDoc.finalizedAt).toLocaleString()}</>
                   )}
                 </>
               ) : (
@@ -408,7 +419,7 @@ export default function AdminSelectionPage() {
             <span className="text-xl font-bold text-slate-900 dark:text-slate-100 font-mono mt-1 block">
               <AnimatedNumber value={overview.roomCounts?.total || 0} />
             </span>
-            <span className="text-[10px] text-slate-400">Campus inventory</span>
+            <span className="text-[11px] text-slate-400">Campus inventory</span>
           </Card>
 
           <Card className="p-3.5">
@@ -416,7 +427,7 @@ export default function AdminSelectionPage() {
             <span className="text-xl font-bold text-indigo-600 dark:text-indigo-400 font-mono mt-1 block">
               <AnimatedNumber value={overview.roomCounts?.claimed || 0} />
             </span>
-            <span className="text-[10px] text-indigo-500 font-semibold">FCFS active holds</span>
+            <span className="text-[11px] text-indigo-500 font-semibold">FCFS active holds</span>
           </Card>
 
           <Card className="p-3.5">
@@ -424,7 +435,7 @@ export default function AdminSelectionPage() {
             <span className="text-xl font-bold text-teal-600 dark:text-teal-400 font-mono mt-1 block">
               <AnimatedNumber value={overview.roomCounts?.available || 0} />
             </span>
-            <span className="text-[10px] text-teal-500 font-semibold">Ready to claim</span>
+            <span className="text-[11px] text-teal-500 font-semibold">Ready to claim</span>
           </Card>
 
           <Card className="p-3.5">
@@ -432,7 +443,7 @@ export default function AdminSelectionPage() {
             <span className="text-xl font-bold text-purple-600 dark:text-purple-400 font-mono mt-1 block">
               <AnimatedNumber value={overview.bedCounts?.reserved || 0} />
             </span>
-            <span className="text-[10px] text-slate-400">In claimed rooms</span>
+            <span className="text-[11px] text-slate-400">In claimed rooms</span>
           </Card>
 
           <Card className="p-3.5">
@@ -440,7 +451,7 @@ export default function AdminSelectionPage() {
             <span className="text-xl font-bold text-amber-600 dark:text-amber-400 font-mono mt-1 block">
               <AnimatedNumber value={overview.unitCounts?.openSeatsInClaimedRooms || 0} />
             </span>
-            <span className="text-[10px] text-amber-600 font-semibold">To be auto-filled</span>
+            <span className="text-[11px] text-amber-600 font-semibold">To be auto-filled</span>
           </Card>
 
           <Card className="p-3.5">
@@ -448,7 +459,7 @@ export default function AdminSelectionPage() {
             <span className="text-xl font-bold text-slate-900 dark:text-slate-100 font-mono mt-1 block">
               <AnimatedNumber value={overview.unitCounts?.groupsWithRoom || 0} />
             </span>
-            <span className="text-[10px] text-slate-400">Claimed successfully</span>
+            <span className="text-[11px] text-slate-400">Claimed successfully</span>
           </Card>
 
           <Card className="p-3.5">
@@ -456,7 +467,7 @@ export default function AdminSelectionPage() {
             <span className="text-xl font-bold text-rose-600 dark:text-rose-400 font-mono mt-1 block">
               <AnimatedNumber value={overview.unitCounts?.groupsWithoutRoom || 0} />
             </span>
-            <span className="text-[10px] text-rose-500 font-semibold">Eligible to pick</span>
+            <span className="text-[11px] text-rose-500 font-semibold">Eligible to pick</span>
           </Card>
         </div>
       )}
@@ -503,7 +514,7 @@ export default function AdminSelectionPage() {
                       {cr.hostelName} <span className="text-slate-400 dark:text-slate-500">({cr.hostelCode})</span>
                     </td>
                     <td className="px-4 py-3">
-                      {cr.roomType} • Floor {cr.floor}
+                      {cr.roomType} â€¢ Floor {cr.floor}
                     </td>
                     <td className="px-4 py-3 font-medium">
                       {cr.capacity} Beds
@@ -528,11 +539,11 @@ export default function AdminSelectionPage() {
                           {cr.claimedByGroup.leader && ` (${cr.claimedByGroup.leader.name})`}
                         </Link>
                       ) : (
-                        <span className="text-slate-400">—</span>
+                        <span className="text-slate-400">â€”</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
-                      {cr.claimedAt ? new Date(cr.claimedAt).toLocaleTimeString() : "—"}
+                      {cr.claimedAt ? new Date(cr.claimedAt).toLocaleTimeString() : "â€”"}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {cr.claimedByGroup && (

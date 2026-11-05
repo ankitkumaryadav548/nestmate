@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import axios from "@/lib/axios";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 import {
   PageContainer,
   Card,
@@ -36,6 +37,7 @@ const SAFE_LINKS = [
 ];
 
 export default function AdminAnnouncementsPage() {
+  useDocumentTitle("Campus Announcements", true);
   // Compose form state
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
@@ -70,6 +72,7 @@ export default function AdminAnnouncementsPage() {
   const [historyPage, setHistoryPage] = useState(1);
   const [historyTotalPages, setHistoryTotalPages] = useState(1);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [historyError, setHistoryError] = useState(null);
 
   // View modal state
   const [viewItem, setViewItem] = useState(null);
@@ -100,6 +103,7 @@ export default function AdminAnnouncementsPage() {
   const fetchHistory = useCallback(async () => {
     try {
       setLoadingHistory(true);
+      setHistoryError(null);
       const res = await axios.get(`/api/admin/announcements?page=${historyPage}&limit=10`);
       if (res.data?.success && res.data.data) {
         setHistory(res.data.data.announcements || []);
@@ -108,6 +112,7 @@ export default function AdminAnnouncementsPage() {
       }
     } catch (err) {
       console.error("Failed to fetch announcements history:", err);
+      setHistoryError(err.response?.data?.message || err.message || "Failed to fetch announcements history.");
     } finally {
       setLoadingHistory(false);
     }
@@ -247,7 +252,7 @@ export default function AdminAnnouncementsPage() {
               size="sm"
               onClick={fetchHistory}
             >
-              🔄 Refresh
+              ðŸ”„ Refresh
             </Button>
           }
         />
@@ -261,7 +266,7 @@ export default function AdminAnnouncementsPage() {
               onClick={() => setActionSuccess(null)}
               className="text-xs font-bold hover:opacity-80"
             >
-              ✕
+              âœ•
             </button>
           </Alert>
         )}
@@ -274,7 +279,7 @@ export default function AdminAnnouncementsPage() {
               onClick={() => setActionError(null)}
               className="text-xs font-bold hover:opacity-80"
             >
-              ✕
+              âœ•
             </button>
           </Alert>
         )}
@@ -284,7 +289,7 @@ export default function AdminAnnouncementsPage() {
           <Card className="lg:col-span-5 p-5 sm:p-6 space-y-5">
             <div className="border-b border-[var(--border)] pb-3">
               <h2 className="text-base font-bold text-[var(--foreground)] flex items-center gap-2">
-                <span>✍️</span> Compose New Announcement
+                <span>âœï¸</span> Compose New Announcement
               </h2>
               <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
                 Target notifications to individual cohorts or the whole student body.
@@ -452,7 +457,7 @@ export default function AdminAnnouncementsPage() {
                       >
                         {hostels.map((h) => (
                           <option key={h._id} value={h._id}>
-                            {h.name} ({h.gender} · {h.type})
+                            {h.name} ({h.gender} Â· {h.type})
                           </option>
                         ))}
                       </Select>
@@ -489,7 +494,7 @@ export default function AdminAnnouncementsPage() {
                       disabled={previewing}
                       className="text-xs py-1 h-auto"
                     >
-                      {previewing ? "Calculating..." : "🔍 Preview Recipients"}
+                      {previewing ? "Calculating..." : "ðŸ” Preview Recipients"}
                     </Button>
 
                     {preview && (
@@ -505,12 +510,12 @@ export default function AdminAnnouncementsPage() {
 
                     {previewError && (
                       <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">
-                        ⚠️ {previewError}
+                        âš ï¸ {previewError}
                       </span>
                     )}
                   </div>
 
-                  <span className="text-[10px] text-[var(--muted-foreground)]">
+                  <span className="text-[11px] text-[var(--muted-foreground)]">
                     Max: 5,000
                   </span>
                 </div>
@@ -542,6 +547,13 @@ export default function AdminAnnouncementsPage() {
 
             {loadingHistory ? (
               <TableSkeleton rows={6} columns={6} />
+            ) : historyError ? (
+              <div className="p-8 text-center space-y-3">
+                <Alert variant="danger">{historyError}</Alert>
+                <Button variant="outline" size="sm" onClick={fetchHistory}>
+                  Try again
+                </Button>
+              </div>
             ) : history.length === 0 ? (
               <div className="p-12 text-center text-sm text-[var(--muted-foreground)]">
                 No announcements have been broadcast yet.
@@ -571,11 +583,11 @@ export default function AdminAnnouncementsPage() {
                           <TableCell className="font-semibold text-[var(--foreground)] max-w-[200px]">
                             <div className="truncate">{item.title}</div>
                             {item.link && (
-                              <span className="block text-[10px] font-normal text-brand-600 dark:text-brand-400 truncate mt-0.5">
-                                🔗 {item.link}
+                              <span className="block text-[11px] font-normal text-brand-600 dark:text-brand-400 truncate mt-0.5">
+                                ðŸ”— {item.link}
                               </span>
                             )}
-                            <div className="text-[10px] text-[var(--muted-foreground)] mt-0.5 font-normal">
+                            <div className="text-[11px] text-[var(--muted-foreground)] mt-0.5 font-normal">
                               {new Date(item.createdAt).toLocaleString(undefined, {
                                 month: "short",
                                 day: "numeric",
@@ -754,7 +766,7 @@ export default function AdminAnnouncementsPage() {
                 <div className="rounded-xl bg-[var(--muted)]/40 p-3 border border-[var(--border)]">
                   <span className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase">Deliveries</span>
                   <p className="font-semibold text-[var(--foreground)] mt-0.5">
-                    {viewItem.recipientCount} recipients · {viewItem.readCount} read
+                    {viewItem.recipientCount} recipients Â· {viewItem.readCount} read
                   </p>
                 </div>
               </div>

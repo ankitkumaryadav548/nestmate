@@ -140,7 +140,7 @@ export default function LandingClient({ user }) {
   ];
 
   return (
-    <div className="flex-1 flex flex-col bg-slate-50 dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 transition-colors">
+    <div className="flex-1 flex flex-col bg-slate-50 dark:bg-[var(--bg-page)] text-slate-900 dark:text-slate-100 transition-colors">
       {/* =====================================================================
           1. HERO SECTION
           ===================================================================== */}

@@ -18,6 +18,7 @@ import {
   AdminPageHeader,
   StatusBadge,
 } from "@/components/admin";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 
 export default function AdminGroupDetailPage({ params: paramsPromise }) {
   const params = use(paramsPromise);
@@ -25,6 +26,7 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
   const groupId = params.id;
 
   const [group, setGroup] = useState(null);
+  useDocumentTitle(group ? `Group: ${group.name || group.leader?.name || "Details"}` : "Group Details", true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -145,7 +147,15 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
   if (error || !group) {
     return (
       <PageContainer maxWidth="7xl" className="py-8">
-        <Alert variant="danger" title="Group Not Found">
+        <Alert
+          variant="danger"
+          title="Group Not Found"
+          action={
+            <Button variant="outline" size="sm" onClick={fetchGroup}>
+              Try again
+            </Button>
+          }
+        >
           {error || "Group does not exist or has been disbanded."}
         </Alert>
         <div className="mt-4">
@@ -178,7 +188,7 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
             )}
           </div>
         }
-        description={`Created on ${new Date(group.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} • Target Size: ${group.targetSize}-Bed • Gender: ${group.gender}`}
+        description={`Created on ${new Date(group.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} â€¢ Target Size: ${group.targetSize}-Bed â€¢ Gender: ${group.gender}`}
         breadcrumbs={[
           { href: "/admin/groups", label: "Groups" },
           { label: `#${group._id.slice(-6).toUpperCase()}` },
@@ -201,7 +211,7 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
       {/* Locked Notice */}
       {isLocked && (
         <div className="mb-6 rounded-2xl border border-purple-200 dark:border-purple-900/50 bg-purple-50 dark:bg-purple-950/30 p-4 text-purple-900 dark:text-purple-300 flex items-start gap-3">
-          <span className="text-xl">🔒</span>
+          <span className="text-xl">ðŸ”’</span>
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-purple-950 dark:text-purple-200">
               Group is Locked
@@ -216,7 +226,7 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
       {/* Disbanded Notice */}
       {isDisbanded && (
         <div className="mb-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 p-4 text-slate-800 dark:text-slate-300 flex items-start gap-3">
-          <span className="text-xl">⚠️</span>
+          <span className="text-xl">âš ï¸</span>
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-200">
               Group Disbanded
@@ -232,7 +242,7 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
       {group.selectedRoom && (
         <Card className="mb-6 p-5 border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/40 dark:bg-indigo-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">
-            <span className="text-2xl">🔑</span>
+            <span className="text-2xl">ðŸ”‘</span>
             <div>
               <div className="flex items-center gap-2">
                 <Badge variant="brand" size="xs">
@@ -322,15 +332,15 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
                         </span>
                         {isGroupLeader && (
                           <Badge variant="warning" size="xs">
-                            👑 Leader
+                            ðŸ‘‘ Leader
                           </Badge>
                         )}
                       </div>
                       <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
-                        {u.registrationNumber || "No Reg"} • {u.email}
+                        {u.registrationNumber || "No Reg"} â€¢ {u.email}
                       </p>
                       <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-                        {u.course || "No Course"} • {u.department || "General"} {u.year ? `• Year ${u.year}` : ""}
+                        {u.course || "No Course"} â€¢ {u.department || "General"} {u.year ? `â€¢ Year ${u.year}` : ""}
                       </p>
                       <span className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 block">
                         Joined: {new Date(m.joinedAt).toLocaleDateString()}
@@ -367,7 +377,7 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
           {/* Empty Seats Visualizer */}
           {group.members?.length < group.targetSize && (
             <div className="rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 p-8 text-center bg-slate-50/50 dark:bg-slate-900/40">
-              <span className="text-2xl text-slate-400">🛏️</span>
+              <span className="text-2xl text-slate-400">ðŸ›ï¸</span>
               <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mt-2 font-heading">
                 {group.targetSize - group.members.length} Unfilled Bed(s) Remaining
               </p>
@@ -391,7 +401,7 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
                         {req.student?.name || "Candidate"}
                       </span>
                       <span className="text-[11px] text-slate-400 font-mono block">
-                        Status: {req.status} • Sent: {new Date(req.createdAt).toLocaleDateString()}
+                        Status: {req.status} â€¢ Sent: {new Date(req.createdAt).toLocaleDateString()}
                       </span>
                     </div>
 
@@ -445,7 +455,7 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
                         className="p-2.5 rounded-lg bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between"
                       >
                         <div className="flex items-center gap-2">
-                          <span className="bg-indigo-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                          <span className="bg-indigo-600 text-white text-[11px] font-bold px-1.5 py-0.5 rounded">
                             #{idx + 1}
                           </span>
                           <span className="font-bold text-slate-900 dark:text-slate-100">{h.name || "Hostel"}</span>
@@ -479,7 +489,7 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
               </div>
 
               {group.roomPreferences?.updatedAt && (
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400">
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400">
                   Last updated: {new Date(group.roomPreferences.updatedAt).toLocaleDateString()}
                 </div>
               )}
@@ -520,7 +530,7 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
                     </div>
 
                     {pair.violations && pair.violations.length > 0 && (
-                      <div className="mt-1 pt-1 border-t border-slate-200 dark:border-slate-800 text-[10px] text-rose-600 dark:text-rose-400">
+                      <div className="mt-1 pt-1 border-t border-slate-200 dark:border-slate-800 text-[11px] text-rose-600 dark:text-rose-400">
                         {pair.violations.join(", ")}
                       </div>
                     )}

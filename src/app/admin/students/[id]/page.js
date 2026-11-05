@@ -15,6 +15,7 @@ import {
 } from "@/components/ui";
 import { AdminPageHeader } from "@/components/admin";
 import { DEAL_BREAKER_OPTIONS } from "@/config/questionnaire";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 
 const SLEEP_LABELS = {
   early: "Early to Bed (Usually before 10:00 PM)",
@@ -60,6 +61,7 @@ export default function AdminStudentDetailPage({ params }) {
   const studentId = unwrappedParams.id;
 
   const [studentData, setStudentData] = useState(null);
+  useDocumentTitle(studentData?.user?.name || "Student Details", true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -128,7 +130,15 @@ export default function AdminStudentDetailPage({ params }) {
   if (error || !studentData) {
     return (
       <PageContainer maxWidth="5xl" className="py-8">
-        <Alert variant="danger" title="Could not find student">
+        <Alert
+          variant="danger"
+          title="Could not find student"
+          action={
+            <Button variant="outline" size="sm" onClick={fetchStudent}>
+              Try again
+            </Button>
+          }
+        >
           {error || "Student does not exist or has been removed."}
         </Alert>
         <div className="mt-4">

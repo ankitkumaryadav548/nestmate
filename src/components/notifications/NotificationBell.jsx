@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -194,7 +194,7 @@ export default function NotificationBell({ userRole = "student" }) {
 
         {/* Unread Badge (hidden at 0, shows 9+ above 9) */}
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-1 text-[10px] font-bold text-white shadow-xs ring-2 ring-white dark:ring-slate-900 animate-pulse">
+          <span className="absolute -top-1 -right-1 flex h-4.5 min-w-[18px] items-center justify-center rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-1 text-[11px] font-bold text-white shadow-xs ring-2 ring-white dark:ring-slate-900 animate-pulse">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
@@ -245,7 +245,7 @@ export default function NotificationBell({ userRole = "student" }) {
             ) : previewList.length === 0 ? (
               <div className="py-10 text-center px-4">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 text-xl mb-2">
-                  🔔
+                  ðŸ””
                 </div>
                 <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No notifications yet</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -282,7 +282,7 @@ export default function NotificationBell({ userRole = "student" }) {
                         >
                           {notif.title}
                         </span>
-                        <span className="text-[10px] text-slate-400 dark:text-slate-500 shrink-0">
+                        <span className="text-[11px] text-slate-400 dark:text-slate-500 shrink-0">
                           {formatRelativeTime(notif.createdAt)}
                         </span>
                       </div>

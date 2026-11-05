@@ -11,13 +11,16 @@ import {
   Pagination,
   ConfirmDialog,
   EmptyState,
+  ErrorState,
   Alert,
   ProgressBar,
   Select,
 } from "@/components/ui";
 import { AdminPageHeader, FilterBar } from "@/components/admin";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 
 export default function AdminHostelsPage() {
+  useDocumentTitle("Hostels", true);
   const [hostels, setHostels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -126,7 +129,16 @@ export default function AdminHostelsPage() {
       )}
       {error && (
         <div className="mb-6">
-          <Alert variant="danger" title="Error" onClose={() => setError(null)}>
+          <Alert
+            variant="danger"
+            title="Error"
+            onClose={() => setError(null)}
+            action={
+              <Button variant="outline" size="sm" onClick={fetchHostels}>
+                Try again
+              </Button>
+            }
+          >
             {error}
           </Alert>
         </div>
@@ -170,6 +182,14 @@ export default function AdminHostelsPage() {
             />
           ))}
         </div>
+      ) : error ? (
+        <Card className="p-12 text-center">
+          <ErrorState
+            title="Failed to load hostels"
+            description={error}
+            onRetry={fetchHostels}
+          />
+        </Card>
       ) : hostels.length === 0 ? (
         <Card className="p-12 text-center">
           <EmptyState

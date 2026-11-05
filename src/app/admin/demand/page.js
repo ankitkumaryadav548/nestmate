@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import axios from "@/lib/axios";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 import {
   PageContainer,
   Card,
@@ -19,6 +20,7 @@ import {
 } from "@/components/admin";
 
 export default function AdminDemandPage() {
+  useDocumentTitle("Demand Analysis", true);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -120,7 +122,7 @@ export default function AdminDemandPage() {
 
       {/* Pre-Allocation Guidance Callout */}
       <div className="mb-6 p-4.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200/80 dark:border-indigo-900/50 flex items-start gap-3.5">
-        <span className="text-2xl mt-0.5">📊</span>
+        <span className="text-2xl mt-0.5">ðŸ“Š</span>
         <div>
           <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-950 dark:text-indigo-200 font-heading">
             Pre-Allocation Intelligence Guidance
@@ -139,7 +141,7 @@ export default function AdminDemandPage() {
             {totals.totalEntitiesRequesting}
           </div>
           <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-            {totals.activeGroupsCount} Groups • {totals.autoAssignCount} Auto-Pool
+            {totals.activeGroupsCount} Groups â€¢ {totals.autoAssignCount} Auto-Pool
           </p>
         </Card>
 
@@ -157,8 +159,8 @@ export default function AdminDemandPage() {
           <div>
             <span className="text-xs text-slate-500 dark:text-slate-400 font-medium block">Climate Control Demand</span>
             <div className="mt-1 space-y-0.5 text-xs font-bold">
-              <span className="text-blue-600 dark:text-blue-400 block font-mono">❄️ {acDemand.ac || 0} AC ({acPercent}%)</span>
-              <span className="text-teal-600 dark:text-teal-400 block font-mono">🍃 {acDemand["non-ac"] || 0} Non-AC ({nonAcPercent}%)</span>
+              <span className="text-blue-600 dark:text-blue-400 block font-mono">â„ï¸ {acDemand.ac || 0} AC ({acPercent}%)</span>
+              <span className="text-teal-600 dark:text-teal-400 block font-mono">ðŸƒ {acDemand["non-ac"] || 0} Non-AC ({nonAcPercent}%)</span>
             </div>
           </div>
           <DonutRing
@@ -168,7 +170,7 @@ export default function AdminDemandPage() {
             strokeWidth={7}
             centerValue={`${acPercent}%`}
             centerLabel="AC"
-            color="#3b82f6"
+            color="var(--brand-primary)"
           />
         </Card>
 
@@ -177,22 +179,22 @@ export default function AdminDemandPage() {
           <div className="grid grid-cols-4 gap-1 text-center mt-2 text-xs">
             <div className="bg-slate-50 dark:bg-slate-900 p-1 rounded-lg border border-slate-200/60 dark:border-slate-800">
               <span className="block font-bold text-slate-900 dark:text-slate-100 font-mono">{floorDemand.low || 0}</span>
-              <span className="text-[10px] text-slate-400">Low</span>
+              <span className="text-[11px] text-slate-400">Low</span>
             </div>
             <div className="bg-slate-50 dark:bg-slate-900 p-1 rounded-lg border border-slate-200/60 dark:border-slate-800">
               <span className="block font-bold text-slate-900 dark:text-slate-100 font-mono">{floorDemand.mid || 0}</span>
-              <span className="text-[10px] text-slate-400">Mid</span>
+              <span className="text-[11px] text-slate-400">Mid</span>
             </div>
             <div className="bg-slate-50 dark:bg-slate-900 p-1 rounded-lg border border-slate-200/60 dark:border-slate-800">
               <span className="block font-bold text-slate-900 dark:text-slate-100 font-mono">{floorDemand.high || 0}</span>
-              <span className="text-[10px] text-slate-400">High</span>
+              <span className="text-[11px] text-slate-400">High</span>
             </div>
             <div className="bg-slate-50 dark:bg-slate-900 p-1 rounded-lg border border-slate-200/60 dark:border-slate-800">
               <span className="block font-bold text-slate-900 dark:text-slate-100 font-mono">{floorDemand.any || 0}</span>
-              <span className="text-[10px] text-slate-400">Any</span>
+              <span className="text-[11px] text-slate-400">Any</span>
             </div>
           </div>
-          <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5 text-center">
+          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1.5 text-center">
             Relative building third bands
           </p>
         </Card>
@@ -342,7 +344,7 @@ export default function AdminDemandPage() {
                         <span className="font-extrabold text-sm text-indigo-600 dark:text-indigo-400 font-mono">
                           {h.firstChoiceDemand}
                         </span>
-                        <span className="text-[10px] text-slate-400">groups</span>
+                        <span className="text-[11px] text-slate-400">groups</span>
                       </div>
                     </td>
 
@@ -350,40 +352,40 @@ export default function AdminDemandPage() {
                       <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">
                         {h.inventory.bySizeAvailable[1] || 0}
                       </span>{" "}
-                      <span className="text-[10px] text-slate-400">rooms</span>
+                      <span className="text-[11px] text-slate-400">rooms</span>
                     </td>
 
                     <td className="py-3.5 px-4">
                       <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">
                         {h.inventory.bySizeAvailable[2] || 0}
                       </span>{" "}
-                      <span className="text-[10px] text-slate-400">rooms</span>
+                      <span className="text-[11px] text-slate-400">rooms</span>
                     </td>
 
                     <td className="py-3.5 px-4">
                       <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">
                         {h.inventory.bySizeAvailable[3] || 0}
                       </span>{" "}
-                      <span className="text-[10px] text-slate-400">rooms</span>
+                      <span className="text-[11px] text-slate-400">rooms</span>
                     </td>
 
                     <td className="py-3.5 px-4">
                       <span className="font-semibold text-slate-800 dark:text-slate-200 font-mono">
                         {h.inventory.bySizeAvailable[4] || 0}
                       </span>{" "}
-                      <span className="text-[10px] text-slate-400">rooms</span>
+                      <span className="text-[11px] text-slate-400">rooms</span>
                     </td>
 
                     <td className="py-3.5 px-4">
                       <span className="font-bold text-teal-600 dark:text-teal-400 font-mono">
                         {h.inventory.availableBeds} free
                       </span>{" "}
-                      <span className="text-[10px] text-slate-400">/ {h.inventory.totalBeds} total</span>
+                      <span className="text-[11px] text-slate-400">/ {h.inventory.totalBeds} total</span>
                     </td>
 
                     <td className="py-3.5 px-4">
                       <span className="text-[11px] text-slate-600 dark:text-slate-400">
-                        {h.inventory.acBeds} AC • {h.inventory.nonAcBeds} Non-AC
+                        {h.inventory.acBeds} AC â€¢ {h.inventory.nonAcBeds} Non-AC
                       </span>
                     </td>
 

@@ -15,6 +15,7 @@ import {
   ScoreRing,
   Avatar,
   EmptyState,
+  ErrorState,
   PageTransition,
   Reveal,
   IconBed,
@@ -23,30 +24,33 @@ import {
   IconCheck,
 } from "@/components/ui";
 import { getScoreTone, getScoreClasses } from "@/components/ui/ScoreTone";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 
 export default function MyRoomPage() {
+  useDocumentTitle("My Room");
   const { showToast } = useToast();
   const [allocation, setAllocation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [copiedPhone, setCopiedPhone] = useState(null);
 
-  useEffect(() => {
-    async function fetchMyRoom() {
-      try {
-        setLoading(true);
-        setError(null);
-        const res = await axios.get("/api/allocation/me");
-        if (res.data?.success) {
-          setAllocation(res.data.data);
-        }
-      } catch (err) {
-        console.error("Failed to load allocation:", err);
-        setError(err.response?.data?.message || "Failed to load room details");
-      } finally {
-        setLoading(false);
+  const fetchMyRoom = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await axios.get("/api/allocation/me");
+      if (res.data?.success) {
+        setAllocation(res.data.data);
       }
+    } catch (err) {
+      console.error("Failed to load allocation:", err);
+      setError(err.response?.data?.message || "Failed to load room details");
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     fetchMyRoom();
   }, []);
 
@@ -71,15 +75,10 @@ export default function MyRoomPage() {
   if (error) {
     return (
       <div className="max-w-3xl mx-auto py-10 px-4">
-        <EmptyState
-          icon="⚠️"
+        <ErrorState
           title="Unable to Load Room Details"
-          description={error}
-          action={
-            <Link href="/dashboard">
-              <Button variant="secondary">&larr; Back to Dashboard</Button>
-            </Link>
-          }
+          message={error}
+          onRetry={fetchMyRoom}
         />
       </div>
     );
@@ -99,7 +98,7 @@ export default function MyRoomPage() {
               <div>
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <Badge variant="success" size="md" dot>
-                    ✓ ALLOCATED &amp; ACTIVE
+                    âœ“ ALLOCATED &amp; ACTIVE
                   </Badge>
                   {allocation.source && (
                     <Badge variant="brand" size="sm">
@@ -146,7 +145,7 @@ export default function MyRoomPage() {
 
                   {hostel.location && (
                     <p className="text-xs text-indigo-200/80">
-                      📍 {hostel.location}
+                      ðŸ“ {hostel.location}
                     </p>
                   )}
 
@@ -173,7 +172,7 @@ export default function MyRoomPage() {
                 <div className="md:w-72 rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur-sm space-y-3 text-xs">
                   {hostel.facilities?.length > 0 && (
                     <div>
-                      <span className="font-bold uppercase tracking-wider text-indigo-300 text-[10px] block mb-1.5 font-heading">
+                      <span className="font-bold uppercase tracking-wider text-indigo-300 text-[11px] block mb-1.5 font-heading">
                         Facilities
                       </span>
                       <div className="flex flex-wrap gap-1.5">
@@ -188,7 +187,7 @@ export default function MyRoomPage() {
 
                   {hostel.rules?.length > 0 && (
                     <div>
-                      <span className="font-bold uppercase tracking-wider text-indigo-300 text-[10px] block mb-1 font-heading">
+                      <span className="font-bold uppercase tracking-wider text-indigo-300 text-[11px] block mb-1 font-heading">
                         House Rules
                       </span>
                       <ul className="list-disc list-inside text-[11px] text-indigo-100/90 space-y-0.5">
@@ -244,7 +243,7 @@ export default function MyRoomPage() {
                                 {rm.name}
                               </h3>
                               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                {[rm.course, rm.department].filter(Boolean).join(" • ")}
+                                {[rm.course, rm.department].filter(Boolean).join(" â€¢ ")}
                               </p>
                               {rm.year && (
                                 <Badge variant="brand" size="sm" className="mt-1">
@@ -260,7 +259,7 @@ export default function MyRoomPage() {
                         {/* Shared Languages */}
                         {rm.sharedLanguages?.length > 0 && (
                           <div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 block mb-1">
                               Shared Languages
                             </span>
                             <div className="flex flex-wrap gap-1">
@@ -285,7 +284,7 @@ export default function MyRoomPage() {
                               href={`tel:${rm.phone}`}
                               className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
                             >
-                              <span>📞</span> {rm.phone}
+                              <span>ðŸ“ž</span> {rm.phone}
                             </a>
                             <button
                               type="button"
@@ -297,12 +296,12 @@ export default function MyRoomPage() {
                           </div>
                         ) : rm.phoneStatus === "hidden_by_student" ? (
                           <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
-                            <span>🔒</span>
+                            <span>ðŸ”’</span>
                             <span>Phone hidden by student</span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
-                            <span>📵</span>
+                            <span>ðŸ“µ</span>
                             <span>Phone not provided</span>
                           </div>
                         )}
@@ -337,7 +336,7 @@ export default function MyRoomPage() {
       <PageTransition>
         <div className="max-w-2xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
           <EmptyState
-            icon="⏳"
+            icon="â³"
             title="You Are on the Room Waitlist"
             description={`Reason: ${allocation.reason}. All rooms matching your preferences or group size were claimed by higher-priority applicants in the latest allocation run. The hostel administration will review availability for subsequent rounds.`}
             action={
@@ -357,7 +356,7 @@ export default function MyRoomPage() {
       <PageTransition>
         <div className="max-w-2xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
           <EmptyState
-            icon="⚠️"
+            icon="âš ï¸"
             title="Placement Not Completed"
             description={`${allocation.reason}: ${allocation.description}. ${allocation.nextStep ? `Next Step: ${allocation.nextStep}` : ""}`}
             action={
@@ -381,7 +380,7 @@ export default function MyRoomPage() {
     <PageTransition>
       <div className="max-w-2xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         <EmptyState
-          icon="📋"
+          icon="ðŸ“‹"
           title="Hostel Allocations Not Published Yet"
           description="Room placement results have not been officially published by hostel administration. Ensure your roommate group is complete and your room preferences are submitted."
           action={

@@ -23,8 +23,10 @@ import {
   IconCheck,
 } from "@/components/ui";
 import { useAuth } from "@/context/AuthContext";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 
 export default function StudentHostelsPage() {
+  useDocumentTitle("Eligible Hostels");
   const { user } = useAuth();
   const [hostels, setHostels] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -146,7 +148,15 @@ export default function StudentHostelsPage() {
 
         {error && (
           <Reveal direction="down">
-            <Alert variant="danger" title="Error">
+            <Alert
+              variant="danger"
+              title="Error Loading Hostels"
+              action={
+                <Button variant="outline" size="sm" onClick={fetchEligibleHostels}>
+                  Try again
+                </Button>
+              }
+            >
               {error}
             </Alert>
           </Reveal>
@@ -159,9 +169,9 @@ export default function StudentHostelsPage() {
               <Card key={i} className="p-6 h-48 animate-pulse" />
             ))}
           </div>
-        ) : hostels.length === 0 ? (
+        ) : error ? null : hostels.length === 0 ? (
           <EmptyState
-            icon="🏢"
+            icon="ðŸ¢"
             title="No Eligible Hostels Found"
             description="Currently there are no active hostels configured matching your gender or academic year criteria. Please contact housing administration."
           />
@@ -203,7 +213,7 @@ export default function StudentHostelsPage() {
                             </Badge>
                           </div>
                           <p className="text-xs text-slate-500 dark:text-slate-400">
-                            {hostel.location || "Campus Residential Block"} • {hostel.totalFloors} habitable floors
+                            {hostel.location || "Campus Residential Block"} â€¢ {hostel.totalFloors} habitable floors
                           </p>
                         </div>
                       </div>
@@ -211,7 +221,7 @@ export default function StudentHostelsPage() {
                       {/* Bed Stats Pill & Toggle Button */}
                       <div className="flex items-center gap-3">
                         <div className="rounded-xl border border-teal-200 dark:border-teal-800/60 bg-teal-50 dark:bg-teal-950/40 px-3.5 py-2 text-right">
-                          <span className="block text-[10px] uppercase font-semibold text-teal-800 dark:text-teal-300">
+                          <span className="block text-[11px] uppercase font-semibold text-teal-800 dark:text-teal-300">
                             Available Beds
                           </span>
                           <span className="text-base font-black text-teal-700 dark:text-teal-300">
@@ -224,7 +234,7 @@ export default function StudentHostelsPage() {
                           variant={isExpanded ? "outline" : "primary"}
                           onClick={() => handleToggleHostel(hostel._id)}
                         >
-                          {isExpanded ? "Hide Rooms ▲" : "View Room Types ▼"}
+                          {isExpanded ? "Hide Rooms â–²" : "View Room Types â–¼"}
                         </Button>
                       </div>
                     </div>
@@ -254,7 +264,7 @@ export default function StudentHostelsPage() {
                               key={fac}
                               className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-300"
                             >
-                              ✓ {fac}
+                              âœ“ {fac}
                             </span>
                           ))
                         ) : (
@@ -320,7 +330,7 @@ export default function StudentHostelsPage() {
                             <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40">
                               <table className="w-full text-left text-xs border-collapse">
                                 <thead>
-                                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px]">
+                                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[11px]">
                                     <th className="py-2.5 px-3">Room</th>
                                     <th className="py-2.5 px-3">Floor</th>
                                     <th className="py-2.5 px-3">Room Type</th>

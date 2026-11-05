@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import axios from "@/lib/axios";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 import {
   PageContainer,
   Card,
@@ -22,39 +23,42 @@ import {
 } from "@/components/admin";
 
 export default function AdminPage() {
+  useDocumentTitle("Command Centre", true);
   const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [announcementsInfo, setAnnouncementsInfo] = useState({ total: 0, lastSent: null });
 
-  useEffect(() => {
-    async function fetchStats() {
-      try {
-        setLoading(true);
-        const [res, annRes] = await Promise.all([
-          axios.get("/api/admin/stats"),
-          axios.get("/api/admin/announcements?limit=1").catch(() => ({ data: { data: null } })),
-        ]);
-        if (res.data?.success) {
-          setStats(res.data.data);
-        }
-        if (annRes.data?.success && annRes.data.data) {
-          const list = annRes.data.data.announcements || [];
-          setAnnouncementsInfo({
-            total: annRes.data.data.total || 0,
-            lastSent: list.length > 0 ? list[0] : null,
-          });
-        }
-      } catch (err) {
-        console.error("Failed to load admin stats:", err);
-        setError("Could not load real-time statistics.");
-      } finally {
-        setLoading(false);
+  const fetchStats = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [res, annRes] = await Promise.all([
+        axios.get("/api/admin/stats"),
+        axios.get("/api/admin/announcements?limit=1").catch(() => ({ data: { data: null } })),
+      ]);
+      if (res.data?.success) {
+        setStats(res.data.data);
       }
+      if (annRes.data?.success && annRes.data.data) {
+        const list = annRes.data.data.announcements || [];
+        setAnnouncementsInfo({
+          total: annRes.data.data.total || 0,
+          lastSent: list.length > 0 ? list[0] : null,
+        });
+      }
+    } catch (err) {
+      console.error("Failed to load admin stats:", err);
+      setError("Could not load real-time statistics.");
+    } finally {
+      setLoading(false);
     }
-    fetchStats();
   }, []);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   const totals = stats?.totals || {
     hostels: 0,
@@ -149,6 +153,22 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
+
+      {error && (
+        <div className="mb-8">
+          <Alert
+            variant="danger"
+            title="Data Fetch Error"
+            action={
+              <Button variant="outline" size="sm" onClick={fetchStats}>
+                Try again
+              </Button>
+            }
+          >
+            {error}
+          </Alert>
+        </div>
+      )}
 
       {/* Key Inventory Metrics Grid */}
       <div className="mb-8">

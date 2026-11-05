@@ -25,8 +25,10 @@ import {
   FilterBar,
   DataTable,
 } from "@/components/admin";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 
 export default function AdminStudentsPage() {
+  useDocumentTitle("Student Directory", true);
   const [students, setStudents] = useState([]);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -156,7 +158,16 @@ export default function AdminStudentsPage() {
       {/* Error state */}
       {error && (
         <div className="mb-6">
-          <Alert variant="danger" title="Error" onClose={() => setError(null)}>
+          <Alert
+            variant="danger"
+            title="Error"
+            onClose={() => setError(null)}
+            action={
+              <Button variant="outline" size="sm" onClick={() => fetchStudents(pagination.page)}>
+                Try again
+              </Button>
+            }
+          >
             {error}
           </Alert>
         </div>
@@ -257,7 +268,7 @@ export default function AdminStudentsPage() {
       {/* Students Data Table */}
       <DataTable
         isLoading={loading}
-        isEmpty={students.length === 0}
+        isEmpty={!error && students.length === 0}
         emptyTitle="No students found"
         emptyDescription="No student records matched your search criteria or filters."
         emptyAction={

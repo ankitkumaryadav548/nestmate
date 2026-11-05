@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React from "react";
 
@@ -61,7 +61,7 @@ export default function DonutRing({
           {centerValue !== undefined ? centerValue : `${Math.round(percentage)}%`}
         </span>
         {centerLabel && (
-          <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-0.5 max-w-[80px] truncate">
+          <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mt-0.5 max-w-[80px] truncate">
             {centerLabel}
           </span>
         )}

@@ -16,6 +16,7 @@ import {
   ConfirmDialog,
   Alert,
   EmptyState,
+  ErrorState,
   ScoreRing,
   Avatar,
   CountdownBadge,
@@ -27,11 +28,14 @@ import {
   IconSparkles,
 } from "@/components/ui";
 import { getScoreTone, getScoreClasses } from "@/components/ui/ScoreTone";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 
 export default function StudentInvitationsPage() {
+  useDocumentTitle("Invitations & Requests");
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState("invitations"); // "invitations" | "join-requests"
   const [loading, setLoading] = useState(true);
+  const [invitationsError, setInvitationsError] = useState(null);
   const [pending, setPending] = useState([]);
   const [history, setHistory] = useState([]);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -41,6 +45,7 @@ export default function StudentInvitationsPage() {
   // Sent join requests state
   const [sentRequests, setSentRequests] = useState([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
+  const [requestsError, setRequestsError] = useState(null);
   const [cancellingRequestId, setCancellingRequestId] = useState(null);
 
   // Confirmation state for invitation response
@@ -48,6 +53,7 @@ export default function StudentInvitationsPage() {
 
   const fetchInvitations = useCallback(async () => {
     setLoading(true);
+    setInvitationsError(null);
     try {
       const res = await api.get("/invitations/me");
       if (res.data?.success) {
@@ -56,6 +62,7 @@ export default function StudentInvitationsPage() {
       }
     } catch (err) {
       console.error("Failed to load invitations:", err);
+      setInvitationsError(err.response?.data?.message || err.message || "Failed to load invitations. Please check your network connection.");
     } finally {
       setLoading(false);
     }
@@ -63,6 +70,7 @@ export default function StudentInvitationsPage() {
 
   const fetchSentRequests = useCallback(async () => {
     setRequestsLoading(true);
+    setRequestsError(null);
     try {
       const res = await api.get("/join-requests/me");
       if (res.data?.success) {
@@ -70,6 +78,7 @@ export default function StudentInvitationsPage() {
       }
     } catch (err) {
       console.error("Failed to load sent join requests:", err);
+      setRequestsError(err.response?.data?.message || err.message || "Failed to load sent join requests. Please check your network connection.");
     } finally {
       setRequestsLoading(false);
     }
@@ -173,12 +182,12 @@ export default function StudentInvitationsPage() {
             <div className="flex items-center gap-2.5 flex-wrap">
               <Link href="/dashboard/matches">
                 <Button variant="secondary" size="sm">
-                  🔍 Browse Matches
+                  ðŸ” Browse Matches
                 </Button>
               </Link>
               <Link href="/dashboard/group">
                 <Button variant="outline" size="sm">
-                  🏠 My Group
+                  ðŸ  My Group
                 </Button>
               </Link>
             </div>
@@ -211,9 +220,15 @@ export default function StudentInvitationsPage() {
                       <Card key={i} className="p-6 h-36 animate-pulse" />
                     ))}
                   </div>
+                ) : invitationsError ? (
+                  <ErrorState
+                    title="Failed to Load Invitations"
+                    message={invitationsError}
+                    onRetry={fetchInvitations}
+                  />
                 ) : pending.length === 0 ? (
                   <EmptyState
-                    icon="✉️"
+                    icon="âœ‰ï¸"
                     title="No Pending Invitations"
                     description="You have no incoming invitations right now. Explore roommate matches to find compatible students or request to join an open group."
                     action={
@@ -240,7 +255,7 @@ export default function StudentInvitationsPage() {
                                     Invitation from {inv.leaderName}
                                   </h3>
                                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    {inv.targetSize}-Bed Room Group • Leader: {inv.leaderCourse || "Student"} {inv.leaderYear ? `• Year ${inv.leaderYear}` : ""}
+                                    {inv.targetSize}-Bed Room Group â€¢ Leader: {inv.leaderCourse || "Student"} {inv.leaderYear ? `â€¢ Year ${inv.leaderYear}` : ""}
                                   </p>
                                 </div>
                               </div>
@@ -249,7 +264,7 @@ export default function StudentInvitationsPage() {
                                 <Badge variant="neutral" size="sm">
                                   Seats: {inv.seatsFilled || 1} / {inv.targetSize}
                                 </Badge>
-                                <CountdownBadge targetDate={inv.expiresAt} prefix="⏳ Expires in " />
+                                <CountdownBadge targetDate={inv.expiresAt} prefix="â³ Expires in " />
                               </div>
 
                               {inv.scoreSnapshot?.perMemberScores?.length > 0 && (
@@ -268,7 +283,7 @@ export default function StudentInvitationsPage() {
                             <div className="flex items-center gap-4 shrink-0 justify-between md:justify-end border-t md:border-t-0 pt-3 md:pt-0 border-slate-100 dark:border-slate-800">
                               <div className="text-center">
                                 <ScoreRing score={score} size={48} strokeWidth={4} />
-                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 block mt-1">
+                                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block mt-1">
                                   Group Fit
                                 </span>
                               </div>
@@ -312,7 +327,7 @@ export default function StudentInvitationsPage() {
                     className="flex items-center justify-between w-full py-2 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                   >
                     <span>Past Invitations ({history.length})</span>
-                    <span>{historyOpen ? "▲ Hide" : "▼ Show"}</span>
+                    <span>{historyOpen ? "â–² Hide" : "â–¼ Show"}</span>
                   </button>
 
                   {historyOpen && (
@@ -363,9 +378,15 @@ export default function StudentInvitationsPage() {
                       <Card key={i} className="p-6 h-36 animate-pulse" />
                     ))}
                   </div>
+                ) : requestsError ? (
+                  <ErrorState
+                    title="Failed to Load Sent Requests"
+                    message={requestsError}
+                    onRetry={fetchSentRequests}
+                  />
                 ) : sentRequests.length === 0 ? (
                   <EmptyState
-                    icon="📤"
+                    icon="ðŸ“¤"
                     title="No Sent Join Requests"
                     description="You haven't requested to join any open groups yet. Browse groups looking for roommates and send a request."
                     action={
@@ -423,7 +444,7 @@ export default function StudentInvitationsPage() {
                             )}
 
                             <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs">
-                              <CountdownBadge targetDate={req.expiresAt} prefix="⏳ " />
+                              <CountdownBadge targetDate={req.expiresAt} prefix="â³ " />
 
                               {isPending && (
                                 <Button

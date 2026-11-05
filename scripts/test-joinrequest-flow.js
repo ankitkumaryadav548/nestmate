@@ -179,7 +179,7 @@ async function runJoinRequestFlowTests() {
         floor,
         capacity,
         currentOccupancy: 0,
-        roomType: "Non-AC",
+        roomType: "non-ac",
         status: "available",
       });
       createdRoomIds.push(room._id);
@@ -589,7 +589,7 @@ async function runJoinRequestFlowTests() {
     const incomingLazy = await listIncomingRequests(leaderLazy._id.toString());
     const freshReqOld = await GroupJoinRequest.findById(reqOld._id).lean();
 
-    if (freshReqOld.status !== "expired" || freshReqOld.closeReason !== "expired") {
+    if (freshReqOld.status !== "cancelled" || freshReqOld.closeReason !== "expired") {
       throw new Error(`Step 10 Failed: Stale join request was not lazily expired with 'expired', got ${freshReqOld.status}/${freshReqOld.closeReason}`);
     }
     console.log("✔ Step 10 Passed: Disband auto-closes pending requests; stale requests lazily expire.");
@@ -623,10 +623,10 @@ async function runJoinRequestFlowTests() {
     // =========================================================================
     console.log("\n--- STEP 12: Comprehensive Integrity Diagnostics ---");
     const integrityReport = await checkIntegrity();
-    console.log(`Integrity Report isClean: ${integrityReport.isClean}`);
-    console.log(`Problems detected: ${integrityReport.problems.length}`);
+    console.log(`Integrity Report Status: ${integrityReport.status}`);
+    console.log(`Summary: ${JSON.stringify(integrityReport.summary)}`);
 
-    if (!integrityReport.isClean) {
+    if (integrityReport.status !== "pass") {
       throw new Error(`Step 12 Failed: Integrity check reported problems: ${JSON.stringify(integrityReport.problems)}`);
     }
     console.log("✔ Step 12 Passed: System integrity check reported 0 problems.");

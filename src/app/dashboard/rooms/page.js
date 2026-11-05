@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import axios from "@/lib/axios";
 import { useToast } from "@/context/ToastContext";
+import useDocumentTitle from "@/hooks/useDocumentTitle";
 import {
   Card,
   CardHeader,
@@ -28,6 +29,7 @@ import {
 import { LIST_POLL_SECONDS } from "@/config/selection";
 
 export default function StudentRoomsPage() {
+  useDocumentTitle("Choose Room");
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [stateData, setStateData] = useState(null);
@@ -298,7 +300,7 @@ export default function StudentRoomsPage() {
                   <div className="text-3xl font-black font-mono tracking-tight text-white mt-0.5">
                     {String(countdown.minutes).padStart(2, "0")}:{String(countdown.seconds).padStart(2, "0")}
                   </div>
-                  <span className="text-[10px] text-white/70 block mt-0.5">minutes : seconds</span>
+                  <span className="text-[11px] text-white/70 block mt-0.5">minutes : seconds</span>
                 </div>
               )}
             </div>
@@ -332,7 +334,7 @@ export default function StudentRoomsPage() {
                 ) : undefined
               }
             >
-              Floor {currentClaim.room?.floor} • {currentClaim.room?.roomType} • {currentClaim.room?.capacity} Beds
+              Floor {currentClaim.room?.floor} â€¢ {currentClaim.room?.roomType} â€¢ {currentClaim.room?.capacity} Beds
               {currentClaim.openSeats > 0 && (
                 <span className="font-semibold text-teal-800 dark:text-teal-300 ml-2">
                   ({currentClaim.openSeats} seat{currentClaim.openSeats > 1 ? "s" : ""} remaining for your group)
@@ -428,9 +430,21 @@ export default function StudentRoomsPage() {
                 <Card key={i} className="p-5 h-44 animate-pulse" />
               ))}
             </div>
+          ) : error ? (
+            <Alert
+              variant="danger"
+              title="Error Loading Selection State"
+              action={
+                <Button variant="outline" size="sm" onClick={() => { fetchState(); fetchRooms(); }}>
+                  Try again
+                </Button>
+              }
+            >
+              {error}
+            </Alert>
           ) : rooms.length === 0 ? (
             <EmptyState
-              icon="🚪"
+              icon="ðŸšª"
               title="No Available Rooms Matching Filters"
               description="No free rooms match your selected hostel, cooling, or floor filters. Try clearing your filters."
               action={
@@ -469,7 +483,7 @@ export default function StudentRoomsPage() {
                                 #{room.roomNumber}
                               </span>
                               <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 mt-0.5">
-                                {room.hostelName} ({room.hostelCode}) • Floor {room.floor}
+                                {room.hostelName} ({room.hostelCode}) â€¢ Floor {room.floor}
                               </p>
                             </div>
 
@@ -496,17 +510,17 @@ export default function StudentRoomsPage() {
                           <div className="mt-3 flex flex-wrap gap-1.5">
                             {room.isFirstChoiceHostel && (
                               <Badge variant="success" size="sm">
-                                🌟 1st Choice Hostel
+                                ðŸŒŸ 1st Choice Hostel
                               </Badge>
                             )}
                             {room.acMatchesPreference && (
                               <Badge variant="brand" size="sm">
-                                ❄️ AC Matches
+                                â„ï¸ AC Matches
                               </Badge>
                             )}
                             {room.floorMatchesPreference && (
                               <Badge variant="neutral" size="sm">
-                                📍 Preferred Floor
+                                ðŸ“ Preferred Floor
                               </Badge>
                             )}
                           </div>
@@ -520,7 +534,7 @@ export default function StudentRoomsPage() {
 
                           {isClaimedByMe ? (
                             <Badge variant="success" size="sm">
-                              ✓ Your Selected Room
+                              âœ“ Your Selected Room
                             </Badge>
                           ) : (
                             <Button
