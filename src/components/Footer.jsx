@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { openInfoModal } from "@/components/InfoModal";
 
 /**
  * Footer Component
@@ -41,15 +42,27 @@ export default function Footer() {
 
           {/* Quick links */}
           <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs font-semibold text-slate-600 dark:text-slate-400">
-            <Link href="/#how-it-works" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+            <button
+              type="button"
+              onClick={() => openInfoModal("how-it-works")}
+              className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+            >
               How It Works
-            </Link>
-            <Link href="/#features" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+            </button>
+            <button
+              type="button"
+              onClick={() => openInfoModal("features")}
+              className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+            >
               Features
-            </Link>
-            <Link href="/#faq" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+            </button>
+            <button
+              type="button"
+              onClick={() => openInfoModal("faq")}
+              className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+            >
               FAQ
-            </Link>
+            </button>
             <Link href="/login" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
               Sign In
             </Link>

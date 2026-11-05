@@ -9,6 +9,7 @@ import NotificationBell from "@/components/notifications/NotificationBell";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 import Avatar from "@/components/ui/Avatar";
 import { IconMenu, IconClose, IconLogOut } from "@/components/ui/Icons";
+import InfoModal, { openInfoModal } from "@/components/InfoModal";
 
 /**
  * Public & App Navbar
@@ -23,6 +24,20 @@ export default function Navbar() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [pendingInvitesCount, setPendingInvitesCount] = useState(0);
+  const [infoModalOpen, setInfoModalOpen] = useState(false);
+  const [infoModalTab, setInfoModalTab] = useState("how-it-works");
+
+  // Listen for global open-info-modal events
+  useEffect(() => {
+    const handleOpenModal = (e) => {
+      if (e.detail?.tab) {
+        setInfoModalTab(e.detail.tab);
+        setInfoModalOpen(true);
+      }
+    };
+    window.addEventListener("open-info-modal", handleOpenModal);
+    return () => window.removeEventListener("open-info-modal", handleOpenModal);
+  }, []);
 
   const appName = process.env.NEXT_PUBLIC_APP_NAME || "HostelMatch";
 
@@ -88,15 +103,9 @@ export default function Navbar() {
 
   const isHome = pathname === "/";
 
-  const handleNavScroll = (e, sectionId) => {
-    if (pathname === "/") {
-      e.preventDefault();
-      const el = document.getElementById(sectionId);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth" });
-        window.history.pushState(null, "", `#${sectionId}`);
-      }
-    }
+  const handleOpenInfo = (tab) => {
+    setInfoModalTab(tab);
+    setInfoModalOpen(true);
     setMobileMenuOpen(false);
   };
 
@@ -186,27 +195,27 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <Link
-                href="/#how-it-works"
-                onClick={(e) => handleNavScroll(e, "how-it-works")}
-                className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              <button
+                type="button"
+                onClick={() => handleOpenInfo("how-it-works")}
+                className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
               >
                 How It Works
-              </Link>
-              <Link
-                href="/#features"
-                onClick={(e) => handleNavScroll(e, "features")}
-                className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenInfo("features")}
+                className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
               >
                 Features
-              </Link>
-              <Link
-                href="/#faq"
-                onClick={(e) => handleNavScroll(e, "faq")}
-                className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOpenInfo("faq")}
+                className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
               >
                 FAQ
-              </Link>
+              </button>
             </>
           )}
         </nav>
@@ -352,27 +361,27 @@ export default function Navbar() {
             ) : (
               <div className="space-y-3 pt-2">
                 <div className="space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800">
-                  <Link
-                    href="/#how-it-works"
-                    onClick={(e) => handleNavScroll(e, "how-it-works")}
-                    className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  <button
+                    type="button"
+                    onClick={() => handleOpenInfo("how-it-works")}
+                    className="w-full text-left block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                   >
                     How It Works
-                  </Link>
-                  <Link
-                    href="/#features"
-                    onClick={(e) => handleNavScroll(e, "features")}
-                    className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenInfo("features")}
+                    className="w-full text-left block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                   >
                     Features
-                  </Link>
-                  <Link
-                    href="/#faq"
-                    onClick={(e) => handleNavScroll(e, "faq")}
-                    className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenInfo("faq")}
+                    className="w-full text-left block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                   >
                     FAQ
-                  </Link>
+                  </button>
                 </div>
                 <Link
                   href="/login"
@@ -391,6 +400,13 @@ export default function Navbar() {
           </div>
         </div>
       )}
+
+      {/* Global Interactive Info Modal */}
+      <InfoModal
+        isOpen={infoModalOpen}
+        onClose={() => setInfoModalOpen(false)}
+        initialTab={infoModalTab}
+      />
     </header>
   );
 }

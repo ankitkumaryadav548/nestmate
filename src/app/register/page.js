@@ -10,6 +10,7 @@ import Select from "@/components/ui/Select";
 import Button from "@/components/ui/Button";
 import Alert from "@/components/ui/Alert";
 import { IconShield, IconSparkles, IconCheck, IconBed, IconUser } from "@/components/ui/Icons";
+import { openInfoModal } from "@/components/InfoModal";
 
 export default function RegisterPage() {
   useDocumentTitle("Student Registration");
@@ -376,17 +377,29 @@ export default function RegisterPage() {
 
             {/* Quick links to How It Works, Features, and FAQ */}
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-center gap-4 text-xs font-semibold text-slate-500 dark:text-slate-400">
-              <Link href="/#how-it-works" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+              <button
+                type="button"
+                onClick={() => openInfoModal("how-it-works")}
+                className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+              >
                 How It Works
-              </Link>
+              </button>
               <span>•</span>
-              <Link href="/#features" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+              <button
+                type="button"
+                onClick={() => openInfoModal("features")}
+                className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+              >
                 Features
-              </Link>
+              </button>
               <span>•</span>
-              <Link href="/#faq" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+              <button
+                type="button"
+                onClick={() => openInfoModal("faq")}
+                className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+              >
                 FAQ
-              </Link>
+              </button>
             </div>
           </div>
         </div>
