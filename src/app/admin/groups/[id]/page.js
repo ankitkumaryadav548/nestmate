@@ -226,7 +226,7 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
       {/* Disbanded Notice */}
       {isDisbanded && (
         <div className="mb-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 p-4 text-slate-800 dark:text-slate-300 flex items-start gap-3">
-          <span className="text-xl">Warning:
+          <span className="font-bold text-xs uppercase tracking-wider text-amber-600 dark:text-amber-400 shrink-0 mt-0.5">Notice:</span>
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-200">
               Group Disbanded
@@ -242,7 +242,6 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
       {group.selectedRoom && (
         <Card className="mb-6 p-5 border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/40 dark:bg-indigo-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">
-            <span className="text-2xl">‘</span>
             <div>
               <div className="flex items-center gap-2">
                 <Badge variant="brand" size="xs">

@@ -593,7 +593,7 @@ export default function AdminMatchingPage() {
                 {/* Room Size Mismatch Note */}
                 {pairResult.note && (
                   <div className="rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3.5 text-amber-900 dark:text-amber-300 text-xs font-medium flex items-center gap-2">
-                    <span>Warning:
+                    <span className="font-bold text-xs uppercase tracking-wider text-amber-600 dark:text-amber-400">Notice:</span>
                     <span>{pairResult.note}</span>
                   </div>
                 )}
@@ -667,7 +667,8 @@ export default function AdminMatchingPage() {
                     </h4>
                     {pairResult.warnings.map((w, i) => (
                       <p key={i} className="text-xs text-amber-900 dark:text-amber-300 flex items-center gap-2">
-                        <span>Warning: {w}
+                        <span className="font-bold text-amber-600 dark:text-amber-400">Notice:</span>
+                        <span>{w}</span>
                       </p>
                     ))}
                   </div>
