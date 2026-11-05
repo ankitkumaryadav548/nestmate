@@ -195,7 +195,15 @@ export default function StudentGroupPage() {
         fetchIncomingRequests();
       }
     } catch (err) {
-      showToast(err.response?.data?.message || "Failed to approve join request", "error");
+      const msg = err.response?.data?.message || err.message || "Failed to approve join request";
+      showToast(msg, "error");
+      if (err.response?.status === 409) {
+        setIsReviewOpen(false);
+        setSelectedRequestId(null);
+        setReviewData(null);
+        await fetchGroupData();
+        fetchIncomingRequests();
+      }
     } finally {
       setActingRequestId(null);
     }
@@ -214,7 +222,14 @@ export default function StudentGroupPage() {
         fetchIncomingRequests();
       }
     } catch (err) {
-      showToast(err.response?.data?.message || "Failed to decline join request", "error");
+      const msg = err.response?.data?.message || err.message || "Failed to decline join request";
+      showToast(msg, "error");
+      if (err.response?.status === 409) {
+        setIsReviewOpen(false);
+        setSelectedRequestId(null);
+        setReviewData(null);
+        fetchIncomingRequests();
+      }
     } finally {
       setActingRequestId(null);
     }

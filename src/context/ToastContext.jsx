@@ -56,7 +56,17 @@ export function ToastProvider({ children }) {
     [removeToast]
   );
 
+  const showToast = useCallback(
+    (message, type = "info", options = {}) => {
+      const validTypes = ["success", "error", "info", "warning"];
+      const resolvedType = validTypes.includes(type) ? type : "info";
+      return addToast({ type: resolvedType, message, ...options });
+    },
+    [addToast]
+  );
+
   const toast = {
+    showToast,
     success: (message, title = "Success", options = {}) =>
       addToast({ type: "success", message, title, ...options }),
     error: (message, title = "Error", options = {}) =>
