@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useRouter, usePathname } from "next/navigation";
-import Modal from "@/components/ui/Modal";
 import Badge from "@/components/ui/Badge";
 import Button from "@/components/ui/Button";
 import {
@@ -152,9 +152,41 @@ export default function InfoModal({ isOpen, onClose, initialTab = "how-it-works"
   const pathname = usePathname();
   const [activeTab, setActiveTab] = useState(initialTab);
   const [openFaq, setOpenFaq] = useState(null);
+  const [mounted, setMounted] = useState(false);
+  const dialogRef = useRef(null);
 
-  // Sync active tab with prop changes when modal opens
-  const currentTab = activeTab || initialTab;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Keep active tab synchronized whenever modal opens or initialTab changes
+  useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
+
+  // Lock body scroll and listen for Escape key to close
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    setTimeout(() => {
+      dialogRef.current?.focus();
+    }, 50);
+
+    return () => {
+      document.body.style.overflow = "unset";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   const toggleFaq = (idx) => {
     setOpenFaq(openFaq === idx ? null : idx);
@@ -173,217 +205,241 @@ export default function InfoModal({ isOpen, onClose, initialTab = "how-it-works"
     }
   };
 
-  return (
-    <Modal
-      isOpen={isOpen}
-      onClose={onClose}
-      maxWidth="max-w-3xl"
-      className="p-0 overflow-hidden"
-    >
-      {/* Modal Header with Tabs */}
-      <div className="p-5 sm:p-6 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200/80 dark:border-slate-800 shrink-0">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-600 text-white font-bold text-xs shadow-xs">
-              HM
+  if (!isOpen || !mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 bg-slate-950/75 dark:bg-black/85 backdrop-blur-sm transition-opacity duration-200 animate-fade-in"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Modal Dialog Card */}
+      <div
+        ref={dialogRef}
+        tabIndex={-1}
+        className="relative w-full max-w-2xl sm:max-w-3xl rounded-3xl bg-white dark:bg-slate-900 shadow-2xl border border-slate-200/90 dark:border-slate-800 z-10 animate-scale-in duration-200 max-h-[88vh] flex flex-col focus:outline-none overflow-hidden my-auto"
+        role="dialog"
+        aria-modal="true"
+      >
+        {/* Header (Tabs + Close Button) - Fixed at top */}
+        <div className="p-4 sm:p-6 bg-slate-50 dark:bg-slate-800/70 border-b border-slate-200/80 dark:border-slate-800 shrink-0">
+          <div className="flex items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-600 text-white font-extrabold text-sm shadow-sm shadow-indigo-500/20">
+                HM
+              </div>
+              <div>
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 font-heading">
+                  HostelMatch Platform Guide
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Roommate matching, selection windows, and bed assignments
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                HostelMatch Information Guide
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Everything you need to know about roommate matching & room selection
-              </p>
-            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-xl p-2 text-slate-400 hover:bg-slate-200/70 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-100 transition-colors cursor-pointer shrink-0"
+              aria-label="Close modal"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Three Tab Buttons */}
+          <div className="grid grid-cols-3 gap-1.5 p-1 rounded-2xl bg-slate-200/80 dark:bg-slate-700/80 border border-slate-300/50 dark:border-slate-600/50">
+            <button
+              type="button"
+              onClick={() => setActiveTab("how-it-works")}
+              className={`py-2 px-2 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer ${
+                activeTab === "how-it-works"
+                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+              }`}
+            >
+              📋 How It Works
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("features")}
+              className={`py-2 px-2 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer ${
+                activeTab === "features"
+                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+              }`}
+            >
+              ✨ Features
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("faq")}
+              className={`py-2 px-2 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer ${
+                activeTab === "faq"
+                  ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+              }`}
+            >
+              ❓ FAQ
+            </button>
           </div>
         </div>
 
-        {/* Tab Buttons */}
-        <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-slate-200/80 dark:bg-slate-700/80 border border-slate-300/50 dark:border-slate-600/50">
-          <button
-            type="button"
-            onClick={() => setActiveTab("how-it-works")}
-            className={`py-2 px-2 text-xs sm:text-sm font-bold rounded-lg transition-all ${
-              currentTab === "how-it-works"
-                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
-            }`}
-          >
-            📋 How It Works
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("features")}
-            className={`py-2 px-2 text-xs sm:text-sm font-bold rounded-lg transition-all ${
-              currentTab === "features"
-                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
-            }`}
-          >
-            ✨ Features
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("faq")}
-            className={`py-2 px-2 text-xs sm:text-sm font-bold rounded-lg transition-all ${
-              currentTab === "faq"
-                ? "bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-xs"
-                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
-            }`}
-          >
-            ❓ FAQ
-          </button>
-        </div>
-      </div>
+        {/* Scrollable Content Body */}
+        <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 space-y-4">
+          {/* TAB 1: HOW IT WORKS */}
+          {activeTab === "how-it-works" && (
+            <div className="space-y-3.5 animate-fade-in">
+              <div className="mb-2">
+                <Badge variant="brand" size="sm">5 Step Process</Badge>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 mt-1 font-heading">
+                  From Questionnaire to Room Key
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Follow these 5 transparent steps to find compatible roommates and secure your room.
+                </p>
+              </div>
 
-      {/* Modal Scrollable Body */}
-      <div className="p-5 sm:p-6 overflow-y-auto max-h-[65vh] space-y-4">
-        {/* TAB 1: HOW IT WORKS */}
-        {currentTab === "how-it-works" && (
-          <div className="space-y-4 animate-fade-in">
-            <div className="mb-2">
-              <Badge variant="brand" size="sm">5 Easy Steps</Badge>
-              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 mt-1">
-                From Questionnaire to Room Key in 5 Steps
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Transparent, conflict-free steps for matching with roommates and locking in your room.
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              {STEPS.map((st) => (
-                <div
-                  key={st.step}
-                  className="flex items-start gap-3.5 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-300 dark:hover:border-indigo-800 transition-colors"
-                >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60">
-                    {st.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                        Step {st.step}
-                      </span>
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                        {st.title}
-                      </span>
+              <div className="space-y-3">
+                {STEPS.map((st) => (
+                  <div
+                    key={st.step}
+                    className="flex items-start gap-3.5 p-4 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all shadow-2xs"
+                  >
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 shadow-xs">
+                      {st.icon}
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
-                      {st.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* TAB 2: FEATURES */}
-        {currentTab === "features" && (
-          <div className="space-y-4 animate-fade-in">
-            <div className="mb-2">
-              <Badge variant="brand" size="sm">All Project Features</Badge>
-              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 mt-1">
-                Engineered for Fairness & Living Harmony
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                All 12 intelligent features designed to respect personal lifestyles and optimize campus housing.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {FEATURES.map((feat, idx) => (
-                <div
-                  key={idx}
-                  className="p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-300 dark:hover:border-indigo-800 transition-colors"
-                >
-                  <div className="flex items-center gap-2.5 mb-1.5">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-100 dark:border-indigo-900/50">
-                      {feat.icon}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60">
+                          Step {st.step}
+                        </span>
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+                          {st.title}
+                        </h4>
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                        {st.description}
+                      </p>
                     </div>
-                    <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight">
-                      {feat.title}
-                    </h4>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                    {feat.description}
-                  </p>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* TAB 3: FAQ */}
-        {currentTab === "faq" && (
-          <div className="space-y-4 animate-fade-in">
-            <div className="mb-2">
-              <Badge variant="brand" size="sm">Frequently Asked Questions</Badge>
-              <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 mt-1">
-                Quick Answers to Common Questions
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Click any question to view the short explanation.
-              </p>
-            </div>
+          {/* TAB 2: FEATURES */}
+          {activeTab === "features" && (
+            <div className="space-y-3.5 animate-fade-in">
+              <div className="mb-2">
+                <Badge variant="brand" size="sm">12 Platform Features</Badge>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 mt-1 font-heading">
+                  All Capabilities in HostelMatch
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Comprehensive smart algorithms and management tools built for harmonious campus living.
+                </p>
+              </div>
 
-            <div className="space-y-2.5">
-              {FAQS.map((faq, idx) => {
-                const isOpen = openFaq === idx;
-                return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {FEATURES.map((feat, idx) => (
                   <div
                     key={idx}
-                    className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-2xs"
+                    className="p-3.5 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all shadow-2xs"
                   >
-                    <button
-                      type="button"
-                      onClick={() => toggleFaq(idx)}
-                      aria-expanded={isOpen}
-                      className="w-full flex items-center justify-between p-3.5 text-left text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
-                    >
-                      <span>{faq.q}</span>
-                      <IconChevronDown
-                        className={`h-4 w-4 text-slate-400 shrink-0 ml-3 transition-transform duration-200 ${
-                          isOpen ? "rotate-180 text-indigo-600 dark:text-indigo-400" : ""
-                        }`}
-                      />
-                    </button>
-                    {isOpen && (
-                      <div className="px-3.5 pb-3.5 pt-1 text-xs text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800/60 leading-relaxed animate-fade-in">
-                        {faq.a}
+                    <div className="flex items-center gap-2.5 mb-1.5">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 shadow-2xs">
+                        {feat.icon}
                       </div>
-                    )}
+                      <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight">
+                        {feat.title}
+                      </h4>
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                      {feat.description}
+                    </p>
                   </div>
-                );
-              })}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
 
-      {/* Modal Footer with Actions */}
-      <div className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
-        <button
-          type="button"
-          onClick={() => handleJumpToSection(currentTab)}
-          className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1"
-        >
-          <span>View full section on Home Page</span>
-          <span>&rarr;</span>
-        </button>
+          {/* TAB 3: FAQ */}
+          {activeTab === "faq" && (
+            <div className="space-y-3.5 animate-fade-in">
+              <div className="mb-2">
+                <Badge variant="brand" size="sm">Frequently Asked Questions</Badge>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 mt-1 font-heading">
+                  Frequently Asked Questions
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Common questions answered in 1–2 simple lines. Click any question to read.
+                </p>
+              </div>
 
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={onClose}
-          className="w-full sm:w-auto"
-        >
-          Close
-        </Button>
+              <div className="space-y-2.5">
+                {FAQS.map((faq, idx) => {
+                  const isOpen = openFaq === idx;
+                  return (
+                    <div
+                      key={idx}
+                      className="rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 overflow-hidden shadow-2xs transition-colors"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleFaq(idx)}
+                        aria-expanded={isOpen}
+                        className="w-full flex items-center justify-between p-4 text-left text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+                      >
+                        <span className="pr-2">{faq.q}</span>
+                        <IconChevronDown
+                          className={`h-4 w-4 text-slate-400 shrink-0 ml-2 transition-transform duration-200 ${
+                            isOpen ? "rotate-180 text-indigo-600 dark:text-indigo-400" : ""
+                          }`}
+                        />
+                      </button>
+                      {isOpen && (
+                        <div className="px-4 pb-4 pt-1 text-xs text-slate-600 dark:text-slate-400 border-t border-slate-200/60 dark:border-slate-700/60 leading-relaxed animate-fade-in bg-white dark:bg-slate-900/60">
+                          {faq.a}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Footer Bar - Fixed at bottom */}
+        <div className="p-3.5 sm:p-4 bg-slate-50 dark:bg-slate-800/70 border-t border-slate-200/80 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+          <button
+            type="button"
+            onClick={() => handleJumpToSection(activeTab)}
+            className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline inline-flex items-center gap-1 cursor-pointer"
+          >
+            <span>View section on Home Page</span>
+            <span>&rarr;</span>
+          </button>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={onClose}
+            className="w-full sm:w-auto"
+          >
+            Close Guide
+          </Button>
+        </div>
       </div>
-    </Modal>
+    </div>,
+    document.body
   );
 }
-
