@@ -100,6 +100,7 @@ export function getRunStatusTone(status) {
 }
 
 export function getRunStatusClasses(status) {
+  const s = String(status || '').toLowerCase().trim();
   const tone = getRunStatusTone(status);
   switch (tone) {
     case 'teal':
@@ -168,6 +169,7 @@ export function getWindowStatusTone(status) {
 }
 
 export function getWindowStatusClasses(status) {
+  const s = String(status || '').toLowerCase().trim();
   const tone = getWindowStatusTone(status);
   switch (tone) {
     case 'teal':

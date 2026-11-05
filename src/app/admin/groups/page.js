@@ -104,7 +104,7 @@ export default function AdminGroupsPage() {
     setStatus("");
     setTargetSize("");
     setGender("");
-    setPage(1);
+    setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
   const getGroupStatusBadge = (grpStatus) => {
