@@ -172,6 +172,16 @@ export function buildNotification(type, params = {}) {
       break;
     }
 
+    case "join_request_sent": {
+      const leaderName = safeStr(p.leaderName, "the group leader");
+      const targetSize = p.targetSize ? `${p.targetSize}-bed ` : "";
+      rawTitle = "Join Request Sent";
+      rawMessage = `You sent a request to join ${leaderName}'s ${targetSize}roommate group.`;
+      defaultLink = "/dashboard/invitations";
+      severity = "info";
+      break;
+    }
+
     case "join_request_approved": {
       const leaderName = safeStr(p.leaderName, "the group leader");
       rawTitle = "Join Request Approved";

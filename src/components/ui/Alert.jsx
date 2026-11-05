@@ -5,7 +5,8 @@
  * Status notification block with left accent bar, semantic icons, and optional dismiss button.
  */
 export default function Alert({
-  type = "error",
+  type,
+  variant,
   title,
   message,
   children,
@@ -55,7 +56,8 @@ export default function Alert({
     },
   };
 
-  const cfg = configs[type] || configs.error;
+  const resolvedType = (type || variant || "info").replace("danger", "error");
+  const cfg = configs[resolvedType] || configs.info;
 
   return (
     <div

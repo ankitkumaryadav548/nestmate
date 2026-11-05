@@ -88,6 +88,12 @@ export const NOTIFICATION_TYPES = {
       severity: "info",
       category: "groups",
     },
+    join_request_sent: {
+      label: "Join Request Sent",
+      icon: "send",
+      severity: "info",
+      category: "groups",
+    },
     join_request_approved: {
       label: "Join Request Approved",
       icon: "check-circle",

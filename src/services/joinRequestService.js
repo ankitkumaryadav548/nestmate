@@ -705,7 +705,9 @@ export async function sendJoinRequest(userId, groupId, data = {}) {
     throw err;
   }
 
-  // 5. Post-commit notification to group leader
+  // 5. Post-commit notification to group leader and confirmation to student
+  const leaderUser = groupMembers.find((m) => m.id === group.leader?.toString()) || groupMembers[0];
+  const leaderName = leaderUser?.name || "Group Leader";
   const leaderId = group.leader?.toString();
   if (leaderId) {
     await notify(
@@ -715,6 +717,14 @@ export async function sendJoinRequest(userId, groupId, data = {}) {
       { dedupeParts: [groupId.toString(), joinRequest._id.toString(), "join_req_received"] }
     ).catch(() => {});
   }
+
+  // Notify requesting student so they have a record in their notification center
+  await notify(
+    userId.toString(),
+    "join_request_sent",
+    { leaderName, targetSize: group.targetSize },
+    { dedupeParts: [joinRequest._id.toString(), "join_req_sent"] }
+  ).catch(() => {});
 
   return {
     success: true,

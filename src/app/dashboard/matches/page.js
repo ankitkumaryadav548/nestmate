@@ -968,8 +968,8 @@ export default function StudentMatchesPage() {
 
                 {/* Status Notice if already requested or cannot request */}
                 {isRequested && (
-                  <Alert variant="info" title="Request Pending">
-                    You have already sent a join request to this group. The group leader will review your request and decide whether to approve it.
+                  <Alert variant="success" type="success" title="Request Sent & Pending Leader Review">
+                    You have sent a request to join this group. The group leader will review your compatibility and decide whether to approve it.
                   </Alert>
                 )}
 
