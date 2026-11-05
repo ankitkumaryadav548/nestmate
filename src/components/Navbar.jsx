@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -88,6 +88,18 @@ export default function Navbar() {
 
   const isHome = pathname === "/";
 
+  const handleNavScroll = (e, sectionId) => {
+    if (pathname === "/") {
+      e.preventDefault();
+      const el = document.getElementById(sectionId);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth" });
+        window.history.pushState(null, "", `#${sectionId}`);
+      }
+    }
+    setMobileMenuOpen(false);
+  };
+
   return (
     <header
       className={`sticky top-0 z-50 w-full transition-all duration-200 border-b ${
@@ -174,15 +186,27 @@ export default function Navbar() {
             </>
           ) : (
             <>
-              <a href="#how-it-works" className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+              <Link
+                href="/#how-it-works"
+                onClick={(e) => handleNavScroll(e, "how-it-works")}
+                className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              >
                 How It Works
-              </a>
-              <a href="#features" className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+              </Link>
+              <Link
+                href="/#features"
+                onClick={(e) => handleNavScroll(e, "features")}
+                className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              >
                 Features
-              </a>
-              <a href="#faq" className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+              </Link>
+              <Link
+                href="/#faq"
+                onClick={(e) => handleNavScroll(e, "faq")}
+                className="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+              >
                 FAQ
-              </a>
+              </Link>
             </>
           )}
         </nav>
@@ -327,6 +351,29 @@ export default function Navbar() {
               </>
             ) : (
               <div className="space-y-3 pt-2">
+                <div className="space-y-1 pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <Link
+                    href="/#how-it-works"
+                    onClick={(e) => handleNavScroll(e, "how-it-works")}
+                    className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    How It Works
+                  </Link>
+                  <Link
+                    href="/#features"
+                    onClick={(e) => handleNavScroll(e, "features")}
+                    className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    Features
+                  </Link>
+                  <Link
+                    href="/#faq"
+                    onClick={(e) => handleNavScroll(e, "faq")}
+                    className="block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
+                  >
+                    FAQ
+                  </Link>
+                </div>
                 <Link
                   href="/login"
                   className="block w-full text-center rounded-xl border border-slate-300 dark:border-slate-700 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200"

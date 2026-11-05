@@ -22,6 +22,9 @@ import {
   IconCheck,
   IconChevronDown,
   IconArrowRight,
+  IconSliders,
+  IconBell,
+  IconChart,
   Avatar,
 } from "@/components/ui";
 
@@ -40,6 +43,20 @@ export default function LandingClient({ user }) {
       });
   }, []);
 
+  // Smooth scroll to hash anchor on mount if arriving with #how-it-works, #features, #faq
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash) {
+      const hash = window.location.hash.substring(1);
+      const timer = setTimeout(() => {
+        const el = document.getElementById(hash);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth" });
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   const toggleFaq = (index) => {
     setOpenFaq(openFaq === index ? null : index);
   };
@@ -48,31 +65,31 @@ export default function LandingClient({ user }) {
     {
       step: "01",
       title: "Create your profile",
-      description: "Verify your enrollment, branch, academic year, and gender.",
+      description: "Verify your academic year, branch, and basic student info.",
       icon: <IconBuilding className="h-6 w-6 text-indigo-500" />,
     },
     {
       step: "02",
-      title: "Share your lifestyle",
-      description: "Pick desired room size (1-4 beds) and submit your daily habits.",
+      title: "Set lifestyle & room size",
+      description: "Submit daily habits, choose AC/Non-AC, and select 1–4 bed capacity.",
       icon: <IconSparkles className="h-6 w-6 text-teal-500" />,
     },
     {
       step: "03",
       title: "Find compatible roommates",
-      description: "Explore pairwise compatibility and filter out mutual deal-breakers.",
+      description: "Review 0–100% compatibility scores with mutual deal-breaker protection.",
       icon: <IconUsers className="h-6 w-6 text-purple-500" />,
     },
     {
       step: "04",
-      title: "Form a group",
-      description: "Invite prospective roommates or send requests to join open groups.",
+      title: "Form your group",
+      description: "Send invitations to peers or request admission to open forming groups.",
       icon: <IconKey className="h-6 w-6 text-amber-500" />,
     },
     {
       step: "05",
-      title: "Choose your room",
-      description: "Pick your room live in real-time during the open selection window.",
+      title: "Claim room & assign beds",
+      description: "Select your room live in real-time and let leaders assign bed numbers.",
       icon: <IconBed className="h-6 w-6 text-emerald-500" />,
     },
   ];
@@ -80,62 +97,86 @@ export default function LandingClient({ user }) {
   const features = [
     {
       title: "Smart Compatibility Scoring",
-      description: "Multi-factor matching evaluates sleeping routine, study hours, cleanliness, and social habits.",
+      description: "Calculates weighted compatibility scores (0–100%) across sleeping routine, study hours, noise tolerance, and cleanliness.",
       icon: <IconSparkles className="h-6 w-6 text-indigo-500" />,
     },
     {
-      title: "Deal-Breakers Respected",
-      description: "Non-negotiable lifestyle boundaries (food, AC, late-night noise) prevent unwanted roommate pairings.",
+      title: "Mutual Deal-Breakers",
+      description: "Strict hard-filtering on non-negotiable boundaries (smoking, late calls, cleanliness, diet, AC) prevents incompatible pairings.",
       icon: <IconShield className="h-6 w-6 text-rose-500" />,
     },
     {
-      title: "Roommate Groups",
-      description: "Form groups of 2, 3, or 4 students with real-time average score and harmony preview.",
+      title: "Flexible Room Sizes (1–4 Beds)",
+      description: "Select single-seater, double, 3-bed, or 4-bed preferences, matching exclusively with students wanting the same room capacity.",
+      icon: <IconBed className="h-6 w-6 text-blue-500" />,
+    },
+    {
+      title: "Roommate Groups & Harmony",
+      description: "Form groups of 2 to 4 students, send invitations, monitor average group score, and preview roommate harmony in real-time.",
       icon: <IconUsers className="h-6 w-6 text-purple-500" />,
     },
     {
-      title: "Join Requests",
-      description: "Browse open forming groups with free beds and request admission directly to the leader.",
+      title: "Open Groups & Join Requests",
+      description: "Browse open forming groups with vacant beds, inspect member compatibility, and submit join requests with 24h protection.",
       icon: <IconKey className="h-6 w-6 text-teal-500" />,
     },
     {
-      title: "First-Come Room Selection",
-      description: "No administrative delays. Leaders choose exact rooms live during the open selection window.",
-      icon: <IconBed className="h-6 w-6 text-amber-500" />,
+      title: "Live Selection Window",
+      description: "Countdown timer and first-come, first-served claiming where leaders lock down preferred available rooms in real-time.",
+      icon: <IconBuilding className="h-6 w-6 text-amber-500" />,
     },
     {
-      title: "Fair Automated Allocation",
-      description: "Multi-round preference satisfaction placement for unallocated students post-window.",
-      icon: <IconBuilding className="h-6 w-6 text-indigo-500" />,
+      title: "Hostel, AC & Floor Preferences",
+      description: "Rank preferred hostels, room types (AC/Non-AC), and floor level bands (Low, Mid, High) for automated allocations.",
+      icon: <IconSliders className="h-6 w-6 text-emerald-500" />,
     },
     {
-      title: "Privacy by Design",
-      description: "Raw lifestyle answers and phone numbers are never leaked; only anonymous compatibility breakdown is visible.",
-      icon: <IconShield className="h-6 w-6 text-emerald-500" />,
+      title: "Physical Bed Number Assignment",
+      description: "Group leaders assign specific bed numbers (Bed 1, 2, 3...) to members or use one-click deterministic auto-assignment.",
+      icon: <IconCheck className="h-6 w-6 text-indigo-500" />,
+    },
+    {
+      title: "Automated Allocation Engine",
+      description: "Fair institutional placement engine that automatically places unallocated students and groups post-window.",
+      icon: <IconChart className="h-6 w-6 text-violet-500" />,
+    },
+    {
+      title: "Dedicated Roommates Hub",
+      description: "Dedicated page showing allocated room specs, physical bed assignments, resident profiles, and unit layout.",
+      icon: <IconUsers className="h-6 w-6 text-teal-600" />,
     },
     {
       title: "Admin Command Center",
-      description: "Real-time occupancy tracking, audit logging, announcement broadcasts, and self-healing diagnostics.",
-      icon: <IconSparkles className="h-6 w-6 text-blue-500" />,
+      description: "Live occupancy rates, student oversight, group management, manual room override, and CSV export for campus wardens.",
+      icon: <IconBuilding className="h-6 w-6 text-blue-600" />,
+    },
+    {
+      title: "Self-Healing Integrity & Alerts",
+      description: "Automated diagnostics that heal occupancy drifts, with real-time in-app alerts for invitations, window events, and announcements.",
+      icon: <IconBell className="h-6 w-6 text-amber-600" />,
     },
   ];
 
   const faqs = [
     {
-      q: "Are my lifestyle answers visible to other students?",
-      a: "No. Student privacy is strictly guaranteed. Other students only see a normalized compatibility percentage, high-level lifestyle category matches (e.g., 'Both Early Birds'), and shared languages. Your specific answers and deal-breakers remain private.",
-    },
-    {
       q: "How does the roommate compatibility score work?",
-      a: "Our algorithm calculates weighted similarities across routine, cleanliness, study preferences, and social tolerance. If any member triggers another's deal-breaker, the pairing is automatically excluded.",
+      a: "Our algorithm calculates a 0–100% score comparing your sleep schedule, study habits, noise tolerance, and cleanliness with other students.",
     },
     {
-      q: "Can I change my desired room size later?",
-      a: "You can update your preferred room size anytime before you join a roommate group or claim a room. Once in an active group, room size is locked to ensure group consistency.",
+      q: "What are deal-breakers and how do they protect me?",
+      a: "Deal-breakers are strict lifestyle boundaries (like food habits, AC use, or noise) that automatically prevent conflicting students from being paired.",
     },
     {
-      q: "What happens if our invited roommates don't accept in time?",
-      a: "Invitations remain valid for 7 days. Even if invitations are pending, the group leader can claim a room during the open selection window. Unfilled seats remain reserved for your group and are later filled by compatible candidates.",
+      q: "How does the live room selection window work?",
+      a: "When the administrator opens the window, group leaders and single students claim their preferred available room on a live, first-come, first-served basis.",
+    },
+    {
+      q: "Can group leaders assign specific beds to roommates?",
+      a: "Yes. Once a room is allocated, the group leader can assign bed numbers to each member or use one-click auto-assign on the My Roommates page.",
+    },
+    {
+      q: "Are my questionnaire answers kept private?",
+      a: "Yes. Your raw answers are completely private. Other students only see your overall match score and high-level compatibility badges.",
     },
   ];
 
@@ -334,7 +375,7 @@ export default function LandingClient({ user }) {
       {/* =====================================================================
           3. HOW IT WORKS (5 STEPS)
           ===================================================================== */}
-      <section id="how-it-works" className="py-20 sm:py-28">
+      <section id="how-it-works" className="scroll-mt-20 py-20 sm:py-28">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <Badge variant="brand" className="mb-3">Streamlined Workflow</Badge>
@@ -370,9 +411,9 @@ export default function LandingClient({ user }) {
       </section>
 
       {/* =====================================================================
-          4. FEATURE GRID (8 INTERACTIVE CARDS)
+          4. FEATURE GRID (ALL PLATFORM CAPABILITIES)
           ===================================================================== */}
-      <section id="features" className="py-20 sm:py-28 bg-slate-100/60 dark:bg-slate-900/40 border-y border-slate-200/80 dark:border-slate-800">
+      <section id="features" className="scroll-mt-20 py-20 sm:py-28 bg-slate-100/60 dark:bg-slate-900/40 border-y border-slate-200/80 dark:border-slate-800">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <Badge variant="brand" className="mb-3">Engine Capabilities</Badge>
@@ -384,7 +425,7 @@ export default function LandingClient({ user }) {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {features.map((feat, idx) => (
               <Reveal key={idx} delay={idx * 60}>
                 <Card variant="interactive" className="h-full">
@@ -491,7 +532,7 @@ export default function LandingClient({ user }) {
       {/* =====================================================================
           6. ACCESSIBLE FAQ ACCORDION
           ===================================================================== */}
-      <section id="faq" className="py-20 sm:py-28 bg-slate-100/60 dark:bg-slate-900/40 border-t border-slate-200/80 dark:border-slate-800">
+      <section id="faq" className="scroll-mt-20 py-20 sm:py-28 bg-slate-100/60 dark:bg-slate-900/40 border-t border-slate-200/80 dark:border-slate-800">
         <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <Badge variant="brand" className="mb-3">Answers & Clarity</Badge>

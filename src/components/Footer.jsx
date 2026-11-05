@@ -40,7 +40,16 @@ export default function Footer() {
           </div>
 
           {/* Quick links */}
-          <div className="flex items-center gap-6 text-xs font-semibold text-slate-600 dark:text-slate-400">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs font-semibold text-slate-600 dark:text-slate-400">
+            <Link href="/#how-it-works" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+              How It Works
+            </Link>
+            <Link href="/#features" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+              Features
+            </Link>
+            <Link href="/#faq" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+              FAQ
+            </Link>
             <Link href="/login" className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
               Sign In
             </Link>
