@@ -18,7 +18,6 @@ const UserSchema = new mongoose.Schema(
         /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
         "Please provide a valid email address",
       ],
-      index: true,
     },
     password: {
       type: String,
@@ -105,8 +104,6 @@ const UserSchema = new mongoose.Schema(
 );
 
 // Indexes for query optimization
-UserSchema.index({ email: 1 });
-UserSchema.index({ registrationNumber: 1 }, { sparse: true, unique: true });
 UserSchema.index({ role: 1, isActive: 1 });
 
 // Prevent model recompilation error during Next.js hot-reload

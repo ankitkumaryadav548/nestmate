@@ -30,7 +30,6 @@ const SelectionWindowSchema = new mongoose.Schema(
     isActive: {
       type: Boolean,
       default: true,
-      index: true,
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,

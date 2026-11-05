@@ -192,6 +192,7 @@ export default function StudentGroupPage() {
         setSelectedRequestId(null);
         setReviewData(null);
         await fetchGroupData();
+        fetchIncomingRequests();
       }
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to approve join request", "error");
@@ -226,6 +227,7 @@ export default function StudentGroupPage() {
       if (res.data?.success) {
         showToast(`Formed a ${userRoomSize || ""}-bed roommate group!`, "success");
         await fetchGroupData();
+        fetchIncomingRequests();
       }
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to create group", "error");
@@ -270,6 +272,7 @@ export default function StudentGroupPage() {
       if (res.data?.success) {
         showToast("You have left the roommate group", "info");
         await fetchGroupData();
+        fetchIncomingRequests();
       }
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to leave group", "error");
@@ -297,6 +300,7 @@ export default function StudentGroupPage() {
       if (res.data?.success) {
         showToast("Group disbanded", "info");
         await fetchGroupData();
+        fetchIncomingRequests();
       }
     } catch (err) {
       showToast(err.response?.data?.message || "Failed to disband group", "error");

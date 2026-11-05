@@ -148,9 +148,6 @@ const PreferenceSchema = new mongoose.Schema(
   }
 );
 
-PreferenceSchema.index({ student: 1 }, { unique: true });
-PreferenceSchema.index({ completedAt: 1 });
-
 const Preference =
   mongoose.models.Preference ||
   mongoose.model("Preference", PreferenceSchema);

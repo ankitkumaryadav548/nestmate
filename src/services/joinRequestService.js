@@ -443,12 +443,6 @@ export async function getOpenGroup(userId, groupId) {
 
   // Evaluate fit
   const fit = evaluateJoinFit(viewerCandidateObj, groupMembers, settings.weights);
-  if (!fit.allowed) {
-    const error = new Error(JOIN_ERROR_CODES.NOT_COMPATIBLE.message);
-    error.statusCode = 409;
-    error.code = JOIN_ERROR_CODES.NOT_COMPATIBLE.code;
-    throw error;
-  }
 
   // Room check
   let roomInfo = null;
@@ -459,10 +453,6 @@ export async function getOpenGroup(userId, groupId) {
     const rCheck = canJoinRoomedGroup(viewerCandidateObj, roomDoc, hostelDoc);
     if (!rCheck.ok) {
       roomedCheck = false;
-      const error = new Error(JOIN_ERROR_CODES.NOT_COMPATIBLE.message);
-      error.statusCode = 409;
-      error.code = JOIN_ERROR_CODES.NOT_COMPATIBLE.code;
-      throw error;
     }
     roomInfo = {
       hostelName: hostelDoc?.name || "Hostel",

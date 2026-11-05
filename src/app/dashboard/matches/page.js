@@ -205,11 +205,13 @@ export default function StudentMatchesPage() {
       if (res.data?.success) {
         setSelectedGroup(res.data.data);
       } else {
-        setSelectedGroup({ ...groupItem, id: targetGroupId, groupId: targetGroupId });
+        showToast(res.data?.message || "Failed to load group details", "error");
+        setIsGroupModalOpen(false);
       }
     } catch (err) {
       console.error("Failed to load group details:", err);
-      setSelectedGroup({ ...groupItem, id: targetGroupId, groupId: targetGroupId });
+      showToast(err.response?.data?.message || err.message || "Failed to load group details", "error");
+      setIsGroupModalOpen(false);
     } finally {
       setGroupModalLoading(false);
     }
@@ -908,7 +910,7 @@ export default function StudentMatchesPage() {
                     </Button>
                   )}
 
-                  {!selCanInvite && selIsCandidateInMultiGroup && selGroupInfo?.groupId && (
+                  {!selCanInvite && selInMultiGroup && selGroupInfo?.groupId && (
                     <Button
                       variant="primary"
                       size="sm"
@@ -984,11 +986,11 @@ export default function StudentMatchesPage() {
                     </span>
                     <div className="flex items-center gap-4 text-slate-600 dark:text-slate-400">
                       <div>
-                        Current Average: <strong className="text-slate-900 dark:text-slate-100">{selectedGroup.impact.beforeScore}%</strong>
+                        Current Average: <strong className="text-slate-900 dark:text-slate-100">{selectedGroup.impact.before?.average ?? selectedGroup.impact.beforeScore ?? 0}%</strong>
                       </div>
                       <div>&rarr;</div>
                       <div>
-                        Projected After Join: <strong className="text-teal-600 dark:text-teal-400">{selectedGroup.impact.afterScore}%</strong>
+                        Projected After Join: <strong className="text-teal-600 dark:text-teal-400">{selectedGroup.impact.after?.average ?? selectedGroup.impact.afterScore ?? 0}%</strong>
                       </div>
                     </div>
                   </div>
@@ -1000,30 +1002,33 @@ export default function StudentMatchesPage() {
                     Current Roommates
                   </h4>
                   <div className="space-y-2">
-                    {selectedGroup.members?.map((m, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 text-xs"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <Avatar name={m.name} size="sm" />
-                          <div>
-                            <span className="font-bold text-slate-900 dark:text-slate-100">
-                              {m.name} {m.isLeader && "👑 (Leader)"}
-                            </span>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                              {[m.course, m.year ? `Year ${m.year}` : null].filter(Boolean).join(" • ")}
-                            </p>
+                    {selectedGroup.members?.map((m, idx) => {
+                      const mScore = selectedGroup.perMemberScores?.find((p) => p.memberName === m.name)?.score ?? m.scoreWithUser;
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800 text-xs"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Avatar name={m.name} size="sm" />
+                            <div>
+                              <span className="font-bold text-slate-900 dark:text-slate-100">
+                                {m.name} {m.isLeader && "👑 (Leader)"}
+                              </span>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                                {[m.course, m.year ? `Year ${m.year}` : null].filter(Boolean).join(" • ")}
+                              </p>
+                            </div>
                           </div>
-                        </div>
 
-                        {m.scoreWithUser !== undefined && (
-                          <Badge variant={getScoreTone(m.scoreWithUser)} size="sm">
-                            {m.scoreWithUser}% Match
-                          </Badge>
-                        )}
-                      </div>
-                    ))}
+                          {mScore !== undefined && (
+                            <Badge variant={getScoreTone(mScore)} size="sm">
+                              {mScore}% Match
+                            </Badge>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 

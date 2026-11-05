@@ -76,9 +76,6 @@ const StudentProfileSchema = new mongoose.Schema(
   }
 );
 
-StudentProfileSchema.index({ user: 1 }, { unique: true });
-StudentProfileSchema.index({ isInternational: 1 });
-
 const StudentProfile =
   mongoose.models.StudentProfile ||
   mongoose.model("StudentProfile", StudentProfileSchema);
