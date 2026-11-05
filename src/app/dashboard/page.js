@@ -153,16 +153,23 @@ export default function StudentDashboard() {
           <Reveal direction="down">
             <Alert
               variant="success"
-              title={`Room Allocation Published: Room #${allocation.room?.roomNumber} (${allocation.hostel?.name})`}
+              title={`Room Allocation Active: Room #${allocation.room?.roomNumber} (${allocation.hostel?.name})`}
               action={
-                <Link href="/dashboard/room">
-                  <Button variant="success" size="sm">
-                    View My Room &rarr;
-                  </Button>
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link href="/dashboard/roommates">
+                    <Button variant="outline" size="sm">
+                      My Roommates &rarr;
+                    </Button>
+                  </Link>
+                  <Link href="/dashboard/room">
+                    <Button variant="success" size="sm">
+                      View My Room &rarr;
+                    </Button>
+                  </Link>
+                </div>
               }
             >
-              Your hostel room has been officially allocated. View room specifications and connect with your assigned roommates.
+              Your hostel room has been officially allocated. View room specifications, bed assignments, and connect with your assigned roommates.
             </Alert>
           </Reveal>
         )}

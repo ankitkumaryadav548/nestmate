@@ -3,6 +3,7 @@ import connectDB from "@/lib/db";
 import { requireRole } from "@/middleware-helpers/authGuard";
 import { failure } from "@/lib/apiResponse";
 import AllocationAssignment from "@/models/AllocationAssignment";
+import Allocation from "@/models/Allocation";
 import User from "@/models/User";
 
 /**
@@ -65,10 +66,19 @@ export async function GET(request, { params }) {
     const userMap = new Map();
     users.forEach((u) => userMap.set(String(u._id), u));
 
+    // Active allocations for bed assignments lookup
+    const activeAllocations = await Allocation.find({
+      run: id,
+      status: "active",
+    }).select("student bedNumber").lean();
+    const bedMap = new Map();
+    activeAllocations.forEach((al) => bedMap.set(String(al.student), al.bedNumber));
+
     // CSV Header row
     const headers = [
       "Hostel",
       "Room",
+      "Bed",
       "Floor",
       "Room Type",
       "Member Name",
@@ -90,9 +100,11 @@ export async function GET(request, { params }) {
 
       for (const mId of a.members || []) {
         const u = userMap.get(String(mId)) || {};
+        const bedVal = bedMap.get(String(mId));
         const row = [
           sanitizeCsvCell(hostelName),
           sanitizeCsvCell(roomNum),
+          sanitizeCsvCell(bedVal !== undefined && bedVal !== null ? bedVal : "N/A"),
           sanitizeCsvCell(floor),
           sanitizeCsvCell(roomType),
           sanitizeCsvCell(u.name || "Unknown"),

@@ -36,7 +36,10 @@
     "test:joinrequest-flow": "node scripts/test-joinrequest-flow.js",
     "notify:test": "node scripts/notify-test.js",
     "test:notify-flow": "node scripts/test-notify-flow.js",
-    "test:window-notify": "node scripts/test-window-notify.js"
+    "test:window-notify": "node scripts/test-window-notify.js",
+    "backfill:beds": "node scripts/backfill-beds.js",
+    "test:beds": "node --test src/services/beds/bedRules.test.js",
+    "test:beds-flow": "node scripts/test-beds-flow.js"
   },
   "dependencies": {
     "axios": "^1.20.0",

@@ -293,6 +293,17 @@ export function buildNotification(type, params = {}) {
       break;
     }
 
+    case "bed_assigned": {
+      const bedNumber = p.bedNumber != null ? p.bedNumber : "assigned";
+      const roomNumber = safeStr(p.roomNumber, "your room");
+      const hostelName = safeStr(p.hostelName, "your hostel");
+      rawTitle = "Bed Assigned";
+      rawMessage = `You were given bed ${bedNumber} in room ${roomNumber}, hostel ${hostelName}.`;
+      defaultLink = "/dashboard/roommates";
+      severity = "info";
+      break;
+    }
+
     // ==========================================
     // 4. ANNOUNCEMENTS
     // ==========================================

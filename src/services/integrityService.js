@@ -187,6 +187,43 @@ export async function checkIntegrity() {
     }
   }
 
+  // 4. Bed assignment integrity: duplicate bed numbers in a room & bedNumber exceeds capacity
+  const roomCapacityMap = new Map(rooms.map((r) => [String(r._id), { capacity: r.capacity, roomNumber: r.roomNumber }]));
+  const roomBedsSeen = new Map();
+
+  for (const a of activeAllocations) {
+    if (typeof a.bedNumber === "number") {
+      const rId = String(a.room);
+      const roomInfo = roomCapacityMap.get(rId) || { capacity: Infinity, roomNumber: "Unknown" };
+
+      // Check if bedNumber exceeds capacity or is < 1
+      if (a.bedNumber < 1 || a.bedNumber > roomInfo.capacity) {
+        problems.push({
+          code: "bed_number_exceeds_capacity",
+          severity: "critical",
+          message: `Allocation "${a._id}" in room "${roomInfo.roomNumber}" has bedNumber ${a.bedNumber}, which exceeds room capacity ${roomInfo.capacity}.`,
+          entityId: String(a._id),
+        });
+      }
+
+      // Check duplicate bed numbers in a room
+      if (!roomBedsSeen.has(rId)) {
+        roomBedsSeen.set(rId, new Set());
+      }
+      const seen = roomBedsSeen.get(rId);
+      if (seen.has(a.bedNumber)) {
+        problems.push({
+          code: "duplicate_bed_number_in_room",
+          severity: "critical",
+          message: `Room "${roomInfo.roomNumber}" has duplicate active allocation for bed ${a.bedNumber}.`,
+          entityId: rId,
+        });
+      } else {
+        seen.add(a.bedNumber);
+      }
+    }
+  }
+
   // 4. Locked group without active allocations
   const lockedGroupIds = new Set(lockedGroups.map((g) => String(g._id)));
   for (const gId of lockedGroupIds) {

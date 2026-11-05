@@ -20,6 +20,7 @@ import {
   Reveal,
   IconBed,
   IconBuilding,
+  IconUsers,
   IconShield,
   IconCheck,
 } from "@/components/ui";
@@ -199,6 +200,30 @@ export default function MyRoomPage() {
                   )}
                 </div>
               </div>
+            </div>
+          </Reveal>
+
+          {/* Bed Assignment & Roommates Portal Banner */}
+          <Reveal direction="up" delay={80}>
+            <div className="rounded-2xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/70 dark:bg-indigo-950/30 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-indigo-600 text-white shadow-md">
+                  <IconUsers className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    Bed Layout &amp; Assignments
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Group leaders can assign beds. View which bed each roommate occupies.
+                  </p>
+                </div>
+              </div>
+              <Link href="/dashboard/roommates">
+                <Button variant="primary" size="sm">
+                  Open Bed Assignments &rarr;
+                </Button>
+              </Link>
             </div>
           </Reveal>
 

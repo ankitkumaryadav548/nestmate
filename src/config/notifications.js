@@ -162,6 +162,12 @@ export const NOTIFICATION_TYPES = {
       severity: "info",
       category: "allocation",
     },
+    bed_assigned: {
+      label: "Bed Assigned",
+      icon: "bed",
+      severity: "info",
+      category: "allocation",
+    },
   },
   announcements: {
     announcement: {
@@ -243,6 +249,7 @@ export const NOTIFICATION_TYPE_KEYS = [
   "room_selected",
   "room_released",
   "room_auto_filled",
+  "bed_assigned",
   // Announcements
   "announcement",
   // Reserved (not sent yet)
@@ -278,6 +285,7 @@ export const ACTIVE_NOTIFICATION_TYPES = [
   "room_selected",
   "room_released",
   "room_auto_filled",
+  "bed_assigned",
   "announcement",
 ];
 

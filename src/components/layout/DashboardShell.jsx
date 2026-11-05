@@ -110,6 +110,7 @@ export default function DashboardShell({ children }) {
       items: [
         { href: "/dashboard", label: "Overview", icon: <IconDashboard /> },
         { href: "/dashboard/room", label: "My Room", icon: <IconBed /> },
+        { href: "/dashboard/roommates", label: "My Roommates", icon: <IconUsers /> },
         { href: "/dashboard/rooms", label: "Choose Room", icon: <IconKey /> },
         { href: "/dashboard/hostels", label: "Hostels", icon: <IconBuilding /> },
       ],

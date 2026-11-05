@@ -369,16 +369,21 @@ export async function publishRun(adminId, runId, { confirmText }) {
       }
 
       // 3. CREATE OFFICIAL ALLOCATION RECORDS
-      const allocationDocsToInsert = plan.allocationRecords.map((rec) => ({
-        student: rec.student,
-        room: rec.room,
-        hostel: rec.hostel,
-        group: groupMappingByUnit.get(rec.unitId),
-        run: runId,
-        status: "active",
-        allocatedAt: new Date(),
-        isDemo: rec.isDemo,
-      }));
+      const roomCapacityMap = new Map(liveRooms.map((r) => [String(r._id), r.capacity]));
+      const allocationDocsToInsert = plan.allocationRecords.map((rec) => {
+        const capacity = roomCapacityMap.get(String(rec.room));
+        return {
+          student: rec.student,
+          room: rec.room,
+          hostel: rec.hostel,
+          group: groupMappingByUnit.get(rec.unitId),
+          run: runId,
+          bedNumber: capacity === 1 ? 1 : null,
+          status: "active",
+          allocatedAt: new Date(),
+          isDemo: rec.isDemo,
+        };
+      });
 
       const createdAllocations = await Allocation.insertMany(allocationDocsToInsert, { session });
       const allocationIds = createdAllocations.map((a) => a._id);

@@ -557,6 +557,7 @@ export async function selectRoom(userId, roomId) {
         run: null,
         source: ROOM_SOURCES.SELECTION,
         status: "active",
+        bedNumber: room.capacity === 1 ? 1 : null,
         allocatedAt: new Date(),
         isDemo: m.isDemo,
       }));
@@ -832,6 +833,7 @@ export async function joinRoomedGroup(groupId, studentId, options = {}) {
     run: null,
     source,
     status: "active",
+    bedNumber: room.capacity === 1 ? 1 : null,
     allocatedAt: new Date(),
     isDemo: Boolean(student?.isDemo),
   });

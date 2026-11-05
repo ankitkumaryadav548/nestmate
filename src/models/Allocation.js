@@ -47,6 +47,10 @@ const AllocationSchema = new mongoose.Schema(
       default: ROOM_SOURCES.ALLOCATION_RUN,
       index: true,
     },
+    bedNumber: {
+      type: Number,
+      default: null,
+    },
     status: {
       type: String,
       enum: ALLOCATION_STATUSES,
@@ -87,5 +91,14 @@ AllocationSchema.index(
 
 // Compound index for room occupancy queries
 AllocationSchema.index({ room: 1, status: 1 });
+
+// Partial unique index to ensure two active members of one room never share a bed
+AllocationSchema.index(
+  { room: 1, bedNumber: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: "active", bedNumber: { $type: "number" } },
+  }
+);
 
 export default mongoose.models.Allocation || mongoose.model("Allocation", AllocationSchema);

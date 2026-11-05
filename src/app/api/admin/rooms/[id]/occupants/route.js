@@ -39,6 +39,7 @@ export async function GET(request, { params }) {
     const occupants = allocations.map((a) => ({
       allocationId: a._id,
       allocatedAt: a.allocatedAt,
+      bedNumber: a.bedNumber ?? null,
       student: a.student,
       group: a.group,
       isDemo: a.isDemo,

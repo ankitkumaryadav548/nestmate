@@ -573,9 +573,16 @@ export default function HostelDetailPage() {
                   <div className="flex items-start gap-3">
                     <Avatar name={s.name} size="sm" />
                     <div>
-                      <span className="font-bold text-slate-900 dark:text-slate-100 block">
-                        {s.name}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900 dark:text-slate-100 block">
+                          {s.name}
+                        </span>
+                        {occ.bedNumber ? (
+                          <Badge variant="neutral" size="sm">
+                            Bed {occ.bedNumber}
+                          </Badge>
+                        ) : null}
+                      </div>
                       <span className="text-slate-500 dark:text-slate-400 block font-mono text-[11px]">
                         {s.registrationNumber || "No Reg"} • Year {s.year} • {s.course}
                       </span>

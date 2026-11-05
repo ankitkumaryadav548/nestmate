@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import axios from "@/lib/axios";
 import { useToast } from "@/context/ToastContext";
 import useDocumentTitle from "@/hooks/useDocumentTitle";
@@ -30,6 +31,7 @@ import { LIST_POLL_SECONDS } from "@/config/selection";
 
 export default function StudentRoomsPage() {
   useDocumentTitle("Choose Room");
+  const router = useRouter();
   const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [stateData, setStateData] = useState(null);
@@ -177,8 +179,11 @@ export default function StudentRoomsPage() {
       const res = await axios.post("/api/selection/select", { roomId: room.id });
       if (res.data?.success) {
         showToast(`Success! Room #${room.roomNumber} has been reserved for your group.`, "success");
-        await fetchState();
-        await fetchRooms(false);
+        if (room.capacity === 1) {
+          router.push("/dashboard/room");
+        } else {
+          router.push("/dashboard/roommates");
+        }
       }
     } catch (err) {
       console.error("Select room failed:", err);
