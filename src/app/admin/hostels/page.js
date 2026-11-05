@@ -197,7 +197,7 @@ export default function AdminHostelsPage() {
             description={
               hasActiveFilters
                 ? "No hostels match your current search or filter criteria."
-                : "Get started by adding your first residential hostel block."
+                : "Get started by adding your first residential hostel."
             }
             action={
               <Link href="/admin/hostels/new">

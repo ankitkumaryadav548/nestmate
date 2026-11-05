@@ -294,7 +294,7 @@ export default function StudentHostelsPage() {
                           </div>
                         ) : typeSummary.length === 0 ? (
                           <div className="rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-4 text-xs text-amber-800 dark:text-amber-300">
-                            No vacant beds are currently available in this hostel block.
+                            No vacant beds are currently available in this hostel.
                           </div>
                         ) : (
                           <>

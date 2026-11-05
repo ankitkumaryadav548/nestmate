@@ -385,7 +385,7 @@ export default function DesignSystemClient() {
             </h2>
             <div className="space-y-3">
               <Alert type="success" title="Allocation Published" message="The final room allocation plan has been published to student portals." />
-              <Alert type="error" title="Cross-Gender Claim Blocked" message="Boys group cannot claim a room inside a female hostel block." />
+              <Alert type="error" title="Cross-Gender Claim Blocked" message="Boys group cannot claim a room inside a female hostel." />
               <Alert type="warning" title="Selection Window Ending" message="The live room selection window closes in 15 minutes." />
               <Alert type="info" title="Questionnaire Required" message="Complete your lifestyle questionnaire to activate roommate matching." />
             </div>

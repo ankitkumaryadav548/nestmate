@@ -261,7 +261,7 @@ All routes require authentication via `hm_token` cookie. Requests are validated 
 | **PATCH**| `/api/admin/students/[id]` | Admin | Toggles student account `isActive` (never role or password) |
 | **GET** | `/api/admin/stats` | Admin | System totals (hostels, rooms, beds, completed preferences, international students) |
 | **GET** | `/api/hostels` | All Auth | Filtered hostels with pre-computed room & bed stats (students only see eligible hostels) |
-| **POST** | `/api/hostels` | Admin | Creates a new hostel block |
+| **POST** | `/api/hostels` | Admin | Creates a new hostel |
 | **GET** | `/api/hostels/[id]` | All Auth | Retrieves hostel details with stats |
 | **PUT** | `/api/hostels/[id]` | Admin | Updates hostel attributes (gender locked if occupied) |
 | **DELETE**| `/api/hostels/[id]` | Admin | Deletes hostel and its rooms (refuses if occupancy > 0) |

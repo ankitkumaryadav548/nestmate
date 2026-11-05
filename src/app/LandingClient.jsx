@@ -479,7 +479,7 @@ export default function LandingClient({ user }) {
                   </li>
                   <li className="flex items-start gap-3">
                     <IconCheck className="h-5 w-5 text-purple-600 shrink-0 mt-0.5" />
-                    <span><strong>Targeted Announcements:</strong> Broadcast notices to specific hostel blocks, academic years, or roles.</span>
+                    <span><strong>Targeted Announcements:</strong> Broadcast notices to specific hostels, academic years, or roles.</span>
                   </li>
                 </ul>
               </div>

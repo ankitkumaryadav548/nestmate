@@ -92,7 +92,7 @@ const SAMPLE_FACILITIES = [
 const BOYS_HOSTELS = Array.from({ length: 10 }, (_, i) => {
   const num = i + 1;
   return {
-    name: `Boys Hostel Block ${num}`,
+    name: `Boys Hostel ${num}`,
     code: `BH${num}`,
     gender: "boys",
     location: `North Campus Sector ${num}`,
@@ -108,7 +108,7 @@ const BOYS_HOSTELS = Array.from({ length: 10 }, (_, i) => {
 const GIRLS_HOSTELS = Array.from({ length: 7 }, (_, i) => {
   const num = i + 1;
   return {
-    name: `Girls Hostel Block ${num}`,
+    name: `Girls Hostel ${num}`,
     code: `GH${num}`,
     gender: "girls",
     location: `South Campus Sector ${num}`,

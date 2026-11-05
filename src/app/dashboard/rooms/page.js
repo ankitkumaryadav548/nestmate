@@ -387,7 +387,7 @@ export default function StudentRoomsPage() {
           <Card variant="default" className="p-4 sm:p-5">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Select
-                label="Hostel Block"
+                label="Hostel"
                 value={selectedHostel}
                 onChange={(e) => {
                   setSelectedHostel(e.target.value);

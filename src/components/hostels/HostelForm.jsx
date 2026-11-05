@@ -135,7 +135,7 @@ export default function HostelForm({ initialData = null, onSubmit, loading = fal
         <Input
           label="Hostel Name"
           name="name"
-          placeholder="e.g. Boys Hostel Block A"
+          placeholder="e.g. Boys Hostel A"
           value={formData.name}
           onChange={handleChange}
           error={fieldErrors.name}

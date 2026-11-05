@@ -604,7 +604,7 @@ export default function StudentGroupPage() {
         {group.status === "complete" && (
           <Reveal direction="up" delay={50}>
             <Alert variant="success" title="Your Group is Complete!">
-              All {group.targetSize} seats have been filled with compatible roommates. Your group is ready for hostel block allocation.
+              All {group.targetSize} seats have been filled with compatible roommates. Your group is ready for hostel allocation.
             </Alert>
           </Reveal>
         )}
