@@ -231,7 +231,7 @@ export default function RegisterPage() {
                     type="password"
                     required
                     autoComplete="new-password"
-                    placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                    placeholder="••••••••"
                     value={formData.password}
                     onChange={handleChange}
                     error={fieldErrors.password}
@@ -265,7 +265,7 @@ export default function RegisterPage() {
                   type="password"
                   required
                   autoComplete="new-password"
-                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                  placeholder="••••••••"
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   error={fieldErrors.confirmPassword}

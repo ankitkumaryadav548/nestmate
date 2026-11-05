@@ -496,7 +496,7 @@ export default function AdminMatchingPage() {
                       }`}
                     >
                       <span className="truncate text-slate-800 dark:text-slate-200">{s.name}</span>
-                      <span className="text-[11px] text-slate-500 uppercase">{s.gender} â€¢ Yr {s.year}</span>
+                      <span className="text-[11px] text-slate-500 uppercase">{s.gender} • Yr {s.year}</span>
                     </button>
                   ))}
                 </div>
@@ -528,7 +528,7 @@ export default function AdminMatchingPage() {
                       }`}
                     >
                       <span className="truncate text-slate-800 dark:text-slate-200">{s.name}</span>
-                      <span className="text-[11px] text-slate-500 uppercase">{s.gender} â€¢ Yr {s.year}</span>
+                      <span className="text-[11px] text-slate-500 uppercase">{s.gender} • Yr {s.year}</span>
                     </button>
                   ))}
                 </div>
@@ -593,7 +593,7 @@ export default function AdminMatchingPage() {
                 {/* Room Size Mismatch Note */}
                 {pairResult.note && (
                   <div className="rounded-xl border border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3.5 text-amber-900 dark:text-amber-300 text-xs font-medium flex items-center gap-2">
-                    <span>âš ï¸</span>
+                    <span>Warning:
                     <span>{pairResult.note}</span>
                   </div>
                 )}
@@ -654,7 +654,7 @@ export default function AdminMatchingPage() {
                     </h4>
                     {pairResult.reasons.map((r, i) => (
                       <p key={i} className="text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                        <span className="text-teal-600 font-bold">âœ“</span> {r}
+                        <span className="text-teal-600 font-bold"></span> {r}
                       </p>
                     ))}
                   </div>
@@ -667,7 +667,7 @@ export default function AdminMatchingPage() {
                     </h4>
                     {pairResult.warnings.map((w, i) => (
                       <p key={i} className="text-xs text-amber-900 dark:text-amber-300 flex items-center gap-2">
-                        <span>âš ï¸</span> {w}
+                        <span>Warning: {w}
                       </p>
                     ))}
                   </div>
@@ -708,7 +708,7 @@ export default function AdminMatchingPage() {
                       className="w-full text-left px-3 py-1.5 text-xs hover:bg-indigo-50 dark:hover:bg-indigo-950/40 flex items-center justify-between text-slate-800 dark:text-slate-200"
                     >
                       <span className="truncate">{s.name}</span>
-                      <span className="text-[11px] text-slate-500">{s.gender} â€¢ Yr {s.year}</span>
+                      <span className="text-[11px] text-slate-500">{s.gender} • Yr {s.year}</span>
                     </button>
                   ))}
                 </div>
@@ -746,7 +746,7 @@ export default function AdminMatchingPage() {
                             {m.student?.name}
                           </span>
                           <span className="text-[11px] text-slate-500 dark:text-slate-400 font-mono block">
-                            {m.student?.registrationNumber} â€¢ Year {m.student?.year}
+                            {m.student?.registrationNumber} • Year {m.student?.year}
                           </span>
                         </div>
                       </div>

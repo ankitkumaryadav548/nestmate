@@ -245,7 +245,7 @@ export default function NotificationBell({ userRole = "student" }) {
             ) : previewList.length === 0 ? (
               <div className="py-10 text-center px-4">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 text-xl mb-2">
-                  ðŸ””
+                  ”
                 </div>
                 <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No notifications yet</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">

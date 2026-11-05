@@ -182,7 +182,7 @@ export default function StudentInvitationsPage() {
             <div className="flex items-center gap-2.5 flex-wrap">
               <Link href="/dashboard/matches">
                 <Button variant="secondary" size="sm">
-                  ðŸ” Browse Matches
+                   Browse Matches
                 </Button>
               </Link>
               <Link href="/dashboard/group">
@@ -228,7 +228,7 @@ export default function StudentInvitationsPage() {
                   />
                 ) : pending.length === 0 ? (
                   <EmptyState
-                    icon="âœ‰ï¸"
+                    icon=""
                     title="No Pending Invitations"
                     description="You have no incoming invitations right now. Explore roommate matches to find compatible students or request to join an open group."
                     action={
@@ -255,7 +255,7 @@ export default function StudentInvitationsPage() {
                                     Invitation from {inv.leaderName}
                                   </h3>
                                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                                    {inv.targetSize}-Bed Room Group â€¢ Leader: {inv.leaderCourse || "Student"} {inv.leaderYear ? `â€¢ Year ${inv.leaderYear}` : ""}
+                                    {inv.targetSize}-Bed Room Group • Leader: {inv.leaderCourse || "Student"} {inv.leaderYear ? `• Year ${inv.leaderYear}` : ""}
                                   </p>
                                 </div>
                               </div>

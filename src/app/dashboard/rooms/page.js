@@ -334,7 +334,7 @@ export default function StudentRoomsPage() {
                 ) : undefined
               }
             >
-              Floor {currentClaim.room?.floor} â€¢ {currentClaim.room?.roomType} â€¢ {currentClaim.room?.capacity} Beds
+              Floor {currentClaim.room?.floor} • {currentClaim.room?.roomType} • {currentClaim.room?.capacity} Beds
               {currentClaim.openSeats > 0 && (
                 <span className="font-semibold text-teal-800 dark:text-teal-300 ml-2">
                   ({currentClaim.openSeats} seat{currentClaim.openSeats > 1 ? "s" : ""} remaining for your group)
@@ -483,7 +483,7 @@ export default function StudentRoomsPage() {
                                 #{room.roomNumber}
                               </span>
                               <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 mt-0.5">
-                                {room.hostelName} ({room.hostelCode}) â€¢ Floor {room.floor}
+                                {room.hostelName} ({room.hostelCode}) • Floor {room.floor}
                               </p>
                             </div>
 
@@ -534,7 +534,7 @@ export default function StudentRoomsPage() {
 
                           {isClaimedByMe ? (
                             <Badge variant="success" size="sm">
-                              âœ“ Your Selected Room
+                               ✓ Your Selected Room
                             </Badge>
                           ) : (
                             <Button

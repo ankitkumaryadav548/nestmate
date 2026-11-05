@@ -215,7 +215,7 @@ export default function HostelDetailPage() {
             </Badge>
           </div>
         }
-        description={`${hostel?.location || "Campus Residential Block"} â€¢ ${hostel?.totalFloors} habitable floors â€¢ Gender: ${hostel?.gender}`}
+        description={`${hostel?.location || "Campus Residential Block"} • ${hostel?.totalFloors} habitable floors • Gender: ${hostel?.gender}`}
         breadcrumbs={[
           { href: "/admin/hostels", label: "Hostels" },
           { label: hostel?.code || "Details" },
@@ -548,7 +548,7 @@ export default function HostelDetailPage() {
         isOpen={Boolean(occupantsModalRoom)}
         onClose={() => setOccupantsModalRoom(null)}
         title={`Room #${occupantsModalRoom?.roomNumber} Occupants`}
-        description={`${occupantsModalRoom?.roomType} room â€¢ Floor ${occupantsModalRoom?.floor} â€¢ ${occupantsModalRoom?.currentOccupancy} of ${occupantsModalRoom?.capacity} beds occupied`}
+        description={`${occupantsModalRoom?.roomType} room • Floor ${occupantsModalRoom?.floor} • ${occupantsModalRoom?.currentOccupancy} of ${occupantsModalRoom?.capacity} beds occupied`}
         maxWidth="max-w-lg"
       >
         {loadingOccupants ? (
@@ -577,10 +577,10 @@ export default function HostelDetailPage() {
                         {s.name}
                       </span>
                       <span className="text-slate-500 dark:text-slate-400 block font-mono text-[11px]">
-                        {s.registrationNumber || "No Reg"} â€¢ Year {s.year} â€¢ {s.course}
+                        {s.registrationNumber || "No Reg"} • Year {s.year} • {s.course}
                       </span>
                       <span className="text-slate-400 dark:text-slate-500 block text-[11px] mt-0.5">
-                        {s.email} {s.phone ? `â€¢ ${s.phone}` : ""}
+                        {s.email} {s.phone ? `• ${s.phone}` : ""}
                       </span>
                     </div>
                   </div>

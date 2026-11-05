@@ -188,7 +188,7 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
             )}
           </div>
         }
-        description={`Created on ${new Date(group.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} â€¢ Target Size: ${group.targetSize}-Bed â€¢ Gender: ${group.gender}`}
+        description={`Created on ${new Date(group.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })} • Target Size: ${group.targetSize}-Bed • Gender: ${group.gender}`}
         breadcrumbs={[
           { href: "/admin/groups", label: "Groups" },
           { label: `#${group._id.slice(-6).toUpperCase()}` },
@@ -211,7 +211,7 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
       {/* Locked Notice */}
       {isLocked && (
         <div className="mb-6 rounded-2xl border border-purple-200 dark:border-purple-900/50 bg-purple-50 dark:bg-purple-950/30 p-4 text-purple-900 dark:text-purple-300 flex items-start gap-3">
-          <span className="text-xl">ðŸ”’</span>
+          <span className="text-xl">’</span>
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-purple-950 dark:text-purple-200">
               Group is Locked
@@ -226,7 +226,7 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
       {/* Disbanded Notice */}
       {isDisbanded && (
         <div className="mb-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 p-4 text-slate-800 dark:text-slate-300 flex items-start gap-3">
-          <span className="text-xl">âš ï¸</span>
+          <span className="text-xl">Warning:
           <div>
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-200">
               Group Disbanded
@@ -242,7 +242,7 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
       {group.selectedRoom && (
         <Card className="mb-6 p-5 border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/40 dark:bg-indigo-950/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">
-            <span className="text-2xl">ðŸ”‘</span>
+            <span className="text-2xl">‘</span>
             <div>
               <div className="flex items-center gap-2">
                 <Badge variant="brand" size="xs">
@@ -337,10 +337,10 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
                         )}
                       </div>
                       <p className="text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
-                        {u.registrationNumber || "No Reg"} â€¢ {u.email}
+                        {u.registrationNumber || "No Reg"} • {u.email}
                       </p>
                       <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-                        {u.course || "No Course"} â€¢ {u.department || "General"} {u.year ? `â€¢ Year ${u.year}` : ""}
+                        {u.course || "No Course"} • {u.department || "General"} {u.year ? `• Year ${u.year}` : ""}
                       </p>
                       <span className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 block">
                         Joined: {new Date(m.joinedAt).toLocaleDateString()}
@@ -401,7 +401,7 @@ export default function AdminGroupDetailPage({ params: paramsPromise }) {
                         {req.student?.name || "Candidate"}
                       </span>
                       <span className="text-[11px] text-slate-400 font-mono block">
-                        Status: {req.status} â€¢ Sent: {new Date(req.createdAt).toLocaleDateString()}
+                        Status: {req.status} • Sent: {new Date(req.createdAt).toLocaleDateString()}
                       </span>
                     </div>
 

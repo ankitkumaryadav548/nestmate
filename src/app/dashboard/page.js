@@ -235,7 +235,7 @@ export default function StudentDashboard() {
                             : "bg-white/10 text-white/60"
                         }`}
                       >
-                        {isDone ? "âœ“" : idx + 1}
+                        {isDone ? "" : idx + 1}
                       </span>
                       <span className="text-xs font-semibold truncate group-hover:underline">
                         {s.title}
@@ -277,7 +277,7 @@ export default function StudentDashboard() {
                 <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
                   <div className="flex items-center gap-2.5">
                     <span className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                      {status.profileCompleted ? "âœ…" : "â³"}
+                      {status.profileCompleted ? "" : "â³"}
                     </span>
                     <span className="font-semibold text-slate-800 dark:text-slate-200">Student Profile</span>
                   </div>
@@ -289,7 +289,7 @@ export default function StudentDashboard() {
                 <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-slate-800">
                   <div className="flex items-center gap-2.5">
                     <span className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                      {status.preferencesCompleted ? "âœ…" : "â³"}
+                      {status.preferencesCompleted ? "" : "â³"}
                     </span>
                     <span className="font-semibold text-slate-800 dark:text-slate-200">Lifestyle Questionnaire</span>
                   </div>
@@ -324,7 +324,7 @@ export default function StudentDashboard() {
                         Full Name
                       </dt>
                       <dd className="text-slate-900 dark:text-slate-100 font-semibold mt-0.5">
-                        {user?.name || "â€”"}
+                        {user?.name || "-"}
                       </dd>
                     </div>
                     <div>
@@ -332,7 +332,7 @@ export default function StudentDashboard() {
                         Institutional Email
                       </dt>
                       <dd className="text-slate-900 dark:text-slate-100 font-semibold mt-0.5 break-all">
-                        {user?.email || "â€”"}
+                        {user?.email || "-"}
                       </dd>
                     </div>
                     <div>
@@ -340,7 +340,7 @@ export default function StudentDashboard() {
                         Gender
                       </dt>
                       <dd className="text-slate-900 dark:text-slate-100 font-semibold capitalize mt-0.5">
-                        {user?.gender || "â€”"}
+                        {user?.gender || "-"}
                       </dd>
                     </div>
                     <div>
@@ -348,7 +348,7 @@ export default function StudentDashboard() {
                         Course & Department
                       </dt>
                       <dd className="text-slate-900 dark:text-slate-100 font-semibold mt-0.5">
-                        {[user?.course, user?.department].filter(Boolean).join(" â€¢ ") || "Not specified"}
+                        {[user?.course, user?.department].filter(Boolean).join(" • ") || "Not specified"}
                       </dd>
                     </div>
                     <div>
@@ -364,7 +364,7 @@ export default function StudentDashboard() {
                   <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800">
                     <Link href="/dashboard/profile">
                       <Button variant="secondary" size="sm" className="w-full">
-                        âœï¸ Edit Profile Details
+                         Edit Profile Details
                       </Button>
                     </Link>
                   </div>
@@ -470,7 +470,7 @@ export default function StudentDashboard() {
                       </div>
                     </div>
                     <Badge variant={status.preferencesCompleted ? "success" : "warning"} size="sm">
-                      {status.preferencesCompleted ? "âœ“ Completed" : "Pending"}
+                      {status.preferencesCompleted ? " Completed" : "Pending"}
                     </Badge>
                   </div>
                   <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold text-indigo-600 dark:text-indigo-400">
@@ -550,7 +550,7 @@ export default function StudentDashboard() {
                   {pendingInvitesCount > 0 && (
                     <Link href="/dashboard/invitations">
                       <Badge variant="warning" size="sm" pulse>
-                        âœ‰ï¸ {pendingInvitesCount} Invite{pendingInvitesCount > 1 ? "s" : ""}
+                         {pendingInvitesCount} Invite{pendingInvitesCount > 1 ? "s" : ""}
                       </Badge>
                     </Link>
                   )}
@@ -673,7 +673,7 @@ export default function StudentDashboard() {
                       size="sm"
                     >
                       {allocation?.status === "allocated"
-                        ? "âœ“ ALLOCATED"
+                        ? " ALLOCATED"
                         : allocation?.status === "waitlisted"
                         ? "WAITLISTED"
                         : "PENDING"}

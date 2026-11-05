@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/axios";
@@ -174,15 +174,15 @@ export default function RoomPreferencesCard({
         <div>
           {isLocked ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-50 border border-purple-200 px-3 py-1 text-xs font-semibold text-purple-700">
-              ðŸ”’ Locked: Allocated
+              Locked: Allocated
             </span>
           ) : !isLeader ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-              ðŸ‘ï¸ Read-Only (Leader Manages)
+              Read-Only (Leader Manages)
             </span>
           ) : (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700">
-              âœï¸ Leader Controls Active
+              Leader Controls Active
             </span>
           )}
         </div>
@@ -190,7 +190,7 @@ export default function RoomPreferencesCard({
 
       {/* Soft Preference Guarantee Disclaimer */}
       <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200/80 text-xs text-blue-900 leading-relaxed flex items-start gap-2.5">
-        <span className="text-base mt-0.5">â„¹ï¸</span>
+        <span className="font-bold text-xs uppercase tracking-wider text-blue-700 shrink-0 mt-0.5">Note:</span>
         <div>
           <strong className="font-bold">Preferences are soft, not guarantees:</strong> The residential warden will attempt to match your preferences in your chosen order of priority during allocation, but specific hostels, floors, or room numbers cannot be guaranteed due to campus inventory constraints.
         </div>
@@ -200,9 +200,9 @@ export default function RoomPreferencesCard({
       {preferencesNeedReview && (
         <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-start gap-2.5">
-            <span className="text-lg mt-0.5">âš ï¸</span>
+            <span className="font-bold text-xs uppercase tracking-wider text-amber-800 shrink-0 mt-0.5">Notice:</span>
             <div>
-              <p className="font-bold text-amber-950">Group Roster Changed â€” Please Review Preferences</p>
+              <p className="font-bold text-amber-950">Group Roster Changed - Please Review Preferences</p>
               <p className="text-[11px] text-amber-800 mt-0.5">
                 A member has joined or left your group. Please verify that your chosen hostels and AC setting continue to suit every current member.
               </p>
@@ -230,7 +230,7 @@ export default function RoomPreferencesCard({
               key={idx}
               className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2"
             >
-              <span>âš ï¸</span>
+              <span className="font-bold text-rose-600">•</span>
               <span>{warn}</span>
             </div>
           ))}
@@ -293,11 +293,11 @@ export default function RoomPreferencesCard({
                         </span>
                         <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
                           <span className="capitalize">{hostelObj?.gender} hostel</span>
-                          <span>â€¢</span>
+                          <span>•</span>
                           <span>{hostelObj?.totalFloors || 1} Floors</span>
                           {hostelObj?.availability && (
                             <>
-                              <span>â€¢</span>
+                              <span>•</span>
                               <span className="text-emerald-600 font-semibold">
                                 {hostelObj.availability.totalAvailableRooms} room{hostelObj.availability.totalAvailableRooms === 1 ? "" : "s"} with free beds ({targetSize}-bed)
                               </span>
@@ -308,32 +308,32 @@ export default function RoomPreferencesCard({
                     </div>
 
                     {isLeader && !isLocked && (
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           type="button"
                           onClick={() => handleMoveHostel(index, -1)}
                           disabled={index === 0}
                           title="Move up in priority"
-                          className="p-1 rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent"
+                          className="px-2 py-1 rounded-md text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-30 disabled:hover:bg-slate-100 transition-colors"
                         >
-                          â¬†ï¸
+                          Up
                         </button>
                         <button
                           type="button"
                           onClick={() => handleMoveHostel(index, 1)}
                           disabled={index === prefData.preferredHostels.length - 1}
                           title="Move down in priority"
-                          className="p-1 rounded-md text-slate-500 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent"
+                          className="px-2 py-1 rounded-md text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-30 disabled:hover:bg-slate-100 transition-colors"
                         >
-                          â¬‡ï¸
+                          Down
                         </button>
                         <button
                           type="button"
                           onClick={() => handleToggleHostel(hId)}
                           title="Remove from choices"
-                          className="p-1 rounded-md text-rose-500 hover:bg-rose-50"
+                          className="px-2 py-1 rounded-md text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 transition-colors"
                         >
-                          âœ•
+                          Remove
                         </button>
                       </div>
                     )}
@@ -378,21 +378,21 @@ export default function RoomPreferencesCard({
                   </div>
                   <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
                     <span className="font-mono font-semibold">{h.code}</span>
-                    <span>â€¢</span>
+                    <span>•</span>
                     <span className="capitalize">{h.gender}</span>
-                    <span>â€¢</span>
+                    <span>•</span>
                     <span>{h.totalFloors} floors</span>
                   </div>
 
                   {/* Availability breakdown */}
                   <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
                     <span className="text-slate-600 font-medium">Free {targetSize}-Bed:</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded font-bold">
-                        â„ï¸ {h.availability.ac.rooms} AC
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md font-semibold text-[11px]">
+                        {h.availability.ac.rooms} AC
                       </span>
-                      <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-bold">
-                        ðŸƒ {h.availability.nonAc.rooms} Non-AC
+                      <span className="text-emerald-700 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-md font-semibold text-[11px]">
+                        {h.availability.nonAc.rooms} Non-AC
                       </span>
                     </div>
                   </div>
@@ -449,11 +449,10 @@ export default function RoomPreferencesCard({
               >
                 {isSuggested && (
                   <span className="absolute -top-2.5 right-3 bg-amber-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full shadow-xs">
-                    âœ¨ Recommended for Group
+                    Recommended for Group
                   </span>
                 )}
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-lg">{opt.icon}</span>
+                <div className="mb-1">
                   <span className="text-xs font-bold text-slate-900">{opt.label}</span>
                 </div>
                 <p className="text-[11px] text-slate-500 leading-relaxed">{opt.description}</p>
@@ -490,8 +489,7 @@ export default function RoomPreferencesCard({
                     : "border-slate-200 bg-slate-50/50"
                 }`}
               >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-base">{opt.icon}</span>
+                <div className="mb-1">
                   <span className="text-xs font-bold text-slate-900">{opt.label}</span>
                 </div>
                 <p className="text-[11px] text-slate-500 leading-relaxed">{opt.description}</p>

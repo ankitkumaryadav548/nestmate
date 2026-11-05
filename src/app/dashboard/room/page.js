@@ -98,7 +98,7 @@ export default function MyRoomPage() {
               <div>
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <Badge variant="success" size="md" dot>
-                    âœ“ ALLOCATED &amp; ACTIVE
+                     ALLOCATED &amp; ACTIVE
                   </Badge>
                   {allocation.source && (
                     <Badge variant="brand" size="sm">
@@ -243,7 +243,7 @@ export default function MyRoomPage() {
                                 {rm.name}
                               </h3>
                               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                                {[rm.course, rm.department].filter(Boolean).join(" â€¢ ")}
+                                {[rm.course, rm.department].filter(Boolean).join(" • ")}
                               </p>
                               {rm.year && (
                                 <Badge variant="brand" size="sm" className="mt-1">
@@ -296,7 +296,7 @@ export default function MyRoomPage() {
                           </div>
                         ) : rm.phoneStatus === "hidden_by_student" ? (
                           <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
-                            <span>ðŸ”’</span>
+                            <span>’</span>
                             <span>Phone hidden by student</span>
                           </div>
                         ) : (
@@ -356,7 +356,7 @@ export default function MyRoomPage() {
       <PageTransition>
         <div className="max-w-2xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
           <EmptyState
-            icon="âš ï¸"
+            icon="Warning:
             title="Placement Not Completed"
             description={`${allocation.reason}: ${allocation.description}. ${allocation.nextStep ? `Next Step: ${allocation.nextStep}` : ""}`}
             action={

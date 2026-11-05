@@ -141,7 +141,7 @@ export default function AdminDemandPage() {
             {totals.totalEntitiesRequesting}
           </div>
           <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-            {totals.activeGroupsCount} Groups â€¢ {totals.autoAssignCount} Auto-Pool
+            {totals.activeGroupsCount} Groups • {totals.autoAssignCount} Auto-Pool
           </p>
         </Card>
 
@@ -385,7 +385,7 @@ export default function AdminDemandPage() {
 
                     <td className="py-3.5 px-4">
                       <span className="text-[11px] text-slate-600 dark:text-slate-400">
-                        {h.inventory.acBeds} AC â€¢ {h.inventory.nonAcBeds} Non-AC
+                        {h.inventory.acBeds} AC • {h.inventory.nonAcBeds} Non-AC
                       </span>
                     </td>
 

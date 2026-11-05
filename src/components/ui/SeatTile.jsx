@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React from 'react';
 import Avatar from './Avatar';
@@ -25,7 +25,7 @@ export default function SeatTile({
     const subtext = [
       member.academic?.branch || member.branch || member.department,
       member.academic?.year ? `Year ${member.academic.year}` : (member.year ? `Year ${member.year}` : null),
-    ].filter(Boolean).join(' â€¢ ');
+    ].filter(Boolean).join(" • ");
 
     return (
       <div
@@ -41,7 +41,7 @@ export default function SeatTile({
             title="Group Leader"
             className="absolute -top-2.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1 animate-scale-in"
           >
-            <span>ðŸ‘‘</span> Leader
+            Leader
           </div>
         )}
 

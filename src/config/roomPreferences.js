@@ -15,19 +15,19 @@ export const AC_DETAILS = {
     value: "ac",
     label: "AC Room",
     description: "Climate-controlled air-conditioned accommodation",
-    icon: "❄️",
+    icon: "",
   },
   "non-ac": {
     value: "non-ac",
     label: "Non-AC Room",
     description: "Standard naturally ventilated accommodation",
-    icon: "🍃",
+    icon: "",
   },
   "no-preference": {
     value: "no-preference",
     label: "No Preference",
     description: "Flexible with either AC or Non-AC accommodation",
-    icon: "✨",
+    icon: "",
   },
 };
 
@@ -37,25 +37,25 @@ export const FLOOR_DETAILS = {
   low: {
     value: "low",
     label: "Lower Floors",
-    description: "Ground and bottom floors — convenient quick access without lifts",
-    icon: "⬇️",
+    description: "Ground and bottom floors - convenient quick access without lifts",
+    icon: "",
   },
   mid: {
     value: "mid",
     label: "Middle Floors",
-    description: "Central intermediate levels — balanced elevation and noise reduction",
-    icon: "↔️",
+    description: "Central intermediate levels - balanced elevation and noise reduction",
+    icon: "",
   },
   high: {
     value: "high",
     label: "Upper Floors",
-    description: "Top floors — scenic views, minimal hallway foot traffic, quieter",
-    icon: "⬆️",
+    description: "Top floors - scenic views, minimal hallway foot traffic, quieter",
+    icon: "",
   },
   any: {
     value: "any",
     label: "Any Floor",
-    description: "No specific floor height preference — maximum allocation flexibility",
-    icon: "🏢",
+    description: "No specific floor height preference - maximum allocation flexibility",
+    icon: "",
   },
 };

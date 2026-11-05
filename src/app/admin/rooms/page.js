@@ -354,7 +354,7 @@ export default function AdminRoomsPage() {
                 <TableCell>
                   <div className="flex items-center gap-1.5">
                     <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
-                      {room.hostel?.code || "â€”"}
+                      {room.hostel?.code || "-"}
                     </span>
                     <span className="text-slate-500 dark:text-slate-400 text-[11px] truncate max-w-[120px]">
                       {room.hostel?.name}
@@ -417,7 +417,7 @@ export default function AdminRoomsPage() {
                 {/* Notes */}
                 <TableCell>
                   <span className="text-slate-400 dark:text-slate-500 text-[11px] truncate max-w-[140px] block">
-                    {room.notes || "â€”"}
+                    {room.notes || "-"}
                   </span>
                 </TableCell>
 

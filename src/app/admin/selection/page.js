@@ -314,7 +314,7 @@ export default function AdminSelectionPage() {
                 onClick={handleOpenFinalizeModal}
                 disabled={actionLoading}
               >
-                ðŸ”’ Finalize Selection &amp; Auto-Fill
+                ’ Finalize Selection &amp; Auto-Fill
               </Button>
             )}
           </div>
@@ -383,13 +383,13 @@ export default function AdminSelectionPage() {
             <p className="text-xs sm:text-sm text-white/80 max-w-xl leading-relaxed">
               {windowDoc ? (
                 <>
-                  Starts: <strong>{new Date(windowDoc.startsAt).toLocaleString()}</strong> â€¢ Ends:{" "}
+                  Starts: <strong>{new Date(windowDoc.startsAt).toLocaleString()}</strong> • Ends:{" "}
                   <strong>{new Date(windowDoc.endsAt).toLocaleString()}</strong>
                   {windowDoc.closedAt && (
                     <> (Closed at {new Date(windowDoc.closedAt).toLocaleTimeString()})</>
                   )}
                   {windowDoc.finalizedAt && (
-                    <> â€¢ Finalized at {new Date(windowDoc.finalizedAt).toLocaleString()}</>
+                    <> • Finalized at {new Date(windowDoc.finalizedAt).toLocaleString()}</>
                   )}
                 </>
               ) : (
@@ -514,7 +514,7 @@ export default function AdminSelectionPage() {
                       {cr.hostelName} <span className="text-slate-400 dark:text-slate-500">({cr.hostelCode})</span>
                     </td>
                     <td className="px-4 py-3">
-                      {cr.roomType} â€¢ Floor {cr.floor}
+                      {cr.roomType} • Floor {cr.floor}
                     </td>
                     <td className="px-4 py-3 font-medium">
                       {cr.capacity} Beds
@@ -539,11 +539,11 @@ export default function AdminSelectionPage() {
                           {cr.claimedByGroup.leader && ` (${cr.claimedByGroup.leader.name})`}
                         </Link>
                       ) : (
-                        <span className="text-slate-400">â€”</span>
+                        <span className="text-slate-400">-</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
-                      {cr.claimedAt ? new Date(cr.claimedAt).toLocaleTimeString() : "â€”"}
+                      {cr.claimedAt ? new Date(cr.claimedAt).toLocaleTimeString() : "-"}
                     </td>
                     <td className="px-4 py-3 text-right">
                       {cr.claimedByGroup && (

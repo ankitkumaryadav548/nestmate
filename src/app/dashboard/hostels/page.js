@@ -213,7 +213,7 @@ export default function StudentHostelsPage() {
                             </Badge>
                           </div>
                           <p className="text-xs text-slate-500 dark:text-slate-400">
-                            {hostel.location || "Campus Residential Block"} â€¢ {hostel.totalFloors} habitable floors
+                            {hostel.location || "Campus Residential Block"} • {hostel.totalFloors} habitable floors
                           </p>
                         </div>
                       </div>
@@ -264,7 +264,7 @@ export default function StudentHostelsPage() {
                               key={fac}
                               className="inline-flex items-center rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 px-2.5 py-1 text-xs font-medium text-slate-700 dark:text-slate-300"
                             >
-                              âœ“ {fac}
+                               {fac}
                             </span>
                           ))
                         ) : (

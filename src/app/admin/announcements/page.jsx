@@ -252,7 +252,7 @@ export default function AdminAnnouncementsPage() {
               size="sm"
               onClick={fetchHistory}
             >
-              ðŸ”„ Refresh
+              Refresh
             </Button>
           }
         />
@@ -266,7 +266,7 @@ export default function AdminAnnouncementsPage() {
               onClick={() => setActionSuccess(null)}
               className="text-xs font-bold hover:opacity-80"
             >
-              âœ•
+              ✕
             </button>
           </Alert>
         )}
@@ -279,7 +279,7 @@ export default function AdminAnnouncementsPage() {
               onClick={() => setActionError(null)}
               className="text-xs font-bold hover:opacity-80"
             >
-              âœ•
+              ✕
             </button>
           </Alert>
         )}
@@ -289,7 +289,7 @@ export default function AdminAnnouncementsPage() {
           <Card className="lg:col-span-5 p-5 sm:p-6 space-y-5">
             <div className="border-b border-[var(--border)] pb-3">
               <h2 className="text-base font-bold text-[var(--foreground)] flex items-center gap-2">
-                <span>âœï¸</span> Compose New Announcement
+                Compose New Announcement
               </h2>
               <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
                 Target notifications to individual cohorts or the whole student body.
@@ -457,7 +457,7 @@ export default function AdminAnnouncementsPage() {
                       >
                         {hostels.map((h) => (
                           <option key={h._id} value={h._id}>
-                            {h.name} ({h.gender} Â· {h.type})
+                            {h.name} ({h.gender} • {h.type})
                           </option>
                         ))}
                       </Select>
@@ -494,7 +494,7 @@ export default function AdminAnnouncementsPage() {
                       disabled={previewing}
                       className="text-xs py-1 h-auto"
                     >
-                      {previewing ? "Calculating..." : "ðŸ” Preview Recipients"}
+                      {previewing ? "Calculating..." : " Preview Recipients"}
                     </Button>
 
                     {preview && (
@@ -510,7 +510,7 @@ export default function AdminAnnouncementsPage() {
 
                     {previewError && (
                       <span className="text-xs font-semibold text-rose-600 dark:text-rose-400">
-                        âš ï¸ {previewError}
+                        Warning: {previewError}
                       </span>
                     )}
                   </div>
@@ -584,7 +584,7 @@ export default function AdminAnnouncementsPage() {
                             <div className="truncate">{item.title}</div>
                             {item.link && (
                               <span className="block text-[11px] font-normal text-brand-600 dark:text-brand-400 truncate mt-0.5">
-                                ðŸ”— {item.link}
+                                Link: {item.link}
                               </span>
                             )}
                             <div className="text-[11px] text-[var(--muted-foreground)] mt-0.5 font-normal">
@@ -766,7 +766,7 @@ export default function AdminAnnouncementsPage() {
                 <div className="rounded-xl bg-[var(--muted)]/40 p-3 border border-[var(--border)]">
                   <span className="text-[11px] font-bold text-[var(--muted-foreground)] uppercase">Deliveries</span>
                   <p className="font-semibold text-[var(--foreground)] mt-0.5">
-                    {viewItem.recipientCount} recipients Â· {viewItem.readCount} read
+                    {viewItem.recipientCount} recipients • {viewItem.readCount} read
                   </p>
                 </div>
               </div>
