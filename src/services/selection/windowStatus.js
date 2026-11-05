@@ -58,27 +58,33 @@ export function effectiveWindowStatus(window, now = new Date()) {
  * @returns {{ valid: boolean, error: string | null }}
  */
 export function validateWindowInput({ startsAt, endsAt }, now = new Date()) {
-  if (!startsAt || !endsAt) {
-    return { valid: false, error: "Both start and end dates are required" };
+  if (!startsAt) {
+    return { valid: false, error: "Start date is required" };
+  }
+  if (!endsAt) {
+    return { valid: false, error: "End date is required" };
   }
 
   const startDate = new Date(startsAt);
   const endDate = new Date(endsAt);
   const nowDate = new Date(now);
 
-  if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-    return { valid: false, error: "Invalid date format provided" };
+  if (isNaN(startDate.getTime())) {
+    return { valid: false, error: "Start date is required" };
+  }
+  if (isNaN(endDate.getTime())) {
+    return { valid: false, error: "End date is required" };
   }
 
   if (endDate.getTime() <= nowDate.getTime()) {
-    return { valid: false, error: "Window end time must be in the future" };
+    return { valid: false, error: "End must be in the future" };
   }
 
   const minDurationMs = MIN_WINDOW_MINUTES * 60 * 1000;
   if (endDate.getTime() - startDate.getTime() < minDurationMs) {
     return {
       valid: false,
-      error: `Window duration must be at least ${MIN_WINDOW_MINUTES} minutes`,
+      error: "End must be at least 5 minutes after start",
     };
   }
 

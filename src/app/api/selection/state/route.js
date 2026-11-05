@@ -1,6 +1,7 @@
 import { requireRole } from "@/middleware-helpers/authGuard";
 import { success, failure } from "@/lib/apiResponse";
 import { getSelectionState } from "@/services/roomSelectionService";
+import { getCurrentWindow } from "@/services/selectionWindowService";
 
 /**
  * GET /api/selection/state
@@ -10,6 +11,9 @@ export async function GET(request) {
   try {
     const { user, errorResponse } = await requireRole("student", request);
     if (errorResponse) return errorResponse;
+
+    // Lazily evaluate window state & trigger notification if scheduled start time arrived
+    await getCurrentWindow();
 
     const state = await getSelectionState(user.id);
     return success(state, "Selection state retrieved successfully");

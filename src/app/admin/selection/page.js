@@ -32,14 +32,30 @@ export default function AdminSelectionPage() {
 
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [createModalError, setCreateModalError] = useState(null);
   const [createForm, setCreateForm] = useState({
     name: "General Room Selection Window",
     startsAt: "",
     endsAt: "",
   });
 
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [editModalError, setEditModalError] = useState(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    startsAt: "",
+    endsAt: "",
+  });
+
   const [isExtendOpen, setIsExtendOpen] = useState(false);
+  const [extendModalError, setExtendModalError] = useState(null);
   const [extendMinutes, setExtendMinutes] = useState(30);
+
+  const toLocalDatetime = (d = new Date()) => {
+    const date = new Date(d);
+    date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+    return date.toISOString().slice(0, 16);
+  };
 
   const [isFinalizeOpen, setIsFinalizeOpen] = useState(false);
   const [finalizePreview, setFinalizePreview] = useState(null);
@@ -128,9 +144,9 @@ export default function AdminSelectionPage() {
 
   // Action: Extend Window
   const handleExtendWindow = async () => {
+    setExtendModalError(null);
     try {
       setActionLoading(true);
-      setActionAlert(null);
       await axios.patch("/api/admin/selection/window", {
         action: "extend",
         minutes: Number(extendMinutes),
@@ -140,12 +156,11 @@ export default function AdminSelectionPage() {
         message: `Selection window extended by ${extendMinutes} minutes.`,
       });
       setIsExtendOpen(false);
+      setExtendModalError(null);
       await fetchData();
     } catch (err) {
-      setActionAlert({
-        type: "danger",
-        message: err.response?.data?.message || "Failed to extend window",
-      });
+      const serverMsg = err.response?.data?.message || err.message || "Failed to extend window";
+      setExtendModalError(serverMsg);
     } finally {
       setActionLoading(false);
     }
@@ -154,22 +169,51 @@ export default function AdminSelectionPage() {
   // Action: Schedule/Create Window
   const handleCreateWindow = async (e) => {
     e.preventDefault();
+    setCreateModalError(null);
     try {
       setActionLoading(true);
-      setActionAlert(null);
+      const startsAtIso = createForm.startsAt ? new Date(createForm.startsAt).toISOString() : "";
+      const endsAtIso = createForm.endsAt ? new Date(createForm.endsAt).toISOString() : "";
+
       await axios.post("/api/admin/selection/window", {
-        name: createForm.name,
-        startsAt: new Date(createForm.startsAt),
-        endsAt: new Date(createForm.endsAt),
+        name: createForm.name?.trim() || "General Student Room Selection Window",
+        startsAt: startsAtIso,
+        endsAt: endsAtIso,
       });
       setActionAlert({ type: "success", message: "New selection window scheduled successfully." });
       setIsCreateOpen(false);
+      setCreateModalError(null);
       await fetchData();
     } catch (err) {
-      setActionAlert({
-        type: "danger",
-        message: err.response?.data?.message || "Failed to create selection window",
+      const serverMsg = err.response?.data?.message || err.message || "Failed to create selection window";
+      setCreateModalError(serverMsg);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Action: Edit Window
+  const handleEditWindow = async (e) => {
+    e.preventDefault();
+    setEditModalError(null);
+    try {
+      setActionLoading(true);
+      const startsAtIso = editForm.startsAt ? new Date(editForm.startsAt).toISOString() : "";
+      const endsAtIso = editForm.endsAt ? new Date(editForm.endsAt).toISOString() : "";
+
+      await axios.patch("/api/admin/selection/window", {
+        action: "edit",
+        name: editForm.name?.trim(),
+        startsAt: startsAtIso,
+        endsAt: endsAtIso,
       });
+      setActionAlert({ type: "success", message: "Selection window updated successfully." });
+      setIsEditOpen(false);
+      setEditModalError(null);
+      await fetchData();
+    } catch (err) {
+      const serverMsg = err.response?.data?.message || err.message || "Failed to update selection window";
+      setEditModalError(serverMsg);
     } finally {
       setActionLoading(false);
     }
@@ -265,10 +309,13 @@ export default function AdminSelectionPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setIsExtendOpen(true)}
+                  onClick={() => {
+                    setExtendModalError(null);
+                    setIsExtendOpen(true);
+                  }}
                   disabled={actionLoading}
                 >
-                  â±ï¸ Extend Window
+                  Extend Window
                 </Button>
                 <Button
                   variant="danger"
@@ -280,14 +327,34 @@ export default function AdminSelectionPage() {
                 </Button>
               </>
             ) : windowStatus === "scheduled" ? (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleOpenNow}
-                isLoading={actionLoading}
-              >
-                ðŸš€ Open Window Now
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const s = windowDoc?.startsAt ? new Date(windowDoc.startsAt) : new Date();
+                    const e = windowDoc?.endsAt ? new Date(windowDoc.endsAt) : new Date(Date.now() + 60 * 60 * 1000);
+                    setEditForm({
+                      name: windowDoc?.name || "General Student Room Selection Window",
+                      startsAt: toLocalDatetime(s),
+                      endsAt: toLocalDatetime(e),
+                    });
+                    setEditModalError(null);
+                    setIsEditOpen(true);
+                  }}
+                  disabled={actionLoading}
+                >
+                  Edit Schedule
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleOpenNow}
+                  isLoading={actionLoading}
+                >
+                  Open Window Now
+                </Button>
+              </>
             ) : (
               <Button
                 variant="outline"
@@ -297,9 +364,10 @@ export default function AdminSelectionPage() {
                   const defaultEnd = new Date(now.getTime() + 60 * 60 * 1000);
                   setCreateForm({
                     name: "General Student Room Selection Window",
-                    startsAt: now.toISOString().slice(0, 16),
-                    endsAt: defaultEnd.toISOString().slice(0, 16),
+                    startsAt: toLocalDatetime(now),
+                    endsAt: toLocalDatetime(defaultEnd),
                   });
+                  setCreateModalError(null);
                   setIsCreateOpen(true);
                 }}
               >
@@ -314,10 +382,9 @@ export default function AdminSelectionPage() {
                 onClick={handleOpenFinalizeModal}
                 disabled={actionLoading}
               >
-                ’ Finalize Selection &amp; Auto-Fill
+                Finalize Selection &amp; Auto-Fill
               </Button>
-            )}
-          </div>
+            )}</div>
         }
       />
 
@@ -577,6 +644,11 @@ export default function AdminSelectionPage() {
         description="Set the date and time boundaries when student group leaders can browse and claim rooms."
       >
         <form onSubmit={handleCreateWindow} className="space-y-4">
+          {createModalError && (
+            <Alert variant="danger" title="Validation Error">
+              {createModalError}
+            </Alert>
+          )}
           <div>
             <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">Window Title</label>
             <Input
@@ -618,6 +690,71 @@ export default function AdminSelectionPage() {
         </form>
       </Modal>
 
+      {/* Edit Window Modal */}
+      <Modal
+        isOpen={isEditOpen}
+        onClose={() => {
+          setIsEditOpen(false);
+          setEditModalError(null);
+        }}
+        title="Edit Selection Window Schedule"
+        description="Update the title, start time, or end time of the scheduled selection window."
+      >
+        <form onSubmit={handleEditWindow} className="space-y-4">
+          {editModalError && (
+            <Alert variant="danger" title="Validation Error">
+              {editModalError}
+            </Alert>
+          )}
+
+          <div>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">Window Title</label>
+            <Input
+              type="text"
+              value={editForm.name}
+              onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">Starts At</label>
+            <Input
+              type="datetime-local"
+              value={editForm.startsAt}
+              onChange={(e) => setEditForm({ ...editForm, startsAt: e.target.value })}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">Ends At</label>
+            <Input
+              type="datetime-local"
+              value={editForm.endsAt}
+              onChange={(e) => setEditForm({ ...editForm, endsAt: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setIsEditOpen(false);
+                setEditModalError(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button variant="primary" size="sm" type="submit" isLoading={actionLoading}>
+              Save Changes
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
       {/* Extend Window Modal */}
       <Modal
         isOpen={isExtendOpen}
@@ -626,6 +763,11 @@ export default function AdminSelectionPage() {
         description="Add more time to the currently active selection window."
       >
         <div className="space-y-4 text-xs">
+          {extendModalError && (
+            <Alert variant="danger" title="Validation Error">
+              {extendModalError}
+            </Alert>
+          )}
           <p className="text-slate-600 dark:text-slate-400">
             Choose how many minutes to add to the current window closing time:
           </p>

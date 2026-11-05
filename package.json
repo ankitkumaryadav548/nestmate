@@ -35,7 +35,8 @@
     "test:joinrequests": "node --test src/services/matching/joinRequestRules.test.js",
     "test:joinrequest-flow": "node scripts/test-joinrequest-flow.js",
     "notify:test": "node scripts/notify-test.js",
-    "test:notify-flow": "node scripts/test-notify-flow.js"
+    "test:notify-flow": "node scripts/test-notify-flow.js",
+    "test:window-notify": "node scripts/test-window-notify.js"
   },
   "dependencies": {
     "axios": "^1.20.0",

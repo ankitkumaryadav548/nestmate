@@ -115,7 +115,9 @@ export async function notifyMany(userIds, type, params = {}, options = {}) {
     }
 
     const payload = buildNotification(type, params);
-    const baseDedupe = options.dedupeParts ? buildDedupeKey(type, options.dedupeParts) : null;
+    const baseDedupe = options.dedupeParts
+      ? buildDedupeKey(type, options.dedupeParts)
+      : options.dedupeKey || null;
     const extraData = options.data && typeof options.data === "object" ? options.data : {};
 
     let totalCreated = 0;

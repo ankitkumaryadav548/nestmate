@@ -1,6 +1,7 @@
 import { requireRole } from "@/middleware-helpers/authGuard";
 import { success, failure } from "@/lib/apiResponse";
 import { listSelectableRooms } from "@/services/roomSelectionService";
+import { getCurrentWindow } from "@/services/selectionWindowService";
 
 /**
  * GET /api/selection/rooms
@@ -11,6 +12,9 @@ export async function GET(request) {
   try {
     const { user, errorResponse } = await requireRole("student", request);
     if (errorResponse) return errorResponse;
+
+    // Lazily evaluate window state & trigger notification if scheduled start time arrived
+    await getCurrentWindow();
 
     const { searchParams } = new URL(request.url);
     const hostelId = searchParams.get("hostelId") || undefined;

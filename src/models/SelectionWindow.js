@@ -23,6 +23,10 @@ const SelectionWindowSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    openNotifiedAt: {
+      type: Date,
+      default: null,
+    },
     finalizeSummary: {
       type: mongoose.Schema.Types.Mixed,
       default: null,

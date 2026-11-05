@@ -250,9 +250,14 @@ export function buildNotification(type, params = {}) {
     }
 
     case "room_selection_open": {
-      const windowName = safeStr(p.windowName, "Hostel room selection");
-      rawTitle = "Room Selection Window Open";
-      rawMessage = `${windowName} is now open. Group leaders and single-room students can choose rooms.`;
+      const windowName = safeStr(p.windowName, "Room selection");
+      const closingStr = p.closingAt
+        ? ` Closes on ${p.closingAt}.`
+        : p.endsAt
+        ? ` Closes on ${new Date(p.endsAt).toLocaleString()}.`
+        : "";
+      rawTitle = "Room selection is now open";
+      rawMessage = `${windowName} is now open.${closingStr} You can now browse and select rooms.`;
       defaultLink = "/dashboard/rooms";
       severity = "info";
       break;

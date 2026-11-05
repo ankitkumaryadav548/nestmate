@@ -19,6 +19,7 @@ import { nextRoomState, canClaimRoom } from "./selection/roomState.js";
 import { canStudentSelect, canReleaseRoom } from "./selection/selectionRules.js";
 import { annotateRoomsForUnit } from "./selection/roomBrowser.js";
 import { notify, notifyMany } from "./notificationService.js";
+import { ensureOpenNotification } from "./selectionWindowService.js";
 
 /**
  * Returns the current student's room selection context and state.
@@ -27,7 +28,10 @@ export async function getSelectionState(userId) {
   await connectDB();
 
   // 1. Fetch live selection window
-  const liveWindow = await SelectionWindow.findOne({ isActive: true }).lean();
+  const liveWindow = await SelectionWindow.findOne({ isActive: true });
+  if (liveWindow && effectiveWindowStatus(liveWindow) === "open" && !liveWindow.openNotifiedAt) {
+    await ensureOpenNotification(liveWindow);
+  }
   const windowStatus = effectiveWindowStatus(liveWindow);
 
   // 2. Fetch student, preferences, group, and allocation

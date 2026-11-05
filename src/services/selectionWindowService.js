@@ -1,6 +1,6 @@
 import connectDB from "../lib/db.js";
 import SelectionWindow from "../models/SelectionWindow.js";
-import Preference from "../models/Preference.js";
+import User from "../models/User.js";
 import {
   effectiveWindowStatus,
   validateWindowInput,
@@ -26,13 +26,93 @@ function enrichWindow(windowDoc, now = new Date()) {
 }
 
 /**
+ * Ensures all active students receive an opening notification exactly once.
+ * 
+ * Lazy Trigger Mechanism:
+ * This helper is invoked when a window becomes open (createWindow with past/now start,
+ * openNow, extend), or lazily whenever the window state is read by clients or admins
+ * (getCurrentWindow, GET /api/selection/state, GET /api/selection/rooms, GET /api/admin/selection).
+ * When a scheduled window's start time arrives, the next request that accesses the window detects
+ * that the effective status is "open" and triggers notifications without requiring any cron job.
+ * An atomic conditional update ({ _id: window._id, openNotifiedAt: null }) ensures idempotency
+ * and eliminates race conditions. A standing background cron job is planned for future scope.
+ * 
+ * @param {object} windowDocOrObject
+ * @returns {Promise<void>}
+ */
+export async function ensureOpenNotification(windowDocOrObject) {
+  if (!windowDocOrObject) return;
+  const raw = windowDocOrObject.toObject ? windowDocOrObject.toObject() : windowDocOrObject;
+  const status = effectiveWindowStatus(raw);
+
+  // If not open or already notified, do nothing
+  if (status !== "open" || raw.openNotifiedAt) {
+    return;
+  }
+
+  try {
+    await connectDB();
+
+    // Atomic conditional update: only update if openNotifiedAt is still null
+    const now = new Date();
+    const updatedDoc = await SelectionWindow.findOneAndUpdate(
+      { _id: raw._id, openNotifiedAt: null },
+      { $set: { openNotifiedAt: now } },
+      { returnDocument: "after" }
+    );
+
+    // If update returned null, another concurrent request already claimed the notification
+    if (!updatedDoc) {
+      return;
+    }
+
+    if (windowDocOrObject.openNotifiedAt === null || windowDocOrObject.openNotifiedAt === undefined) {
+      windowDocOrObject.openNotifiedAt = now;
+    }
+
+    // Query all active students
+    const activeStudents = await User.find({ role: "student", isActive: true })
+      .select("_id")
+      .lean();
+
+    const studentIds = activeStudents.map((s) => s._id.toString());
+    if (studentIds.length === 0) return;
+
+    const closingStr = raw.endsAt ? new Date(raw.endsAt).toLocaleString() : "";
+
+    // Best-effort notification delivery: errors are logged and never break the request
+    await notifyMany(
+      studentIds,
+      "room_selection_open",
+      {
+        windowName: raw.name || "Room Selection",
+        endsAt: raw.endsAt,
+        closingAt: closingStr,
+      },
+      {
+        dedupeKey: `room_selection_open_${raw._id.toString()}`,
+      }
+    );
+  } catch (err) {
+    console.error("[SelectionWindowService] ensureOpenNotification error:", err);
+  }
+}
+
+/**
  * Retrieves the currently active selection window.
  * Returns null if no live window exists.
  */
 export async function getCurrentWindow() {
   await connectDB();
-  const windowDoc = await SelectionWindow.findOne({ isActive: true }).lean();
+  const windowDoc = await SelectionWindow.findOne({ isActive: true });
   if (!windowDoc) return null;
+
+  // Lazy trigger: if window has transitioned to open and wasn't notified yet, notify now
+  // Real background cron job is future scope.
+  if (effectiveWindowStatus(windowDoc) === "open" && !windowDoc.openNotifiedAt) {
+    await ensureOpenNotification(windowDoc);
+  }
+
   return enrichWindow(windowDoc);
 }
 
@@ -61,28 +141,22 @@ export async function createWindow(adminId, { name, startsAt, endsAt }) {
   }
 
   const windowDoc = new SelectionWindow({
-    name: name.trim(),
+    name: (name || "").trim() || "General Student Room Selection Window",
     startsAt: new Date(startsAt),
     endsAt: new Date(endsAt),
     createdBy: adminId,
     isActive: true,
+    openNotifiedAt: null,
   });
 
   await windowDoc.save();
-  const enriched = enrichWindow(windowDoc);
 
   // If the window is immediately open (e.g. startsAt <= now), notify active students once
-  if (enriched.status === "open") {
-    sendWindowOpenNotification(windowDoc).catch((err) =>
-      console.error("[SelectionWindowService] Failed to send open notification:", err)
-    );
+  if (effectiveWindowStatus(windowDoc) === "open") {
+    await ensureOpenNotification(windowDoc);
   }
 
-  // NOTE: If startsAt is in the future (status "scheduled"), automatic transition to "open"
-  // without admin interaction would require a background cron/scheduler. For now, the admin
-  // can click "Open now" when ready or an announcement can be published.
-
-  return enriched;
+  return enrichWindow(windowDoc);
 }
 
 /**
@@ -101,6 +175,7 @@ export async function openNow(adminId, minutes = 60) {
       startsAt: now,
       endsAt,
       isActive: true,
+      openNotifiedAt: null,
       createdBy: adminId,
       updatedBy: adminId,
     });
@@ -116,10 +191,8 @@ export async function openNow(adminId, minutes = 60) {
     await windowDoc.save();
   }
 
-  // Notify active students with completed preferences
-  sendWindowOpenNotification(windowDoc).catch((err) =>
-    console.error("[SelectionWindowService] Failed to send open notification:", err)
-  );
+  // Notify active students
+  await ensureOpenNotification(windowDoc);
 
   return enrichWindow(windowDoc);
 }
@@ -153,8 +226,9 @@ export async function closeNow(adminId) {
 /**
  * Extends the window's end date-time.
  * Allowed when scheduled, open, or closed (clears closedAt).
+ * Accepts either a number of minutes or a target Date / ISO string.
  */
-export async function extendWindow(adminId, newEndsAt) {
+export async function extendWindow(adminId, newEndsAtOrMinutes) {
   await connectDB();
   const windowDoc = await SelectionWindow.findOne({ isActive: true });
   if (!windowDoc) {
@@ -170,9 +244,23 @@ export async function extendWindow(adminId, newEndsAt) {
     throw error;
   }
 
-  const newEnd = new Date(newEndsAt);
+  let newEnd;
+  const numMinutes = Number(newEndsAtOrMinutes);
+  if (
+    !isNaN(numMinutes) &&
+    numMinutes > 0 &&
+    numMinutes < 100000 &&
+    typeof newEndsAtOrMinutes !== "object" &&
+    !(typeof newEndsAtOrMinutes === "string" && newEndsAtOrMinutes.includes("-"))
+  ) {
+    const baseTime = Math.max(Date.now(), new Date(windowDoc.endsAt).getTime());
+    newEnd = new Date(baseTime + numMinutes * 60 * 1000);
+  } else {
+    newEnd = new Date(newEndsAtOrMinutes);
+  }
+
   if (isNaN(newEnd.getTime()) || newEnd.getTime() <= Date.now()) {
-    const error = new Error("New end time must be a valid future date");
+    const error = new Error("End must be in the future");
     error.statusCode = 400;
     throw error;
   }
@@ -188,11 +276,17 @@ export async function extendWindow(adminId, newEndsAt) {
   windowDoc.updatedBy = adminId;
   await windowDoc.save();
 
+  // If re-opened by extending, do NOT notify again if already notified (openNotifiedAt checked inside ensureOpenNotification)
+  if (effectiveWindowStatus(windowDoc) === "open" && !windowDoc.openNotifiedAt) {
+    await ensureOpenNotification(windowDoc);
+  }
+
   return enrichWindow(windowDoc);
 }
 
 /**
  * Edits a window's name, startsAt, or endsAt while in "scheduled" status.
+ * If the admin edits the start time of a window that has already notified, do not send again.
  */
 export async function editWindow(adminId, { name, startsAt, endsAt }) {
   await connectDB();
@@ -217,35 +311,17 @@ export async function editWindow(adminId, { name, startsAt, endsAt }) {
     throw error;
   }
 
-  if (name) windowDoc.name = name.trim();
+  if (name && name.trim()) windowDoc.name = name.trim();
   windowDoc.startsAt = new Date(startsAt);
   windowDoc.endsAt = new Date(endsAt);
   windowDoc.updatedBy = adminId;
+  // Preserves existing openNotifiedAt; does not reset or re-send notification
   await windowDoc.save();
+
+  // If new start time is now or in the past, it transitions to open: notify active students once if not previously notified
+  if (effectiveWindowStatus(windowDoc) === "open" && !windowDoc.openNotifiedAt) {
+    await ensureOpenNotification(windowDoc);
+  }
 
   return enrichWindow(windowDoc);
 }
-
-/**
- * Best-effort helper to notify all active students with completed preferences.
- */
-async function sendWindowOpenNotification(windowDoc) {
-  try {
-    const completedPrefs = await Preference.find({ completedAt: { $ne: null } })
-      .select("student")
-      .lean();
-    const studentIds = completedPrefs.map((p) => p.student).filter(Boolean);
-
-    if (studentIds.length > 0) {
-      await notifyMany(
-        studentIds,
-        "room_selection_open",
-        { windowName: windowDoc.name },
-        { dedupeKey: `window_open_${windowDoc._id}` }
-      );
-    }
-  } catch (err) {
-    console.error("[SelectionWindowService] sendWindowOpenNotification error:", err);
-  }
-}
-
