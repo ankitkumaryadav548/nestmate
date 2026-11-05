@@ -1,9 +1,9 @@
-import Hostel from "@/models/Hostel";
-import Room from "@/models/Room";
-import User from "@/models/User";
-import StudentProfile from "@/models/StudentProfile";
-import Preference from "@/models/Preference";
-import { getGroupStats } from "@/services/groupService";
+import Hostel from "../models/Hostel.js";
+import Room from "../models/Room.js";
+import User from "../models/User.js";
+import StudentProfile from "../models/StudentProfile.js";
+import Preference from "../models/Preference.js";
+import { getGroupStats } from "./groupService.js";
 
 /**
  * Computes administrative overview statistics using MongoDB aggregation pipelines.
@@ -125,7 +125,7 @@ export async function getAdminStats() {
   // Query latest draft allocation run
   let latestDraftRun = null;
   try {
-    const AllocationRun = (await import("@/models/AllocationRun")).default;
+    const AllocationRun = (await import("../models/AllocationRun.js")).default;
     const draftDoc = await AllocationRun.findOne({ status: "draft" })
       .sort({ createdAt: -1 })
       .select("_id createdAt stats waitlistCount")
@@ -149,8 +149,8 @@ export async function getAdminStats() {
   let publishedRunsCount = 0;
   let draftRunsCount = 0;
   try {
-    const Allocation = (await import("@/models/Allocation")).default;
-    const AllocationRun = (await import("@/models/AllocationRun")).default;
+    const Allocation = (await import("../models/Allocation.js")).default;
+    const AllocationRun = (await import("../models/AllocationRun.js")).default;
 
     publishedAllocationsCount = await Allocation.countDocuments({ status: "active" });
     const allocatedStudentsList = await Allocation.find({ status: "active" }).distinct("student");
@@ -170,9 +170,9 @@ export async function getAdminStats() {
     openSeats: 0,
   };
   try {
-    const SelectionWindow = (await import("@/models/SelectionWindow")).default;
-    const RoommateGroup = (await import("@/models/RoommateGroup")).default;
-    const { effectiveWindowStatus } = await import("@/services/selection/windowStatus");
+    const SelectionWindow = (await import("../models/SelectionWindow.js")).default;
+    const RoommateGroup = (await import("../models/RoommateGroup.js")).default;
+    const { effectiveWindowStatus } = await import("./selection/windowStatus.js");
 
     const liveWindow = await SelectionWindow.findOne({ isActive: true }).lean();
     selectionStats.windowStatus = liveWindow ? effectiveWindowStatus(liveWindow) : "none";

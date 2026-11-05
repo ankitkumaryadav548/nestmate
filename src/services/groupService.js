@@ -1778,6 +1778,9 @@ export async function getGroupStats() {
     autoIntentCount,
     totalCompletedPrefs,
     singleRoomCount,
+    pendingJoinRequests,
+    approvedJoinRequests,
+    rejectedJoinRequests,
   ] = await Promise.all([
     RoommateGroup.countDocuments({ status: "forming" }),
     RoommateGroup.countDocuments({ status: "complete" }),
