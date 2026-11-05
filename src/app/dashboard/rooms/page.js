@@ -212,7 +212,13 @@ export default function StudentRoomsPage() {
   };
 
   const windowStatus = stateData?.window?.status || "none";
-  const eligibility = stateData?.eligibility || { canSelect: false, reason: "Loading..." };
+  const eligibility = stateData
+    ? {
+        canSelect: stateData.eligibility?.canSelect ?? stateData.canSelect ?? false,
+        code: stateData.eligibility?.code ?? stateData.code ?? null,
+        reason: stateData.eligibility?.reason ?? stateData.message ?? "Not eligible to select a room.",
+      }
+    : { canSelect: false, reason: "Loading..." };
   const releaseEligibility = stateData?.releaseEligibility || { canRelease: false };
   const currentClaim = stateData?.currentClaim;
 
@@ -345,7 +351,7 @@ export default function StudentRoomsPage() {
         )}
 
         {/* Eligibility Warning Alert */}
-        {!eligibility.canSelect && (
+        {stateData && !eligibility.canSelect && (
           <Reveal direction="up" delay={100}>
             <Alert
               variant="warning"
@@ -384,7 +390,7 @@ export default function StudentRoomsPage() {
                 }}
                 options={[
                   { value: "", label: "All Eligible Hostels" },
-                  ...hostels.map((h) => ({ value: h.id, label: `${h.name} (${h.code})` })),
+                  ...hostels.map((h) => ({ value: h.id || h._id, label: `${h.name} (${h.code})` })),
                 ]}
               />
 

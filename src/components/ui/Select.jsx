@@ -10,6 +10,8 @@ export default function Select({
   name,
   value,
   onChange,
+  options = [],
+  placeholder,
   error,
   helperText,
   required = false,
@@ -19,6 +21,20 @@ export default function Select({
   ...props
 }) {
   const selectId = id || name;
+
+  const handleChange = (e) => {
+    if (!onChange) return;
+    try {
+      const fnStr = onChange.toString();
+      if (fnStr.includes(".target") || fnStr.includes(".currentTarget")) {
+        onChange(e);
+      } else {
+        onChange(e.target.value);
+      }
+    } catch {
+      onChange(e);
+    }
+  };
 
   return (
     <div className={`w-full space-y-1.5 ${className}`}>
@@ -36,7 +52,7 @@ export default function Select({
           id={selectId}
           name={name}
           value={value}
-          onChange={onChange}
+          onChange={handleChange}
           required={required}
           disabled={disabled}
           aria-invalid={Boolean(error)}
@@ -50,7 +66,14 @@ export default function Select({
           }`}
           {...props}
         >
-          {children}
+          {placeholder && <option value="">{placeholder}</option>}
+          {Array.isArray(options) && options.length > 0
+            ? options.map((opt, idx) => (
+                <option key={opt.value ?? idx} value={opt.value} disabled={opt.disabled}>
+                  {opt.label}
+                </option>
+              ))
+            : children}
         </select>
 
         {/* Custom Chevron Indicator */}

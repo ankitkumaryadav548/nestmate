@@ -130,6 +130,13 @@ export async function getSelectionState(userId) {
     };
   }
 
+  const releaseEligibility = canReleaseRoom({
+    windowStatus,
+    isLeader: groupSummary ? groupSummary.isLeader : false,
+    group: groupSummary,
+    isSingle: studentWithRoomSize?.roomSize === 1,
+  });
+
   return {
     window: liveWindow
       ? {
@@ -146,8 +153,21 @@ export async function getSelectionState(userId) {
     canSelect: eligibility.allowed,
     code: eligibility.code || null,
     message: eligibility.message || null,
+    eligibility: {
+      canSelect: eligibility.allowed,
+      code: eligibility.code || null,
+      reason: eligibility.message || null,
+    },
+    releaseEligibility,
     group: groupSummary,
     myRoom,
+    currentClaim: groupSummary?.selectedRoom
+      ? {
+          room: groupSummary.selectedRoom,
+          hostel: groupSummary.selectedRoom.hostel,
+          openSeats: groupSummary.openSeats,
+        }
+      : myRoom,
   };
 }
 
@@ -270,6 +290,24 @@ export async function listSelectableRooms(userId, filters = {}) {
     hostelCounts[hId].availableCount += 1;
   }
 
+  // Calculate eligible hostels for filtering
+  const unitGender = unit?.members?.[0]?.gender;
+  const eligibleHostelMap = new Map();
+  for (const h of activeHostels) {
+    const matchesGender = !unitGender || h.gender === unitGender || h.gender === "mixed";
+    if (matchesGender) {
+      const hId = h._id.toString();
+      eligibleHostelMap.set(hId, {
+        id: hId,
+        _id: hId,
+        name: h.name,
+        code: h.code,
+        gender: h.gender,
+        totalFloors: h.totalFloors,
+      });
+    }
+  }
+
   // Paginate annotated rooms
   const total = annotatedRooms.length;
   const totalPages = Math.ceil(total / parsedLimit) || 1;
@@ -282,6 +320,7 @@ export async function listSelectableRooms(userId, filters = {}) {
     limit: parsedLimit,
     totalPages,
     hostelCounts: Object.values(hostelCounts),
+    hostels: Array.from(eligibleHostelMap.values()),
     totalAvailable,
     totalClaimed,
   };
