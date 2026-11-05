@@ -30,9 +30,9 @@ import { TITLE_MAX, MESSAGE_MAX } from "@/config/notifications";
 const SAFE_LINKS = [
   { label: "None (No link)", value: "" },
   { label: "My Room (/dashboard/room)", value: "/dashboard/room" },
+  { label: "My Roommates (/dashboard/roommates)", value: "/dashboard/roommates" },
   { label: "Roommate Group (/dashboard/group)", value: "/dashboard/group" },
   { label: "Invitations Portal (/dashboard/invitations)", value: "/dashboard/invitations" },
-  { label: "Campus Hostels (/dashboard/hostels)", value: "/dashboard/hostels" },
   { label: "Student Dashboard (/dashboard)", value: "/dashboard" },
 ];
 

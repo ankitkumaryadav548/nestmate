@@ -112,7 +112,6 @@ export default function DashboardShell({ children }) {
         { href: "/dashboard/room", label: "My Room", icon: <IconBed /> },
         { href: "/dashboard/roommates", label: "My Roommates", icon: <IconUsers /> },
         { href: "/dashboard/rooms", label: "Choose Room", icon: <IconKey /> },
-        { href: "/dashboard/hostels", label: "Hostels", icon: <IconBuilding /> },
       ],
     },
     {

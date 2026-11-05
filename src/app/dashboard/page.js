@@ -204,9 +204,9 @@ export default function StudentDashboard() {
                     {user?.registrationNumber || "N/A"}
                   </span>
                 </div>
-                <Link href="/dashboard/hostels">
+                <Link href="/dashboard/roommates">
                   <Button variant="secondary" size="sm" className="bg-white/90 hover:bg-white text-indigo-900 border-white/20">
-                    <IconBuilding className="w-4 h-4 mr-1 text-indigo-600" /> Browse Hostels
+                    <IconUsers className="w-4 h-4 mr-1 text-indigo-600" /> My Roommates
                   </Button>
                 </Link>
               </div>
@@ -430,28 +430,28 @@ export default function StudentDashboard() {
           {/* Right Column: Portal Feature Cards */}
           <div className="lg:col-span-2 space-y-4 sm:space-y-5">
             
-            {/* Card: Hostels */}
+            {/* Card: Roommates & Beds */}
             <Reveal direction="up" delay={150}>
-              <Link href="/dashboard/hostels" className="block">
+              <Link href="/dashboard/roommates" className="block">
                 <Card variant="interactive" className="p-5 sm:p-6 group">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3.5">
                       <div className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <IconBuilding className="w-6 h-6" />
+                        <IconUsers className="w-6 h-6" />
                       </div>
                       <div>
                         <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 font-heading group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                          Browse Eligible Hostels
+                          My Roommates & Bed Assignment
                         </h3>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
-                          View campus hostels you qualify for, inspect facilities, rules, and real-time available beds.
+                          View allocated room details, bed numbers, and manage bed assignments for your roommates.
                         </p>
                       </div>
                     </div>
-                    <Badge variant="success" size="sm">Active</Badge>
+                    <Badge variant="indigo" size="sm">Available</Badge>
                   </div>
                   <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold text-indigo-600 dark:text-indigo-400">
-                    <span>Explore residential accommodations</span>
+                    <span>Check roommates and beds</span>
                     <span className="group-hover:translate-x-1 transition-transform">Open &rarr;</span>
                   </div>
                 </Card>
